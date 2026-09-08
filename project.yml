@@ -12,12 +12,20 @@
 # Le `.xcodeproj` est dans `.gitignore` : c'est une SORTIE, au même titre qu'un
 # binaire.
 #
-# # CE QUI EST DÉCIDÉ ICI, ET QUI RESTE À CONFIRMER
+# # CE QUI EST DÉCIDÉ ICI
 #
-# `bundleIdPrefix` suppose que `narro.ch` est le domaine sous lequel ces
-# applications seront publiées. **À CONFIRMER AVANT LE PREMIER DÉPÔT SUR
-# App Store Connect** : un identifiant d'application ne se change plus une fois
-# qu'un profil de provisionnement et un enregistrement App Store l'ont figé.
+# L'identifiant d'application est ARRÊTÉ : `org.airdesktop.servicelocator`. Il
+# suit l'organisation `air-desktop-project` plutôt qu'un domaine de produit —
+# c'est le nom sous lequel les trois dépôts vivent déjà, et celui qui ne dépendra
+# pas d'une bascule de domaine. Un identifiant ne se change plus une fois qu'un
+# profil de provisionnement et un enregistrement App Store Connect l'ont figé ;
+# le fixer maintenant est la seule occasion de le faire sans coût.
+#
+# IL EST ÉCRIT EN TOUTES LETTRES sur la cible, et pas déduit de `bundleIdPrefix`.
+# XcodeGen compose autrement le préfixe et le NOM DE LA CIBLE, ce qui donnerait
+# `org.airdesktop.AirServiceLocator` — donc un identifiant qui changerait le jour
+# où l'on renommerait la cible. Un identifiant figé ne doit dépendre de rien
+# qu'on puisse renommer.
 #
 # `deploymentTarget` iOS 17 : rien ici n'exige encore une version aussi récente.
 # C'est un défaut, pas une conclusion — à revoir contre le parc réellement visé.
@@ -25,7 +33,7 @@
 name: AirServiceLocator
 
 options:
-  bundleIdPrefix: ch.narro
+  bundleIdPrefix: org.airdesktop
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -44,6 +52,9 @@ targets:
   AirServiceLocator:
     type: application
     platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.airdesktop.servicelocator
     sources:
       - path: Sources
         # Les notes de répertoire ne sont pas des ressources de l'application.
@@ -72,6 +83,9 @@ targets:
   AirServiceLocatorTests:
     type: bundle.unit-test
     platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.airdesktop.servicelocator.essais
     sources:
       - path: Tests/AirServiceLocatorTests
     dependencies:
