@@ -1,0 +1,78 @@
+# Définition du projet Xcode d'air-service-locator — pour XcodeGen.
+#
+# # POURQUOI CE FICHIER PLUTÔT QU'UN `.xcodeproj`
+#
+# Un `.xcodeproj` est un répertoire de XML généré, que deux branches ne savent
+# pas fusionner : chaque fichier ajouté y écrit un identifiant de 24 caractères,
+# et deux ajouts parallèles produisent un conflit que personne ne sait relire.
+# Ce fichier-ci se relit, se compare et se fusionne comme du code.
+#
+#     xcodegen generate     # produit AirServiceLocator.xcodeproj, non versionné
+#
+# Le `.xcodeproj` est dans `.gitignore` : c'est une SORTIE, au même titre qu'un
+# binaire.
+#
+# # CE QUI EST DÉCIDÉ ICI, ET QUI RESTE À CONFIRMER
+#
+# `bundleIdPrefix` suppose que `narro.ch` est le domaine sous lequel ces
+# applications seront publiées. **À CONFIRMER AVANT LE PREMIER DÉPÔT SUR
+# App Store Connect** : un identifiant d'application ne se change plus une fois
+# qu'un profil de provisionnement et un enregistrement App Store l'ont figé.
+#
+# `deploymentTarget` iOS 17 : rien ici n'exige encore une version aussi récente.
+# C'est un défaut, pas une conclusion — à revoir contre le parc réellement visé.
+
+name: AirServiceLocator
+
+options:
+  bundleIdPrefix: ch.narro
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
+    # à adopter maintenant : il n'y a pas encore de code à corriger.
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Un avertissement non traité est une régression qui attend son heure —
+    # la même règle que le `RUSTFLAGS: -D warnings` du dépôt serveur.
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+
+targets:
+  AirServiceLocator:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+        # Les notes de répertoire ne sont pas des ressources de l'application.
+        # Sans cette exclusion, XcodeGen les range dans la phase « Copy Bundle
+        # Resources » et elles partent dans l'`.ipa` livrée.
+        excludes:
+          - "**/README.md"
+    info:
+      path: Sources/Ressources/Info.plist
+      properties:
+        CFBundleDisplayName: Service Locator
+        UILaunchScreen: {}
+        # ── LA PHRASE QUE L'UTILISATEUR LIT AVANT DE POSER SON DOIGT ────────
+        #
+        # iOS l'affiche dans l'alerte système, et REFUSE DE LANCER
+        # l'application si elle manque alors que le binaire lie
+        # `LocalAuthentication`. Ce n'est donc pas une politesse, c'est une
+        # condition de démarrage.
+        NSFaceIDUsageDescription: >-
+          Votre identité est confirmée sur cet appareil pour autoriser l'accès à
+          vos machines et à vos services. Aucune donnée biométrique ne quitte
+          l'appareil.
+    dependencies:
+      - sdk: LocalAuthentication.framework
+
+  AirServiceLocatorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/AirServiceLocatorTests
+    dependencies:
+      - target: AirServiceLocator

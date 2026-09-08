@@ -1,0 +1,44 @@
+# ── LE PROJET XCODE EST UNE SORTIE ───────────────────────────────────────────
+#
+# `project.yml` est la source ; `xcodegen generate` produit ce qui suit. Les
+# versionner ferait deux vérités sur la composition de la cible, et c'est celle
+# qui n'est pas relue qui gagnerait.
+*.xcodeproj/
+*.xcworkspace/
+
+# Sorties de compilation
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Réglages d'utilisateur — propres à une machine, jamais partagés
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Secrets de signature. UN `.p12` DANS UN COMMIT EST UNE CLÉ PRIVÉE PUBLIÉE :
+# elle ne se retire jamais vraiment d'un historique, et se révoque au prix d'une
+# republication de toutes les applications qu'elle a signées.
+*.p12
+*.mobileprovision
+*.cer
+
+# Éditeurs et systèmes de fichiers
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+._*
+
+.claude/*
+!.claude/settings.json
+claude_session.id
+codex_session.id
+scratchpad/
