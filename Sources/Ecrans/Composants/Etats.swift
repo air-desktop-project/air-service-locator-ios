@@ -142,6 +142,7 @@ extension ErreurAnnuaire {
         case .nonImplemente: "L'annuaire ne sait pas encore le dire."
         case let .reseau(detail): "Annuaire injoignable : \(detail)"
         case .nonConfirme: "Identité non confirmée ; rien n'a été envoyé."
+        case .preuveInvalide: "La preuve de possession de la clé ne vérifie pas."
         }
     }
 }

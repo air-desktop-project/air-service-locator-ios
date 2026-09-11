@@ -12,10 +12,18 @@ final class Session {
 
     /// Comment on ouvre un compte — séparé de l'annuaire parce qu'en
     /// démonstration, l'ouverture peuple aussi l'annuaire.
-    private let ouverture: @Sendable () async throws -> Compte
+    private let ouverture: @Sendable (_ cle: [UInt8], _ preuve: [UInt8]) async throws -> Compte
+    /// D'où vient la clé : la Secure Enclave sur un appareil, une clé
+    /// logicielle dans un essai.
+    private let signataire: @Sendable () throws -> any Signataire
 
-    init(annuaire: any Annuaire, ouverture: @escaping @Sendable () async throws -> Compte) {
+    init(
+        annuaire: any Annuaire,
+        signataire: @escaping @Sendable () throws -> any Signataire = { try CleAppareil.ouOuvrir() },
+        ouverture: @escaping @Sendable (_ cle: [UInt8], _ preuve: [UInt8]) async throws -> Compte
+    ) {
         self.annuaire = annuaire
+        self.signataire = signataire
         self.ouverture = ouverture
     }
 
@@ -24,13 +32,23 @@ final class Session {
         compte = try? await annuaire.compte()
     }
 
-    /// Ouvre le compte, après confirmation biométrique. Sans confirmation, rien
-    /// ne part.
+    /// Ouvre le compte : la clé de l'appareil prouve qu'elle est détenue, sur
+    /// le défi de l'annuaire et la liaison du canal.
+    ///
+    /// **C'est ici que la biométrie est demandée**, par la Secure Enclave, au
+    /// moment de signer — et nulle part avant. Sans confirmation, la clé ne
+    /// signe pas, et rien ne part.
     func ouvrirCompte() async throws {
-        guard await identite.confirmer(raison: "Ouvrir votre compte sur cet appareil") else {
+        let cle = try signataire()
+        let defi = try await annuaire.defi()
+        let liaison = try await annuaire.liaisonDeCanal()
+        let preuve: [UInt8]
+        do {
+            preuve = try await cle.prouverLaPossession(defi: defi, liaison: liaison)
+        } catch {
             throw ErreurAnnuaire.nonConfirme
         }
-        compte = try await ouverture()
+        compte = try await ouverture(cle.clePublique, preuve)
     }
 
     func definirAlias(_ alias: String?) async throws {

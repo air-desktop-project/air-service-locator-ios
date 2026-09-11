@@ -13,7 +13,7 @@ struct AirServiceLocatorApp: App {
 
     init() {
         let simule = AnnuaireSimule()
-        _session = State(initialValue: Session(annuaire: simule) { try await simule.ouvrirCompteDeDemonstration() })
+        _session = State(initialValue: Session(annuaire: simule) { cle, preuve in try await simule.ouvrirCompteDeDemonstration(cle: cle, preuve: preuve) })
     }
 
     var body: some Scene {

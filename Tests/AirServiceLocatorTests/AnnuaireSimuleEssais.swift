@@ -6,8 +6,38 @@ import Testing
 struct AnnuaireSimuleEssais {
     private func annuaireAvecCompte() async throws -> (AnnuaireSimule, Compte) {
         let annuaire = AnnuaireSimule(horloge: { Date(timeIntervalSince1970: 1_700_000_000) })
-        let compte = try await annuaire.ouvrirCompte()
+        let cle = CleLogicielle()
+        let preuve = try await cle.prouverLaPossession(defi: try await annuaire.defi(), liaison: try await annuaire.liaisonDeCanal())
+        let compte = try await annuaire.ouvrirCompte(cle: cle.clePublique, preuve: preuve)
         return (annuaire, compte)
+    }
+
+    @Test func ouvrirUnCompteExigeUnePreuveSurLeDefiEmis() async throws {
+        let annuaire = AnnuaireSimule()
+        let cle = CleLogicielle()
+        let liaison = try await annuaire.liaisonDeCanal()
+        // Sans défi émis : rien à couvrir.
+        await #expect(throws: ErreurAnnuaire.requeteInvalide("aucun défi en cours")) {
+            try await annuaire.ouvrirCompte(cle: cle.clePublique, preuve: [UInt8](repeating: 0, count: 64))
+        }
+        // Une preuve sur un AUTRE défi ne vérifie pas.
+        _ = try await annuaire.defi()
+        let autre = [UInt8](repeating: 7, count: 32)
+        let fausse = try await cle.prouverLaPossession(defi: autre, liaison: liaison)
+        await #expect(throws: ErreurAnnuaire.preuveInvalide) {
+            try await annuaire.ouvrirCompte(cle: cle.clePublique, preuve: fausse)
+        }
+        // Un défi ne sert qu'une fois : consommé par l'essai raté.
+        await #expect(throws: ErreurAnnuaire.requeteInvalide("aucun défi en cours")) {
+            try await annuaire.ouvrirCompte(cle: cle.clePublique, preuve: fausse)
+        }
+        // Une preuve sous une autre clé que celle présentée ne vérifie pas non plus.
+        let defi = try await annuaire.defi()
+        let intrus = CleLogicielle()
+        let usurpee = try await intrus.signer(Messages.dePossession(cle: cle.clePublique, defi: defi, liaison: liaison))
+        await #expect(throws: ErreurAnnuaire.preuveInvalide) {
+            try await annuaire.ouvrirCompte(cle: cle.clePublique, preuve: usurpee)
+        }
     }
 
     @Test func unAppareilNeSeRevoquePasLuiMeme() async throws {

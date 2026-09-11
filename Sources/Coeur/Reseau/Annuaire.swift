@@ -19,6 +19,8 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
     /// L'appareil n'a pas confirmé l'identité de son porteur ; la clé n'a pas
     /// signé, rien n'est parti.
     case nonConfirme
+    /// La preuve de possession ne vérifie pas sous la clé présentée.
+    case preuveInvalide
 }
 
 /// La voie des applications mobiles (`docs/protocole.md` §2), telle que les
@@ -36,8 +38,16 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
 /// une condition d'usage de cette clé, appliquée par le matériel. Ce n'est pas
 /// un paramètre : c'est ce qui se passe quand une méthode d'ici est appelée.
 protocol Annuaire: Sendable {
-    /// `POST /v1/comptes` — crée le compte et enrôle cet appareil.
-    func ouvrirCompte() async throws -> Compte
+    /// `GET /v1/defi` — trente-deux octets à usage unique, que la prochaine
+    /// signature couvrira.
+    func defi() async throws -> [UInt8]
+    /// La liaison de canal de la connexion courante — l'exportateur TLS, que
+    /// seul un transport réel sait dériver. Trente-deux octets.
+    func liaisonDeCanal() async throws -> [UInt8]
+    /// `POST /v1/comptes` — crée le compte et enrôle cet appareil : sa clé
+    /// publique (33 octets, SEC1 compressé) et la preuve qu'il la détient
+    /// (64 octets, `r ‖ s`, sur le défi et la liaison).
+    func ouvrirCompte(cle: [UInt8], preuve: [UInt8]) async throws -> Compte
     /// Le compte de cet appareil, s'il en a un.
     func compte() async throws -> Compte?
 

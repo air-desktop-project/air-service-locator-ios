@@ -27,8 +27,11 @@ protocole sans réseau. Tout compile sans avertissement et les essais passent
 
 Ce qui manque, dans l'ordre où ça se fera :
 
-1. **La clé P-256 dans la Secure Enclave** et la signature `r ‖ s` — aujourd'hui
-   `IdentiteLocale.confirmer` fait le geste biométrique, mais rien ne signe.
+1. ~~La clé P-256 dans la Secure Enclave~~ — **faite**
+   (`Sources/Coeur/Identite/CleAppareil.swift`, `Messages.swift`) : CryptoKit
+   rend `r ‖ s` et la clé SEC1 compressée sans rien déplier. La représentation
+   opaque vit dans un fichier protégé, pas dans le Keychain (qui refuse sans
+   identité de signature). Sur simulateur, la biométrie est un `LAContext`.
 2. **Le transport** : la pile QUIC d'`asl-client` (dépôt
    `air-service-locator-client`), étendue aux verbes d'`asl-api`, construite en
    xcframework, avec la signature par rappel. `AnnuaireSimule` sera alors

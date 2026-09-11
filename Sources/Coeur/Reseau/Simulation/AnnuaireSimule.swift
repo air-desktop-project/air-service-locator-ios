@@ -36,8 +36,31 @@ actor AnnuaireSimule: Annuaire {
 
     // MARK: - Compte
 
-    func ouvrirCompte() async throws -> Compte {
+    /// Le défi en cours. Un seul, et consommé par la première preuve qui le
+    /// couvre : un défi rejoué n'est plus un défi.
+    private var defiEnCours: [UInt8]?
+
+    func defi() async throws -> [UInt8] {
+        let defi = (0..<Messages.defiOctets).map { _ in UInt8.random(in: .min ... .max) }
+        defiEnCours = defi
+        return defi
+    }
+
+    /// Il n'y a pas de canal : trente-deux zéros, et le banc le dit. Un
+    /// transport réel dérive cette valeur de sa connexion TLS.
+    func liaisonDeCanal() async throws -> [UInt8] { [UInt8](repeating: 0, count: Messages.liaisonOctets) }
+
+    func ouvrirCompte(cle: [UInt8], preuve: [UInt8]) async throws -> Compte {
         if let compteLocal { return compteLocal }
+        // Le banc vérifie la preuve comme le serveur le fera : sous la clé
+        // présentée, sur le défi qu'il a émis. C'est la seule cryptographie
+        // qu'il fait, et c'est celle qui éprouve la clé de l'appareil.
+        guard let defi = defiEnCours else { throw ErreurAnnuaire.requeteInvalide("aucun défi en cours") }
+        defiEnCours = nil
+        let message = Messages.dePossession(cle: cle, defi: defi, liaison: try await liaisonDeCanal())
+        guard VerificationAppareil.verifie(cle: cle, message: message, signature: preuve) else {
+            throw ErreurAnnuaire.preuveInvalide
+        }
         let compte = Compte(identifiant: Self.neuf(.utilisateur))
         compteLocal = compte
         parcAppareils = [Appareil(
