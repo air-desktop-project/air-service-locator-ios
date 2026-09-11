@@ -19,30 +19,41 @@ protocole.
 
 ## L'état réel, sans fard
 
-Le dépôt porte une **arborescence** (XcodeGen, `project.yml`), sa CI, et un seul
-type qui fait quelque chose (`Sources/Coeur/Identite/IdentiteLocale.swift`).
-**Rien n'a jamais été compilé** : tout a été posé depuis une machine Linux, sans
-Xcode. Tu es sur un Mac (oxygene) avec Xcode : **la première construction est un
-contrôle qui n'a jamais été passé.** Attends-toi à ce qu'elle échoue, et
-corrige ce qui bloque avant d'ajouter quoi que ce soit.
+Les **huit écrans sont écrits** (SwiftUI, iOS 17+), sur un **annuaire simulé**
+en mémoire (`Sources/Coeur/Reseau/Simulation/`) qui tient les règles du
+protocole sans réseau. Tout compile sans avertissement et les essais passent
+(`xcodebuild test`, simulateur iPhone 17). Les maquettes validées sont dans
+`../maquettes/` (hors dépôt).
 
-## Ta première tâche, concrète
+Ce qui manque, dans l'ordre où ça se fera :
 
-**Faire compiler et produire une capture App Attest réelle**, dans cet ordre :
+1. **La clé P-256 dans la Secure Enclave** et la signature `r ‖ s` — aujourd'hui
+   `IdentiteLocale.confirmer` fait le geste biométrique, mais rien ne signe.
+2. **Le transport** : la pile QUIC d'`asl-client` (dépôt
+   `air-service-locator-client`), étendue aux verbes d'`asl-api`, construite en
+   xcframework, avec la signature par rappel. `AnnuaireSimule` sera alors
+   remplacé dans `AirServiceLocatorApp.swift`, et nulle part ailleurs.
+3. **La capture App Attest** (`outils-capture/`), qui exige un iPhone réel — il
+   n'y en a pas sous la main, seulement le simulateur.
+4. Les écrans restants : enrôler un second appareil, détail d'un service et ses
+   candidats, expositions.
 
-1. Générer le projet (`scripts/`, ou `xcodegen`), l'ouvrir dans Xcode, le faire
-   **compiler** sur un simulateur, puis sur un **appareil réel** (App Attest est
-   inerte au simulateur).
-2. Intégrer [`outils-capture/CaptureAppAttest.swift`](outils-capture/CaptureAppAttest.swift) :
-   il tire un défi, génère une clé dans la Secure Enclave, appelle `attestKey`,
-   et imprime l'attestation et le défi en base64.
-3. Lancer sur l'appareil, **récupérer le bloc imprimé**, et le rendre à Thierry.
-   Ce bloc débloque la vérification côté serveur : `asl-apple` est écrit d'après
-   la documentation d'Apple et n'a jamais vu de vraie attestation ; cette
-   capture confirme (ou corrige) nos constantes.
+Tu es sur un Mac (oxygen) avec Xcode 26. Un vieil iPad en iOS 12 est parfois
+branché : `xcodebuild` s'en plaint bruyamment, sans conséquence.
 
-Le mode d'emploi complet — pré-requis, ce qu'il faut noter, comment le rendre —
-est dans le serveur : `docs/attestation/capture-reelle.md`.
+## Ce qu'il faut tenir en écrivant un écran
+
+- **Les écrans parlent à `Annuaire`, jamais au banc.** `AnnuaireSimule` n'est
+  nommé que dans la composition et les essais.
+- **Le vocabulaire est celui de `modele.md` §4.2** : `annoncé`, `joignable`
+  (avec sa date), `parti (volontaire / inactivité)`, UDP `non sondé`. Le mot
+  « en ligne » n'apparaît nulle part.
+- **Un identifiant se compare sur ses octets** (`Identifiant`), jamais comme
+  une chaîne ; il ne s'affiche que par `.texte` ou `.abrege`.
+- **Ce que l'on ne sait pas faire se dit à l'écran** (`ContentUnavailableView`),
+  on ne le simule pas.
+- Les dates s'affichent en français quel que soit le réglage de l'appareil
+  (`Date.relatif`, `Date.jour`).
 
 ## Le protocole, l'essentiel que l'app devra tenir
 
@@ -59,9 +70,6 @@ est dans le serveur : `docs/attestation/capture-reelle.md`.
   donnée envoyée.
 - **Aucune donnée personnelle** hébergée, hormis un alias public facultatif.
 
-N'écris PAS les écrans tant que le modèle n'est pas arrêté : des vues sur des
-données supposées sont des vues à jeter. Concentre-toi sur le noyau (identité,
-clé, réseau) et la capture.
 
 ## Les règles qui ne se négocient pas
 

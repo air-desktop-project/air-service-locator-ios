@@ -5,6 +5,10 @@
 # qui n'est pas relue qui gagnerait.
 *.xcodeproj/
 *.xcworkspace/
+# `Info.plist` aussi : il est produit depuis le bloc `info:` de `project.yml`
+# (cf. `Sources/Ressources/README.md`), et la première génération sur macOS l'a
+# fait apparaître comme fichier non suivi.
+Sources/Ressources/Info.plist
 
 # Sorties de compilation
 build/

@@ -3,18 +3,26 @@
 L'application iOS d'**air-service-locator** : ouvrir un compte, déclarer ses
 machines, et voir quels daemons y écoutent — et sur quel port.
 
-> ## État : une arborescence, et un seul type qui fait quelque chose
+> ## État : les huit écrans, sur un annuaire simulé
 >
-> Le dépôt porte sa structure, sa définition de projet et sa CI. Il ne contient
-> **aucun écran** : les spécifications ne sont pas écrites, et dessiner des vues
-> avant que le modèle soit arrêté produirait des écrans qui décrivent des données
-> supposées.
+> L'application compile (Xcode 26, Swift 6, concurrence stricte, avertissements
+> en erreurs) et tourne sur le simulateur. Elle porte les huit écrans arrêtés
+> avec les maquettes — accueil, machines, machine, déclaration, code
+> d'enrôlement, accès, accorder, compte — et dix-neuf essais.
 >
-> Le seul code qui fait quelque chose est
-> [`IdentiteLocale`](Sources/Coeur/Identite/IdentiteLocale.swift), qui constate
-> ce que l'appareil sait confirmer. **Il n'a jamais été compilé** : ce dépôt a
-> été posé depuis une machine Linux, sans Xcode. La première construction sur
-> macOS est un contrôle qui reste à passer.
+> **Elle ne parle à aucun serveur.** Les écrans s'adressent à l'interface
+> `Annuaire` (`Sources/Coeur/Reseau/Annuaire.swift`), et c'est
+> `AnnuaireSimule` qui répond : un banc en mémoire qui tient les refus de
+> `docs/protocole.md` §2 — un appareil ne se révoque pas lui-même, un alias
+> pris rend `409`, un objet absent et un objet d'un autre compte rendent le même
+> `404`. Le transport réel — la pile QUIC d'`asl-client`, l'authentification
+> liée au canal, la clé P-256 dans la Secure Enclave — reste à embarquer, et
+> c'est la composition dans `AirServiceLocatorApp.swift` qui changera, pas les
+> écrans.
+>
+> Trois choses sont dites « pas encore possible » à l'écran plutôt que
+> simulées : enrôler un second appareil, les expositions (`501` côté serveur),
+> et l'attestation App Attest, qui exige un iPhone réel.
 
 ## La condition de déploiement
 
@@ -48,8 +56,24 @@ ne savent pas fusionner.
 ```sh
 brew install xcodegen
 xcodegen generate
-open AirServiceLocator.xcodeproj
+xcodebuild test -project AirServiceLocator.xcodeproj -scheme AirServiceLocator \
+    -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
 ```
+
+Sur le simulateur, enrôlez Face ID (*Features › Face ID › Enrolled*) avant
+d'ouvrir un compte : l'accueil refuse un appareil sans biométrie, et c'est
+voulu.
+
+## L'arborescence
+
+| Répertoire | Ce qu'il porte |
+|---|---|
+| `Sources/Coeur/Modele/` | Identifiant (base32 de Crockford, seize octets), code d'enrôlement, compte, appareil, machine, service, autorisation — la forme de `docs/modele.md`. |
+| `Sources/Coeur/Reseau/` | L'interface `Annuaire`, ses erreurs, et `Simulation/` — le banc en mémoire et ses données de démonstration. |
+| `Sources/Coeur/Identite/` | Ce que l'appareil sait confirmer, et le geste de confirmation. |
+| `Sources/Ecrans/` | `Compte/`, `Machines/`, `Acces/`, et `Composants/` pour ce qu'ils partagent. |
+| `Sources/Application/` | Le point d'entrée, la `Session`, les onglets. |
+| `Tests/` | Essais Swift Testing : la grammaire des identifiants et des codes, les règles du banc. |
 
 ## Ce que ce dépôt ne contient pas, et où c'est
 
