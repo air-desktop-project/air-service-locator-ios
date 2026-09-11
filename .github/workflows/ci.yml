@@ -1,15 +1,12 @@
 # CI d'air-service-locator-ios.
 #
-# # DEUX JOBS, ET LE SECOND N'EST PAS ENCORE HONNÊTE
+# # DEUX JOBS
 #
 # Le gate DCO tourne sur `ubuntu-latest` : il ne compile rien, et lui payer un
 # runner macOS — dix fois le prix en minutes — serait absurde.
 #
-# La construction, elle, exige macOS et Xcode. **Elle est câblée mais elle ne
-# construit rien de significatif** : le dépôt porte une arborescence, un point
-# d'entrée et un type. C'est délibéré — un workflow ajouté APRÈS coup se découvre
-# cassé le jour où l'on en a besoin, alors que celui-ci grandira avec le code
-# qu'il juge.
+# La construction, elle, exige macOS et Xcode : elle régénère le projet,
+# compile pour le simulateur, et lance les essais.
 
 name: ci
 
@@ -72,6 +69,13 @@ jobs:
       # et ne doit pas avoir. Ce job vérifie que le code COMPILE, jamais qu'il
       # est signable.
       #
+      # LA DESTINATION EST GÉNÉRIQUE, ET C'EST UNE CORRECTION : `name=iPhone 16`
+      # a cassé le jour où l'image du runner a cessé d'embarquer ce modèle —
+      # « Unable to find a device matching the provided destination
+      # specifier ». Un nom de modèle est une dépendance sur l'image, qui change
+      # sans nous prévenir ; `generic/platform=iOS Simulator` compile pour le
+      # simulateur sans en nommer aucun.
+      #
       # `CODE_SIGNING_ALLOWED=NO` le dit explicitement plutôt que de compter sur
       # le défaut du simulateur, qui a déjà changé d'une version d'Xcode à
       # l'autre.
@@ -80,5 +84,19 @@ jobs:
           xcodebuild build \
             -project AirServiceLocator.xcodeproj \
             -scheme AirServiceLocator \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Les essais, eux, ont besoin d'un simulateur QUI DÉMARRE, donc d'un
+      # modèle. On le demande à l'image plutôt que de le supposer : le premier
+      # iPhone disponible, quel que soit son nom.
+      - name: Essais
+        run: |
+          simulateur=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].name')
+          echo "simulateur : $simulateur"
+          xcodebuild test \
+            -project AirServiceLocator.xcodeproj \
+            -scheme AirServiceLocator \
+            -destination "platform=iOS Simulator,name=$simulateur" \
             CODE_SIGNING_ALLOWED=NO
