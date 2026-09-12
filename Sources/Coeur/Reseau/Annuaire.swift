@@ -38,16 +38,14 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
 /// une condition d'usage de cette clé, appliquée par le matériel. Ce n'est pas
 /// un paramètre : c'est ce qui se passe quand une méthode d'ici est appelée.
 protocol Annuaire: Sendable {
-    /// `GET /v1/defi` — trente-deux octets à usage unique, que la prochaine
-    /// signature couvrira.
-    func defi() async throws -> [UInt8]
-    /// La liaison de canal de la connexion courante — l'exportateur TLS, que
-    /// seul un transport réel sait dériver. Trente-deux octets.
-    func liaisonDeCanal() async throws -> [UInt8]
-    /// `POST /v1/comptes` — crée le compte et enrôle cet appareil : sa clé
-    /// publique (33 octets, SEC1 compressé) et la preuve qu'il la détient
-    /// (64 octets, `r ‖ s`, sur le défi et la liaison).
-    func ouvrirCompte(cle: [UInt8], preuve: [UInt8]) async throws -> Compte
+    /// `POST /v1/comptes` — crée le compte et enrôle cet appareil.
+    ///
+    /// **C'est l'annuaire qui conduit** : il tire le défi, connaît la liaison
+    /// de son canal, compose le message de possession et fait signer le
+    /// signataire — un seul geste biométrique, au moment exact où la preuve
+    /// est exigée. Le banc et le transport réel font la même chose, chacun
+    /// avec ce qu'il a.
+    func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte
     /// Le compte de cet appareil, s'il en a un.
     func compte() async throws -> Compte?
 

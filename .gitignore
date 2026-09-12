@@ -10,6 +10,12 @@
 # fait apparaître comme fichier non suivi.
 Sources/Ressources/Info.plist
 
+# Les réglages de l'annuaire de TEST : une adresse sur un réseau, le nom d'un
+# certificat, et la racine qui l'a signé. Propres à une machine, jamais
+# partagés — et sans eux, l'application tourne sur le banc en mémoire.
+Sources/Ressources/annuaire.json
+Sources/Ressources/annuaire-racine.pem
+
 # Sorties de compilation
 build/
 DerivedData/

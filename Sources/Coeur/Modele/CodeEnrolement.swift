@@ -32,6 +32,13 @@ struct CodeEnrolement: Hashable, Sendable {
     /// Le temps qu'il reste, jamais négatif.
     func reste(a instant: Date) -> TimeInterval { max(0, expireLe.timeIntervalSince(instant)) }
 
+    /// Depuis ce que l'annuaire a rendu : dix symboles, déjà canoniques.
+    init(symboles: String, expireLe: Date) {
+        precondition(symboles.count == Self.nombreSymboles, "un code fait dix symboles")
+        self.symboles = symboles.uppercased()
+        self.expireLe = expireLe
+    }
+
     /// Depuis huit octets d'aléa, comme `asl_cle::CodeEnrolement::depuis_entropie`.
     init(entropie: [UInt8], emisLe: Date) {
         precondition(entropie.count == 8)

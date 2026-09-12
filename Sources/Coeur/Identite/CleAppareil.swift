@@ -113,8 +113,13 @@ struct CleAppareil: Signataire {
         // Le simulateur ne lie pas la clé à la biométrie : on la demande ici.
         let contexte = LAContext()
         contexte.localizedCancelTitle = "Annuler"
-        let confirme = (try? await contexte.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: Self.raison)) ?? false
-        guard confirme else { throw Erreur.signature("identité non confirmée") }
+        do {
+            guard try await contexte.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: Self.raison) else {
+                throw Erreur.signature("identité non confirmée")
+            }
+        } catch let erreur as LAError {
+            throw Erreur.signature("identité non confirmée (\(erreur.code.rawValue) : \(erreur.localizedDescription))")
+        }
         #endif
         do {
             // CryptoKit hache en SHA-256 et rend déjà `r ‖ s` : rien à déplier.

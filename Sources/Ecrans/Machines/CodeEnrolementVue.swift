@@ -3,9 +3,11 @@ import SwiftUI
 /// Le code à taper sur la machine : `asl enrole 4K9M2-P7R1T`.
 struct CodeEnrolementVue: View {
     @Environment(Session.self) private var session
-    @Environment(\.dismiss) private var fermer
     let machine: Machine
-    var premiereFois = false
+    /// Comment on termine, quand cet écran clôt une déclaration : c'est la
+    /// feuille entière qui se ferme, pas seulement cet écran. `dismiss` d'ici
+    /// ne ferait que revenir au formulaire.
+    var terminer: (() -> Void)?
     let apres: () async -> Void
 
     @State private var code: CodeEnrolement?
@@ -70,9 +72,9 @@ struct CodeEnrolementVue: View {
                 .buttonStyle(.bordered)
                 Text("Le code précédent meurt à l'émission du suivant.")
                     .font(.footnote).foregroundStyle(.secondary)
-                if premiereFois {
+                if let terminer {
                     Button {
-                        fermer()
+                        terminer()
                     } label: {
                         Text("Terminé").frame(maxWidth: .infinity, minHeight: 34)
                     }
@@ -86,7 +88,7 @@ struct CodeEnrolementVue: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Enrôler \(machine.nom)")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(premiereFois)
+        .navigationBarBackButtonHidden(terminer != nil)
         .task {
             // Le code émis à la déclaration est encore bon : on ne le remplace
             // pas pour rien. Un code absent ou expiré, lui, appelle le suivant.

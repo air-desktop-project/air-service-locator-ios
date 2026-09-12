@@ -6,15 +6,17 @@ import Foundation
 /// # Pourquoi il existe, et ce qu'il n'est pas
 ///
 /// Le transport de ce produit — HTTP/3 sur QUIC, authentification liée au
-/// canal TLS — vit dans `asl-client` et n'est pas encore embarqué ici. Attendre
-/// qu'il le soit pour écrire les écrans les aurait fait attendre ; les écrire
-/// contre une interface qui ment aurait produit des écrans à jeter.
+/// canal TLS — vit dans `asl-client` et c'est `AnnuaireReel` qui l'embarque.
+/// Les écrans ont été écrits avant lui, contre ce banc : les écrire contre une
+/// interface qui ment aurait produit des écrans à jeter. Il reste pour les
+/// essais, et pour faire tourner l'application sans annuaire sous la main.
 ///
 /// Ce type tient donc **les mêmes refus que le serveur** : un appareil ne se
 /// révoque pas lui-même (`403`), un alias pris rend `409`, un objet absent et un
 /// objet d'un autre compte rendent le même `404`, une nouvelle annonce du même
-/// nom remplace la précédente. Il ne fait rien de plus, et surtout il **ne
-/// vérifie aucune signature** : ce n'est pas un serveur, c'est un banc.
+/// nom remplace la précédente. Il ne fait rien de plus, et la seule
+/// cryptographie qu'il fait est de vérifier la preuve de possession : ce n'est
+/// pas un serveur, c'est un banc.
 ///
 /// **Il part vide.** ``AnnuaireSimule/deDemonstration()`` le remplit de ce que
 /// les maquettes montraient, pour qu'un écran ait quelque chose à afficher.
@@ -40,24 +42,26 @@ actor AnnuaireSimule: Annuaire {
     /// couvre : un défi rejoué n'est plus un défi.
     private var defiEnCours: [UInt8]?
 
-    func defi() async throws -> [UInt8] {
-        let defi = (0..<Messages.defiOctets).map { _ in UInt8.random(in: .min ... .max) }
-        defiEnCours = defi
-        return defi
-    }
-
     /// Il n'y a pas de canal : trente-deux zéros, et le banc le dit. Un
     /// transport réel dérive cette valeur de sa connexion TLS.
-    func liaisonDeCanal() async throws -> [UInt8] { [UInt8](repeating: 0, count: Messages.liaisonOctets) }
+    static let liaisonDeCanal = [UInt8](repeating: 0, count: Messages.liaisonOctets)
 
-    func ouvrirCompte(cle: [UInt8], preuve: [UInt8]) async throws -> Compte {
+    func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte {
         if let compteLocal { return compteLocal }
+        // Un défi neuf, à usage unique, puis la preuve — signée par le
+        // signataire, sur le message que le serveur recomposera.
+        let defi = (0..<Messages.defiOctets).map { _ in UInt8.random(in: .min ... .max) }
+        let cle = signataire.clePublique
+        let message = Messages.dePossession(cle: cle, defi: defi, liaison: Self.liaisonDeCanal)
+        let preuve: [UInt8]
+        do {
+            preuve = try await signataire.signer(message)
+        } catch {
+            throw ErreurAnnuaire.nonConfirme
+        }
         // Le banc vérifie la preuve comme le serveur le fera : sous la clé
-        // présentée, sur le défi qu'il a émis. C'est la seule cryptographie
-        // qu'il fait, et c'est celle qui éprouve la clé de l'appareil.
-        guard let defi = defiEnCours else { throw ErreurAnnuaire.requeteInvalide("aucun défi en cours") }
-        defiEnCours = nil
-        let message = Messages.dePossession(cle: cle, defi: defi, liaison: try await liaisonDeCanal())
+        // présentée, sur ce défi-là. C'est la seule cryptographie qu'il fait,
+        // et c'est celle qui éprouve la clé de l'appareil.
         guard VerificationAppareil.verifie(cle: cle, message: message, signature: preuve) else {
             throw ErreurAnnuaire.preuveInvalide
         }

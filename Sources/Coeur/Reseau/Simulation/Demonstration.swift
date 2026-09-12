@@ -13,8 +13,8 @@ extension AnnuaireSimule {
 
     /// Ouvre le compte ET pose les données. Appelé par le bouton de l'accueil
     /// en mode démonstration, pour que la suite ait quelque chose à montrer.
-    func ouvrirCompteDeDemonstration(cle: [UInt8], preuve: [UInt8]) async throws -> Compte {
-        let compte = try await ouvrirCompte(cle: cle, preuve: preuve)
+    func ouvrirCompteDeDemonstration(avec signataire: any Signataire) async throws -> Compte {
+        let compte = try await ouvrirCompte(avec: signataire)
         await peuplerDemonstration()
         return compte
     }

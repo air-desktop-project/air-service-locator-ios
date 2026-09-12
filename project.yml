@@ -62,6 +62,9 @@ targets:
         # Resources » et elles partent dans l'`.ipa` livrée.
         excludes:
           - "**/README.md"
+          # Les réglages de l'annuaire de TEST (adresse, nom, racine PEM) sont
+          # propres à un réseau et ne sont pas versionnés ; s'ils sont absents,
+          # l'application tourne sur le banc en mémoire. Voir `README.md`.
     info:
       path: Sources/Ressources/Info.plist
       properties:
@@ -79,6 +82,16 @@ targets:
           l'appareil.
     dependencies:
       - sdk: LocalAuthentication.framework
+      # ── LE TRANSPORT, EN XCFRAMEWORK, DEPUIS LE DÉPÔT CLIENT ──────────────
+      #
+      # `asl-client-ffi` construit pour iOS et le simulateur, avec `asl.h` et sa
+      # carte de module (`import CAsl`). Il est PRODUIT par
+      # `scripts/construire-mobile.sh` du dépôt `air-service-locator-client`,
+      # cloné à côté de celui-ci, et n'est versionné nulle part : c'est une
+      # sortie. `embed: false` parce que c'est une bibliothèque statique — elle
+      # entre dans le binaire, il n'y a rien à copier dans l'`.app`.
+      - framework: ../air-service-locator-client/target/mobile/AslClient.xcframework
+        embed: false
 
   AirServiceLocatorTests:
     type: bundle.unit-test

@@ -2,18 +2,35 @@ import SwiftUI
 
 /// Le point d'entrée.
 ///
-/// **L'annuaire est simulé** (`AnnuaireSimule`) tant que le transport de
-/// `asl-client` n'est pas embarqué : les écrans parlent à l'interface
-/// `Annuaire`, et c'est ici, et nulle part ailleurs, que l'on choisit qui
-/// répond. Le jour où le client Rust arrive, cette composition change ; les
-/// écrans, non.
+/// **C'est ici, et nulle part ailleurs, que l'on choisit qui répond** aux
+/// écrans. Si le bundle porte les réglages d'un annuaire (`annuaire.json`,
+/// `annuaire-racine.pem` — non versionnés), c'est le transport réel ; sinon,
+/// le banc en mémoire, peuplé de démonstration. Les écrans ne voient que
+/// l'interface `Annuaire`, et ne savent pas lequel des deux leur parle.
 @main
 struct AirServiceLocatorApp: App {
     @State private var session: Session
 
     init() {
-        let simule = AnnuaireSimule()
-        _session = State(initialValue: Session(annuaire: simule) { cle, preuve in try await simule.ouvrirCompteDeDemonstration(cle: cle, preuve: preuve) })
+        if let reglages = Self.reglagesDeLAnnuaire() {
+            let reel = AnnuaireReel(reglages: reglages) { try CleAppareil.ouOuvrir() }
+            _session = State(initialValue: Session(annuaire: reel) { signataire in try await reel.ouvrirCompte(avec: signataire) })
+        } else {
+            let simule = AnnuaireSimule()
+            _session = State(initialValue: Session(annuaire: simule) { signataire in try await simule.ouvrirCompteDeDemonstration(avec: signataire) })
+        }
+    }
+
+    /// `{"adresse": "192.0.2.1:6630", "nom": "annuaire"}` et la racine en PEM.
+    private static func reglagesDeLAnnuaire() -> AnnuaireReel.Reglages? {
+        guard let json = Bundle.main.url(forResource: "annuaire", withExtension: "json"),
+              let pem = Bundle.main.url(forResource: "annuaire-racine", withExtension: "pem"),
+              let donnees = try? Data(contentsOf: json),
+              let objet = try? JSONSerialization.jsonObject(with: donnees) as? [String: String],
+              let adresse = objet["adresse"], let nom = objet["nom"],
+              let racines = try? Data(contentsOf: pem)
+        else { return nil }
+        return AnnuaireReel.Reglages(adresse: adresse, nom: nom, racinesPEM: racines)
     }
 
     var body: some Scene {

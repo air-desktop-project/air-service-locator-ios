@@ -3,36 +3,43 @@
 L'application iOS d'**air-service-locator** : ouvrir un compte, déclarer ses
 machines, et voir quels daemons y écoutent — et sur quel port.
 
-> ## État : les huit écrans, sur un annuaire simulé
+> ## État : les huit écrans, sur le vrai annuaire
 >
 > L'application compile (Xcode 26, Swift 6, concurrence stricte, avertissements
 > en erreurs) et tourne sur le simulateur. Elle porte les huit écrans arrêtés
 > avec les maquettes — accueil, machines, machine, déclaration, code
 > d'enrôlement, accès, accorder, compte — et vingt-huit essais.
 >
-> **Elle ne parle à aucun serveur.** Les écrans s'adressent à l'interface
-> `Annuaire` (`Sources/Coeur/Reseau/Annuaire.swift`), et c'est
-> `AnnuaireSimule` qui répond : un banc en mémoire qui tient les refus de
-> `docs/protocole.md` §2 — un appareil ne se révoque pas lui-même, un alias
-> pris rend `409`, un objet absent et un objet d'un autre compte rendent le même
-> `404`.
+> **Elle parle à un annuaire réel** quand on lui en donne un (voir
+> « Construire ») : HTTP/3 sur QUIC, par la pile Rust d'`asl-client`
+> embarquée en xcframework (`Sources/Coeur/Reseau/Reel/AnnuaireReel.swift`).
+> La connexion est **tenue** : un geste biométrique par connexion, pas par
+> requête. Sans annuaire configuré, c'est `AnnuaireSimule` qui répond : un
+> banc en mémoire qui tient les refus de `docs/protocole.md` §2 — un appareil
+> ne se révoque pas lui-même, un alias pris rend `409`, un objet absent et un
+> objet d'un autre compte rendent le même `404`. Les écrans ne voient que
+> l'interface `Annuaire` ; c'est `AirServiceLocatorApp.swift` qui choisit.
 >
 > **La clé de l'appareil est réelle** : P-256 dans la Secure Enclave, sous
 > `biometryCurrentSet`. Ouvrir un compte est une vraie preuve de possession —
 > le corps de `POST /v1/comptes` : clé SEC1 compressée, signature `r ‖ s` sur
-> le défi de l'annuaire — que le banc vérifie comme le serveur le fera. Face ID
-> est demandé au moment de signer, par l'enclave. Le transport — la pile QUIC
-> d'`asl-client`, et la liaison de canal, qui vaut zéro d'ici là — reste à
-> embarquer, et c'est la composition dans `AirServiceLocatorApp.swift` qui
-> changera, pas les écrans.
+> le défi de l'annuaire et la liaison du canal TLS — que le serveur vérifie.
+> Face ID est demandé au moment de signer, par l'enclave, quand le transport
+> le rappelle. Vérifié de bout en bout contre un serveur `asl-server` :
+> compte, machine, enrôlement par `asl enrole`, annonce, service joignable.
 >
 > Le simulateur émule une enclave mais refuse d'y lier une clé à la
 > biométrie : sur simulateur seulement, un `LAContext` fait le geste avant de
 > signer (`CleAppareil.swift` le dit et le borne).
 >
-> Trois choses sont dites « pas encore possible » à l'écran plutôt que
-> simulées : enrôler un second appareil, les expositions (`501` côté serveur),
-> et l'attestation App Attest, qui exige un iPhone réel.
+> Ce que le serveur ne sait pas encore rendre s'affiche tel quel, sans être
+> deviné : la liste des machines et des appareils vient d'un carnet local
+> (`GET /v1/machines` et `GET /v1/appareils` n'existent pas encore), un
+> service porte son identifiant abrégé en guise de nom, et l'état de clé
+> d'une machine est celui que cet appareil connaît. Trois choses sont dites
+> « pas encore possible » à l'écran plutôt que simulées : enrôler un second
+> appareil, les expositions (`501` côté serveur), et l'attestation App Attest,
+> qui exige un iPhone réel.
 
 ## La condition de déploiement
 
@@ -74,12 +81,31 @@ Sur le simulateur, enrôlez Face ID (*Features › Face ID › Enrolled*) avant
 d'ouvrir un compte : l'accueil refuse un appareil sans biométrie, et c'est
 voulu.
 
+### Parler à un vrai annuaire
+
+Le transport est le xcframework produit par le dépôt client, attendu à
+`../air-service-locator-client/target/mobile/AslClient.xcframework`
+(`scripts/construire-mobile.sh` là-bas). Sans lui, l'édition de liens échoue :
+c'est voulu, la simulation n'est pas un mode de secours silencieux.
+
+L'annuaire se donne par deux fichiers **non versionnés** à la racine, copiés
+dans le paquet à la construction :
+
+```sh
+echo '{"adresse": "192.168.1.102:6630", "nom": "speedy"}' > annuaire.json
+cp /où/est/la/racine.pem annuaire-racine.pem
+```
+
+`nom` est le nom que porte le certificat du serveur ; `annuaire-racine.pem`,
+la racine qui l'a signé. Sans ces deux fichiers, l'application tourne sur le
+banc en mémoire, peuplé de démonstration.
+
 ## L'arborescence
 
 | Répertoire | Ce qu'il porte |
 |---|---|
 | `Sources/Coeur/Modele/` | Identifiant (base32 de Crockford, seize octets), code d'enrôlement, compte, appareil, machine, service, autorisation — la forme de `docs/modele.md`. |
-| `Sources/Coeur/Reseau/` | L'interface `Annuaire`, ses erreurs, et `Simulation/` — le banc en mémoire et ses données de démonstration. |
+| `Sources/Coeur/Reseau/` | L'interface `Annuaire`, ses erreurs ; `Reel/` — le transport QUIC d'`asl-client` et le carnet local ; `Simulation/` — le banc en mémoire et ses données de démonstration. |
 | `Sources/Coeur/Identite/` | Ce que l'appareil sait confirmer, et le geste de confirmation. |
 | `Sources/Ecrans/` | `Compte/`, `Machines/`, `Acces/`, et `Composants/` pour ce qu'ils partagent. |
 | `Sources/Application/` | Le point d'entrée, la `Session`, les onglets. |

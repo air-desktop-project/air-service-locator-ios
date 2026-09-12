@@ -19,11 +19,14 @@ protocole.
 
 ## L'état réel, sans fard
 
-Les **huit écrans sont écrits** (SwiftUI, iOS 17+), sur un **annuaire simulé**
-en mémoire (`Sources/Coeur/Reseau/Simulation/`) qui tient les règles du
-protocole sans réseau. Tout compile sans avertissement et les essais passent
-(`xcodebuild test`, simulateur iPhone 17). Les maquettes validées sont dans
-`../maquettes/` (hors dépôt).
+Les **huit écrans sont écrits** (SwiftUI, iOS 17+) et **parlent au vrai
+annuaire** par le transport d'`asl-client` (`Sources/Coeur/Reseau/Reel/`),
+ou au banc en mémoire (`Sources/Coeur/Reseau/Simulation/`) quand aucun
+annuaire n'est configuré (`README.md`, « Parler à un vrai annuaire »). Tout
+compile sans avertissement et les essais passent (`xcodebuild test`,
+simulateur iPhone 17). Les maquettes validées sont dans `../maquettes/` (hors
+dépôt). Vérifié de bout en bout sur simulateur contre `asl-server` : compte,
+machine, enrôlement, annonce, service joignable.
 
 Ce qui manque, dans l'ordre où ça se fera :
 
@@ -32,14 +35,17 @@ Ce qui manque, dans l'ordre où ça se fera :
    rend `r ‖ s` et la clé SEC1 compressée sans rien déplier. La représentation
    opaque vit dans un fichier protégé, pas dans le Keychain (qui refuse sans
    identité de signature). Sur simulateur, la biométrie est un `LAContext`.
-2. **Le transport** : la pile QUIC d'`asl-client` (dépôt
-   `air-service-locator-client`), étendue aux verbes d'`asl-api`, construite en
-   xcframework, avec la signature par rappel. `AnnuaireSimule` sera alors
-   remplacé dans `AirServiceLocatorApp.swift`, et nulle part ailleurs.
+2. ~~Le transport~~ — **fait** (`AnnuaireReel.swift`) : l'ABI `asl_appareil_*`
+   d'`asl-client-ffi`, en xcframework, la signature par rappel (le natif
+   rappelle depuis son fil ; on bloque ce fil le temps que l'enclave signe),
+   la connexion tenue. Ce que le serveur ne rend pas encore vient d'un
+   `Carnet` local (UserDefaults) et l'écran le dit : les manques sont listés
+   dans le `CLAUDE.md` du dépôt client, à l'attention de speedy.
 3. **La capture App Attest** (`outils-capture/`), qui exige un iPhone réel — il
    n'y en a pas sous la main, seulement le simulateur.
 4. Les écrans restants : enrôler un second appareil, détail d'un service et ses
-   candidats, expositions.
+   candidats, expositions. Et un état de chargement au lancement : l'accueil
+   apparaît un instant avant que le compte soit relu.
 
 Tu es sur un Mac (oxygen) avec Xcode 26. Un vieil iPad en iOS 12 est parfois
 branché : `xcodebuild` s'en plaint bruyamment, sans conséquence.

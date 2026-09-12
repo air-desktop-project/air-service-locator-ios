@@ -45,7 +45,7 @@ struct DeclarerMachineVue: View {
                 }
             }
             .navigationDestination(item: $declaree) { machine in
-                CodeEnrolementVue(machine: machine, premiereFois: true) {}
+                CodeEnrolementVue(machine: machine, terminer: { fermer() }) {}
             }
         }
     }
