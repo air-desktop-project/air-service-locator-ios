@@ -166,21 +166,6 @@ struct AliasVue: View {
     }
 }
 
-/// `POST /v1/appareils` : un appareil déjà enrôlé apporte la clé du nouveau,
-/// lue d'un code affiché à l'écran. **Le geste n'est pas encore écrit** — ni
-/// la clé matérielle, ni l'échange entre les deux téléphones.
-struct EnrolerAppareilVue: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Pas encore possible",
-            systemImage: "iphone.gen3.badge.plus",
-            description: Text("L'enrôlement d'un second appareil demande la clé matérielle et l'échange d'un code entre les deux téléphones. Ce sera écrit avec le transport.")
-        )
-        .navigationTitle("Enrôler un appareil")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 /// `GET /v1/expositions` rend `501` aujourd'hui, et c'est exact : la table des
 /// relations entre annuaires n'est pas écrite. Dire « rien n'est exposé »
 /// serait pire.

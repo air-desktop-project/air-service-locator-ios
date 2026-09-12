@@ -6,6 +6,7 @@ struct AccueilVue: View {
     @Environment(Session.self) private var session
     @State private var enCours = false
     @State private var erreur: String?
+    @State private var rejoindre = false
 
     var body: some View {
         let etat = session.identite.etat()
@@ -54,12 +55,18 @@ struct AccueilVue: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(enCours || !peutOuvrir(etat))
+                Button("Rejoindre un compte existant") { rejoindre = true }
+                    .font(.subheadline)
+                    .disabled(enCours || !peutOuvrir(etat))
                 Text(pied(pour: etat))
                     .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
             .background(Color(uiColor: .systemGroupedBackground))
+        }
+        .sheet(isPresented: $rejoindre) {
+            NavigationStack { RejoindreVue() }
         }
     }
 

@@ -3,12 +3,14 @@
 L'application iOS d'**air-service-locator** : ouvrir un compte, déclarer ses
 machines, et voir quels daemons y écoutent — et sur quel port.
 
-> ## État : les huit écrans, sur le vrai annuaire
+> ## État : onze écrans, sur le vrai annuaire
 >
 > L'application compile (Xcode 26, Swift 6, concurrence stricte, avertissements
 > en erreurs) et tourne sur le simulateur. Elle porte les huit écrans arrêtés
 > avec les maquettes — accueil, machines, machine, déclaration, code
-> d'enrôlement, accès, accorder, compte — et vingt-huit essais.
+> d'enrôlement, accès, accorder, compte —, trois écrans de plus — le détail
+> d'un service, enrôler un second appareil, rejoindre un compte — et
+> trente-deux essais.
 >
 > **Elle parle à un annuaire réel** quand on lui en donne un (voir
 > « Construire ») : HTTP/3 sur QUIC, par la pile Rust d'`asl-client`
@@ -36,10 +38,16 @@ machines, et voir quels daemons y écoutent — et sur quel port.
 > deviné : la liste des machines et des appareils vient d'un carnet local
 > (`GET /v1/machines` et `GET /v1/appareils` n'existent pas encore), un
 > service porte son identifiant abrégé en guise de nom, et l'état de clé
-> d'une machine est celui que cet appareil connaît. Trois choses sont dites
-> « pas encore possible » à l'écran plutôt que simulées : enrôler un second
-> appareil, les expositions (`501` côté serveur), et l'attestation App Attest,
-> qui exige un iPhone réel.
+> d'une machine est celui que cet appareil connaît. Deux choses sont dites
+> « pas encore possible » à l'écran plutôt que simulées : les expositions
+> (`501` côté serveur), et l'attestation App Attest, qui exige un iPhone réel.
+>
+> **Un second appareil s'enrôle par un échange de QR codes** (`POST
+> /v1/appareils`, `Sources/Coeur/Modele/Invitation.swift`) : le nouveau montre
+> sa clé publique, l'ancien la lit à la caméra — ou la colle —, la poste, et
+> montre en retour le compte et l'identifiant rendus ; le nouveau les lit et
+> prouve sa clé sur sa propre connexion. Rien de secret ne passe. Vérifié
+> entre le simulateur et un Fairphone 5, dans les deux sens.
 
 ## La condition de déploiement
 
@@ -104,10 +112,10 @@ banc en mémoire, peuplé de démonstration.
 
 | Répertoire | Ce qu'il porte |
 |---|---|
-| `Sources/Coeur/Modele/` | Identifiant (base32 de Crockford, seize octets), code d'enrôlement, compte, appareil, machine, service, autorisation — la forme de `docs/modele.md`. |
+| `Sources/Coeur/Modele/` | Identifiant (base32 de Crockford, seize octets), code d'enrôlement, compte, appareil, machine, service, autorisation — la forme de `docs/modele.md` — et l'invitation qu'échangent deux téléphones. |
 | `Sources/Coeur/Reseau/` | L'interface `Annuaire`, ses erreurs ; `Reel/` — le transport QUIC d'`asl-client` et le carnet local ; `Simulation/` — le banc en mémoire et ses données de démonstration. |
 | `Sources/Coeur/Identite/` | Ce que l'appareil sait confirmer, et le geste de confirmation. |
-| `Sources/Ecrans/` | `Compte/`, `Machines/`, `Acces/`, et `Composants/` pour ce qu'ils partagent. |
+| `Sources/Ecrans/` | `Compte/`, `Machines/`, `Acces/`, et `Composants/` pour ce qu'ils partagent — dont le QR code et son lecteur (`CodeQR.swift`, AVFoundation, la seule caméra de l'application). |
 | `Sources/Application/` | Le point d'entrée, la `Session`, les onglets. |
 | `Tests/` | Essais Swift Testing : la grammaire des identifiants et des codes, les règles du banc. |
 

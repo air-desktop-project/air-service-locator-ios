@@ -24,7 +24,11 @@ struct MachineVue: View {
                             Text("Aucun service annoncé pour l'instant.").foregroundStyle(.secondary)
                         }
                         ForEach(machine.services) { service in
-                            LigneService(service: service)
+                            NavigationLink {
+                                ServiceVue(machine: machine, service: service)
+                            } label: {
+                                LigneService(service: service)
+                            }
                         }
                     } header: {
                         Text("Services")

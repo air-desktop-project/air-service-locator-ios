@@ -42,6 +42,19 @@ final class Session {
         compte = try await ouverture(try signataire())
     }
 
+    /// La clé publique de cet appareil — ce que le nouveau téléphone montre à
+    /// l'ancien. La lire ne demande aucun geste : seule la signature en
+    /// demande un.
+    func clePublique() throws -> [UInt8] {
+        try signataire().clePublique
+    }
+
+    /// Rejoint un compte, depuis ce téléphone-ci, avec l'invitation que
+    /// l'autre a rendue. Le geste est demandé au moment de prouver la clé.
+    func rejoindre(compte: Identifiant, appareil: Identifiant) async throws {
+        self.compte = try await annuaire.rejoindre(compte: compte, appareil: appareil, avec: try signataire())
+    }
+
     func definirAlias(_ alias: String?) async throws {
         try await annuaire.definirAlias(alias)
         await rafraichirCompte()

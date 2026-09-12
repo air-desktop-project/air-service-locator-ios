@@ -19,7 +19,7 @@ protocole.
 
 ## L'état réel, sans fard
 
-Les **huit écrans sont écrits** (SwiftUI, iOS 17+) et **parlent au vrai
+Les **onze écrans sont écrits** (SwiftUI, iOS 17+) et **parlent au vrai
 annuaire** par le transport d'`asl-client` (`Sources/Coeur/Reseau/Reel/`),
 ou au banc en mémoire (`Sources/Coeur/Reseau/Simulation/`) quand aucun
 annuaire n'est configuré (`README.md`, « Parler à un vrai annuaire »). Tout
@@ -43,9 +43,15 @@ Ce qui manque, dans l'ordre où ça se fera :
    dans le `CLAUDE.md` du dépôt client, à l'attention de speedy.
 3. **La capture App Attest** (`outils-capture/`), qui exige un iPhone réel — il
    n'y en a pas sous la main, seulement le simulateur.
-4. Les écrans restants : enrôler un second appareil, détail d'un service et ses
-   candidats, expositions. Et un état de chargement au lancement : l'accueil
-   apparaît un instant avant que le compte soit relu.
+4. ~~Les écrans restants~~ — **faits** : le détail d'un service
+   (`ServiceVue.swift`, verdict par point, candidats, ce que l'annuaire a
+   répondu au daemon), et le second appareil par échange de QR codes
+   (`Invitation.swift`, `EnrolerAppareilVue.swift` côté ancien,
+   `RejoindreVue.swift` côté nouveau ; `CodeQR.swift` trace et lit). Les
+   expositions restent un libellé tant que le serveur rend `501`.
+5. Un état de chargement au lancement : l'accueil apparaît un instant avant
+   que le compte soit relu. Et le nom d'un service, l'état d'une clé, la liste
+   des appareils enrôlés ailleurs : dès que le serveur les rend.
 
 Tu es sur un Mac (oxygen) avec Xcode 26. Un vieil iPad en iOS 12 est parfois
 branché : `xcodebuild` s'en plaint bruyamment, sans conséquence.

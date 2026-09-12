@@ -80,6 +80,15 @@ targets:
           Votre identité est confirmée sur cet appareil pour autoriser l'accès à
           vos machines et à vos services. Aucune donnée biométrique ne quitte
           l'appareil.
+        # ── LA CAMÉRA NE SERT QU'À LIRE UN CODE ─────────────────────────────
+        #
+        # Le seul usage : lire le QR code que l'autre téléphone affiche pour
+        # enrôler un second appareil. Aucune image n'est gardée ni envoyée ;
+        # la caméra se ferme dès que le code est lu. Sans permission, le même
+        # code se colle dans un champ texte.
+        NSCameraUsageDescription: >-
+          La caméra sert uniquement à lire le code affiché par votre autre
+          téléphone pour l'enrôler sur ce compte. Aucune image n'est conservée.
     dependencies:
       - sdk: LocalAuthentication.framework
       # ── LE TRANSPORT, EN XCFRAMEWORK, DEPUIS LE DÉPÔT CLIENT ──────────────

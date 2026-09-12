@@ -28,6 +28,9 @@ actor AnnuaireSimule: Annuaire {
     private var compteLocal: Compte?
     private var parcMachines: [Machine] = []
     private var parcAppareils: [Appareil] = []
+    /// La clé sous laquelle chaque appareil enrôlé d'ici est entré — ce que
+    /// ``rejoindre(compte:appareil:avec:)`` recoupe.
+    private var clesEnrolees: [Identifiant: [UInt8]] = [:]
     private var aretes: [Autorisation] = []
     /// Les autres comptes que cet annuaire connaît : identifiant → alias.
     private var autresComptes: [Identifiant: String?] = [:]
@@ -72,6 +75,36 @@ actor AnnuaireSimule: Annuaire {
             enroleLe: horloge(), revoqueLe: nil, estCeluiCi: true
         )]
         return compte
+    }
+
+    func rejoindre(compte: Identifiant, appareil: Identifiant, avec signataire: any Signataire) async throws -> Compte {
+        // Le banc ne connaît qu'un compte, et les appareils qu'on y a enrôlés
+        // avec leur clé : l'invitation doit désigner l'un d'eux, sous la clé
+        // que le signataire présente. Puis la preuve, comme le serveur
+        // l'exigerait à la connexion : le message d'authentification, sous
+        // le genre `a`.
+        guard let compteLocal, compteLocal.identifiant == compte,
+              parcAppareils.contains(where: { $0.id == appareil && $0.revoqueLe == nil }),
+              clesEnrolees[appareil] == signataire.clePublique else { throw ErreurAnnuaire.introuvable }
+        let defi = (0..<Messages.defiOctets).map { _ in UInt8.random(in: .min ... .max) }
+        let message = Messages.aSigner(appareil: appareil, defi: defi, liaison: Self.liaisonDeCanal)
+        let preuve: [UInt8]
+        do {
+            preuve = try await signataire.signer(message)
+        } catch {
+            throw ErreurAnnuaire.nonConfirme
+        }
+        guard VerificationAppareil.verifie(cle: signataire.clePublique, message: message, signature: preuve) else {
+            throw ErreurAnnuaire.preuveInvalide
+        }
+        // Désormais, c'est CET appareil qui regarde l'écran.
+        parcAppareils = parcAppareils.map { unAppareil in
+            var copie = unAppareil
+            copie.estCeluiCi = unAppareil.id == appareil
+            if copie.estCeluiCi { copie.nom = "Cet appareil" }
+            return copie
+        }
+        return compteLocal
     }
 
     func compte() async throws -> Compte? { compteLocal }
@@ -162,6 +195,19 @@ actor AnnuaireSimule: Annuaire {
     // MARK: - Appareils
 
     func appareils() async throws -> [Appareil] { parcAppareils }
+
+    func enrolerAppareil(cle: [UInt8]) async throws -> Appareil {
+        guard compteLocal != nil else { throw ErreurAnnuaire.introuvable }
+        // Le serveur vérifie que la clé est un point de la courbe ; le banc,
+        // qu'elle en a la forme. Une clé déjà enrôlée ne s'enrôle pas deux fois.
+        guard cle.count == Messages.cleOctets, cle[0] == 0x02 || cle[0] == 0x03 else { throw ErreurAnnuaire.requeteInvalide("clé") }
+        guard !clesEnrolees.values.contains(cle) else { throw ErreurAnnuaire.requeteInvalide("clé déjà enrôlée") }
+        let appareil = Appareil(id: Self.neuf(.appareil), nom: "Autre appareil", biometrie: .empreinte,
+                                enroleLe: horloge(), revoqueLe: nil, estCeluiCi: false)
+        parcAppareils.append(appareil)
+        clesEnrolees[appareil.id] = cle
+        return appareil
+    }
 
     func revoquerAppareil(_ id: Identifiant) async throws {
         guard let indice = parcAppareils.firstIndex(where: { $0.id == id }) else {

@@ -46,6 +46,13 @@ protocol Annuaire: Sendable {
     /// est exigée. Le banc et le transport réel font la même chose, chacun
     /// avec ce qu'il a.
     func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte
+    /// Rejoint un compte existant, **depuis le nouveau téléphone** : un
+    /// appareil déjà enrôlé a posté sa clé (``enrolerAppareil(cle:)``) et lui
+    /// a rendu l'invitation. Rien n'est posté ici — la clé est déjà connue de
+    /// l'annuaire — mais elle est **prouvée**, sur cette connexion : c'est le
+    /// geste, et c'est ce qui échoue (``ErreurAnnuaire/preuveInvalide``) si la
+    /// clé n'est pas celle qu'on a enrôlée.
+    func rejoindre(compte: Identifiant, appareil: Identifiant, avec signataire: any Signataire) async throws -> Compte
     /// Le compte de cet appareil, s'il en a un.
     func compte() async throws -> Compte?
 
@@ -62,6 +69,10 @@ protocol Annuaire: Sendable {
     func revoquerCle(de machine: Identifiant) async throws
 
     func appareils() async throws -> [Appareil]
+    /// `POST /v1/appareils` — enrôle un appareil de plus, **depuis celui-ci** :
+    /// la clé que le nouveau téléphone a montrée. Rend l'appareil, dont
+    /// l'identifiant à lui rendre.
+    func enrolerAppareil(cle: [UInt8]) async throws -> Appareil
     /// `DELETE /v1/appareils/{a}` — marqué, non effacé. Jamais soi-même.
     func revoquerAppareil(_ id: Identifiant) async throws
 

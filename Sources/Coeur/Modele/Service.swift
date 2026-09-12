@@ -36,6 +36,24 @@ enum Joignabilite: Hashable, Sendable {
     case nonSonde
 }
 
+/// Ce que l'annuaire a répondu au daemon à son annonce, et qu'aucun autre
+/// moyen ne lui apprend (`docs/protocole.md` §1.1) : sous quelle adresse il
+/// l'a vu, s'il le croit derrière un NAT, et le bail qu'il lui tient.
+struct Diagnostic: Hashable, Sendable {
+    /// Le verdict que l'annuaire est seul à pouvoir rendre — et **trois
+    /// valeurs, pas un booléen** : sans adresse locale annoncée, il n'y a rien
+    /// à comparer, et dire « non » affirmerait une chose qu'on n'a pas mesurée.
+    enum Nat: String, Hashable, Sendable {
+        case oui, non, indetermine
+    }
+
+    /// `adresse:port` d'où l'annuaire a vu la connexion d'annonce.
+    var vuDepuis: String?
+    var derriereNat: Nat?
+    var keepaliveSecondes: Int?
+    var inactiviteSecondes: Int?
+}
+
 /// Ce qu'un daemon annonce. Identifié par le couple (machine, nom).
 struct Service: Identifiable, Hashable, Sendable {
     /// La connexion EST le bail : elle est tenue, ou elle est fermée.
@@ -54,6 +72,8 @@ struct Service: Identifiable, Hashable, Sendable {
     var joignabilite: [PointEcoute: Joignabilite]
     var candidats: [Candidat]
     var oscille: Bool = false
+    /// Ce que l'annuaire a répondu à l'annonce ; absent pour un service parti.
+    var diagnostic: Diagnostic?
 
     var pointsTexte: String { points.map(\.texte).joined(separator: " · ") }
 

@@ -45,7 +45,8 @@ extension AnnuaireSimule {
                     candidats: [
                         Candidat(protocole: .tcp, adresse: "2001:db8::1c2d", port: 49_152, origine: .reflexif),
                         Candidat(protocole: .tcp, adresse: "192.168.1.20", port: 49_152, origine: .annonce),
-                    ]
+                    ],
+                    diagnostic: Diagnostic(vuDepuis: "[2001:db8::1c2d]:51840", derriereNat: .non, keepaliveSecondes: 10, inactiviteSecondes: 30)
                 ),
                 Service(
                     id: id(.service, 12), nom: "sauvegarde", points: [tcp(8_443)],

@@ -224,6 +224,39 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         }
     }
 
+    func rejoindre(compte: Identifiant, appareil: Identifiant, avec signataire: any Signataire) async throws -> Compte {
+        // Le natif signe avec la clé qu'on lui a donnée à la création du
+        // handle — la même que `signataire`, celle de l'enclave. Le paramètre
+        // dit où le geste est demandé, pas avec quoi.
+        _ = signataire
+        try await surLaFile {
+            let handle = try self.handleOuCreer()
+            try self.exiger(asl_appareil_identite(handle, appareil.texte), "asl_appareil_identite")
+            // Se connecter sous cette identité, c'est la prouver : le natif
+            // ferme la connexion nue s'il y en a une, et rappelle la clé.
+            Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public) en tant que \(appareil.texte, privacy: .public)…")
+            let code = asl_appareil_connecter(handle)
+            Self.journal.notice("asl_appareil_connecter → \(code)")
+            switch code {
+            case ASL_OK: break
+            case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
+            case ASL_REFUSE: throw ErreurAnnuaire.preuveInvalide
+            case ASL_INJOIGNABLE: throw ErreurAnnuaire.reseau("aucun annuaire ne répond")
+            default: throw ErreurNative.code(code, "asl_appareil_connecter")
+            }
+        }
+        // La preuve tient : c'est bien la clé que l'autre téléphone a enrôlée.
+        // Le compte, lui, ne se vérifie qu'en le lisant.
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/utilisateurs/\(compte.texte)") }
+        guard statut == 200 else { throw Self.refus(statut) }
+        var rejoint = Compte(identifiant: compte)
+        if let objet = try Self.json(corps) as? [String: Any] { rejoint.alias = objet["alias"] as? String }
+        Carnet.vider()
+        Carnet.compte = rejoint
+        Carnet.appareilEnrole = appareil
+        return rejoint
+    }
+
     func compte() async throws -> Compte? {
         guard var compte = Carnet.compte else { return nil }
         let identifiant = compte.identifiant
@@ -366,10 +399,18 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
                 default: joignabilite[point] = .enCours
                 }
             }
+            // Ce que l'annuaire a répondu au daemon, tel quel.
+            var diagnostic = Diagnostic()
+            if let vu = objet["vu_depuis"] as? [String: Any], let adresse = vu["adresse"] as? String, let port = vu["port"] as? Int {
+                diagnostic.vuDepuis = adresse.contains(":") ? "[\(adresse)]:\(port)" : "\(adresse):\(port)"
+            }
+            diagnostic.derriereNat = (objet["derriere_nat"] as? String).flatMap(Diagnostic.Nat.init(rawValue:))
+            diagnostic.keepaliveSecondes = objet["keepalive_secondes"] as? Int
+            diagnostic.inactiviteSecondes = objet["inactivite_secondes"] as? Int
             // Le nom manque : l'annuaire ne le rend pas encore. L'identifiant
             // abrégé tient sa place, et l'écran ne ment pas.
             return Service(id: id, nom: id.abrege, points: points, etat: .annonce(depuis: .now),
-                           joignabilite: joignabilite, candidats: candidats)
+                           joignabilite: joignabilite, candidats: candidats, diagnostic: diagnostic)
         }
     }
 
@@ -392,14 +433,39 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
                                 revoqueLe: Self.millis(objet["revoque_a"]), estCeluiCi: id == Carnet.appareilEnrole)
             }
         }
-        // Le verbe n'existe pas encore : cet appareil, et lui seul.
+        // Le verbe n'existe pas encore : cet appareil, et ceux qu'il a
+        // enrôlés lui-même. Un appareil enrôlé depuis un autre téléphone n'y
+        // paraît pas, et l'écran le dit.
         guard let moi = Carnet.appareilEnrole else { return [] }
         return [Appareil(id: moi, nom: "Cet appareil", biometrie: .visage, enroleLe: Carnet.enroleLe ?? .now, revoqueLe: nil, estCeluiCi: true)]
+            + Carnet.appareilsEnrolesDIci.compactMap { enrole in
+                enrole.id.map { Appareil(id: $0, nom: "Autre appareil", biometrie: .empreinte, enroleLe: enrole.le, revoqueLe: enrole.revoqueLe, estCeluiCi: false) }
+            }
+    }
+
+    func enrolerAppareil(cle: [UInt8]) async throws -> Appareil {
+        // Le seul corps brut de cette voie après la création du compte :
+        // trente-trois octets, la clé telle que le nouveau téléphone l'a
+        // montrée. C'est le serveur qui vérifie qu'elle est sur la courbe.
+        guard cle.count == Messages.cleOctets else { throw ErreurAnnuaire.requeteInvalide("clé") }
+        let (statut, rendu) = try await surLaFile { try self.requete("POST", "/v1/appareils", Data(cle)) }
+        guard statut == 201, let objet = try Self.json(rendu) as? [String: Any], let texte = objet["appareil"] as? String else {
+            throw Self.refus(statut)
+        }
+        let id = try Identifiant.analyser(texte, genre: .appareil)
+        let appareil = Appareil(id: id, nom: "Autre appareil", biometrie: .empreinte, enroleLe: .now, revoqueLe: nil, estCeluiCi: false)
+        Carnet.appareilsEnrolesDIci.append(Carnet.AppareilEnrole(id: id, le: .now, revoqueLe: nil))
+        return appareil
     }
 
     func revoquerAppareil(_ id: Identifiant) async throws {
         let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/appareils/\(id.texte)") }
         guard statut == 204 else { throw Self.refus(statut) }
+        Carnet.appareilsEnrolesDIci = Carnet.appareilsEnrolesDIci.map { appareil in
+            var copie = appareil
+            if copie.id == id, copie.revoqueLe == nil { copie.revoqueLe = .now }
+            return copie
+        }
     }
 
     // MARK: - Autorisations
@@ -529,6 +595,26 @@ enum Carnet {
 
     static var enroleLe: Date? { defauts.object(forKey: "enrole_le") as? Date }
 
+    /// Un appareil que CE téléphone a enrôlé, faute de `GET /v1/appareils`.
+    struct AppareilEnrole: Codable {
+        var texte: String
+        var le: Date
+        var revoqueLe: Date?
+
+        init(id: Identifiant, le: Date, revoqueLe: Date?) {
+            texte = id.texte
+            self.le = le
+            self.revoqueLe = revoqueLe
+        }
+
+        var id: Identifiant? { try? Identifiant.analyser(texte, genre: .appareil) }
+    }
+
+    static var appareilsEnrolesDIci: [AppareilEnrole] {
+        get { (defauts.data(forKey: "appareils")).flatMap { try? JSONDecoder().decode([AppareilEnrole].self, from: $0) } ?? [] }
+        set { defauts.set(try? JSONEncoder().encode(newValue), forKey: "appareils") }
+    }
+
     static var machines: [Fiche] {
         get { (defauts.data(forKey: "machines")).flatMap { try? JSONDecoder().decode([Fiche].self, from: $0) } ?? [] }
         set { defauts.set(try? JSONEncoder().encode(newValue), forKey: "machines") }
@@ -542,6 +628,6 @@ enum Carnet {
 
     /// Efface tout — ce qu'on fait quand on quitte un annuaire.
     static func vider() {
-        for cle in ["compte", "alias", "appareil", "enrole_le", "machines"] { defauts.removeObject(forKey: cle) }
+        for cle in ["compte", "alias", "appareil", "enrole_le", "machines", "appareils"] { defauts.removeObject(forKey: cle) }
     }
 }

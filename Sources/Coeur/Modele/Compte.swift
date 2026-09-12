@@ -24,7 +24,7 @@ struct Appareil: Identifiable, Hashable, Sendable {
     /// après avoir perdu un téléphone doit montrer ce qu'on a retiré.
     var revoqueLe: Date?
     /// Celui qui affiche l'écran. Il ne peut pas se révoquer lui-même.
-    let estCeluiCi: Bool
+    var estCeluiCi: Bool
 
     var estRevoque: Bool { revoqueLe != nil }
 }
