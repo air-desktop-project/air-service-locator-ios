@@ -5,8 +5,9 @@
 # Le gate DCO tourne sur `ubuntu-latest` : il ne compile rien, et lui payer un
 # runner macOS — dix fois le prix en minutes — serait absurde.
 #
-# La construction, elle, exige macOS et Xcode : elle régénère le projet,
-# compile pour le simulateur, et lance les essais.
+# La construction, elle, exige macOS et Xcode : elle construit le transport
+# (le xcframework du dépôt client), régénère le projet, compile pour le
+# simulateur, et lance les essais.
 
 name: ci
 
@@ -53,8 +54,52 @@ jobs:
   construction:
     name: xcodegen et build simulateur
     runs-on: macos-15
+    # `project.yml` lie `../air-service-locator-client/target/mobile/…` : les
+    # deux dépôts sont donc extraits CÔTE À CÔTE, et chaque étape de l'app
+    # se place dans le sien.
+    defaults:
+      run:
+        working-directory: air-service-locator-ios
     steps:
       - uses: actions/checkout@v5
+        with:
+          path: air-service-locator-ios
+
+      # LE TRANSPORT EST CONSTRUIT ICI, DEPUIS LE DÉPÔT CLIENT, À UN SHA
+      # ÉPINGLÉ. Un xcframework n'est pas commis — c'est une sortie — et une
+      # branche bougerait sous nos pieds. Avancer le SHA est un commit de ce
+      # dépôt, relu comme un autre ; c'est la même règle que le dépôt client
+      # applique aux crates du serveur.
+      - uses: actions/checkout@v5
+        with:
+          repository: air-desktop-project/air-service-locator-client
+          ref: 9d97bde1ce1ebdae78acfa53877c0acc6c5a806d
+          path: air-service-locator-client
+
+      # La toolchain est CELLE DU DÉPÔT CLIENT (`rust-toolchain.toml`), lue
+      # plutôt que recopiée ici : deux copies vieilliraient, une en silence.
+      - name: Toolchain Rust et cibles iOS
+        working-directory: air-service-locator-client
+        run: |
+          toolchain=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
+          echo "toolchain : $toolchain"
+          rustup toolchain install "$toolchain" --profile minimal
+          rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim \
+            --toolchain "$toolchain"
+
+      # Le cache porte sur le SHA du client : tant qu'il ne bouge pas, la pile
+      # QUIC ne se recompile pas trois fois par run.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            air-service-locator-client/target
+          key: transport-ios-${{ runner.os }}-9d97bde1ce1ebdae78acfa53877c0acc6c5a806d
+
+      - name: Transport (xcframework)
+        working-directory: air-service-locator-client
+        run: ./scripts/construire-mobile.sh ios
 
       # Le `.xcodeproj` n'est PAS versionné (cf. `.gitignore`). Il se régénère
       # ici, ce qui vérifie du même coup que `project.yml` est valide — un
