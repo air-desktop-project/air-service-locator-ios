@@ -97,12 +97,12 @@ Le transport est le xcframework produit par le dépôt client, attendu à
 (`scripts/construire-mobile.sh` là-bas). Sans lui, l'édition de liens échoue :
 c'est voulu, la simulation n'est pas un mode de secours silencieux.
 
-L'annuaire se donne par deux fichiers **non versionnés** à la racine, copiés
-dans le paquet à la construction :
+L'annuaire se donne par deux fichiers **non versionnés** dans
+`Sources/Ressources/`, copiés dans le paquet à la construction :
 
 ```sh
-echo '{"adresse": "192.168.1.102:6630", "nom": "speedy"}' > annuaire.json
-cp /où/est/la/racine.pem annuaire-racine.pem
+echo '{"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"}' > Sources/Ressources/annuaire.json
+cp /où/est/la/racine.pem Sources/Ressources/annuaire-racine.pem
 ```
 
 `nom` est le nom que porte le certificat du serveur ; `annuaire-racine.pem`,

@@ -34,9 +34,51 @@ import OSLog
 final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// Où est l'annuaire, sous quel nom, et qui a signé son certificat.
     struct Reglages: Sendable {
+        /// `hôte:port` — l'hôte est une adresse littérale ou un nom. Un nom
+        /// se résout ICI, par le résolveur du téléphone : la bibliothèque
+        /// n'embarque pas de client DNS (`annuaires.md`), et ne prend que
+        /// des adresses littérales.
         let adresse: String
+        /// Le nom exigé du certificat — jamais déduit de l'adresse.
         let nom: String
         let racinesPEM: Data
+    }
+
+    /// Les adresses littérales de l'annuaire, IPv6 d'abord : celle donnée si
+    /// c'en est une, sinon ce que le résolveur rend pour le nom. Aucune
+    /// adresse est une faute de réglage, dite comme telle.
+    static func adressesLitterales(_ hotePort: String) throws -> [String] {
+        guard let deuxPoints = hotePort.lastIndex(of: ":"), let port = UInt16(hotePort[hotePort.index(after: deuxPoints)...]) else {
+            throw ErreurAnnuaire.requeteInvalide("adresse d'annuaire « \(hotePort) » : hôte:port attendu")
+        }
+        var hote = String(hotePort[..<deuxPoints])
+        if hote.hasPrefix("["), hote.hasSuffix("]") { hote = String(hote.dropFirst().dropLast()) }
+        if hote.contains(":") || hote.allSatisfy({ $0.isNumber || $0 == "." }) {
+            return [hote.contains(":") ? "[\(hote)]:\(port)" : "\(hote):\(port)"]
+        }
+        var indices = addrinfo()
+        indices.ai_socktype = SOCK_DGRAM
+        var resultat: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(hote, nil, &indices, &resultat) == 0, let premier = resultat else {
+            throw ErreurAnnuaire.reseau("« \(hote) » ne se résout pas")
+        }
+        defer { freeaddrinfo(premier) }
+        var v6: [String] = []
+        var v4: [String] = []
+        var courant: UnsafeMutablePointer<addrinfo>? = premier
+        while let info = courant {
+            var tampon = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(info.pointee.ai_addr, info.pointee.ai_addrlen, &tampon, socklen_t(tampon.count), nil, 0, NI_NUMERICHOST) == 0 {
+                let texte = Self.texte(tampon)
+                if info.pointee.ai_family == AF_INET6 { v6.append("[\(texte)]:\(port)") } else { v4.append("\(texte):\(port)") }
+            }
+            courant = info.pointee.ai_next
+        }
+        // Le résolveur peut rendre deux fois la même ; on ne l'essaie qu'une.
+        var vues = Set<String>()
+        let toutes = (v6 + v4).filter { vues.insert($0).inserted }
+        guard !toutes.isEmpty else { throw ErreurAnnuaire.reseau("« \(hote) » ne rend aucune adresse") }
+        return toutes
     }
 
     enum ErreurNative: Error {
@@ -78,7 +120,10 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         var neuf: OpaquePointer?
         try exiger(asl_appareil_neuf(&neuf), "asl_appareil_neuf")
         guard let neuf else { throw ErreurNative.code(ASL_INTERNE, "handle nul") }
-        try exiger(asl_appareil_annuaire(neuf, reglages.adresse, reglages.nom), "asl_appareil_annuaire")
+        for adresse in try Self.adressesLitterales(reglages.adresse) {
+            Self.journal.notice("annuaire \(adresse, privacy: .public) (nom exigé \(self.reglages.nom, privacy: .public))")
+            try exiger(asl_appareil_annuaire(neuf, adresse, reglages.nom), "asl_appareil_annuaire")
+        }
         try reglages.racinesPEM.withUnsafeBytes { pem in
             try exiger(asl_appareil_racines(neuf, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_appareil_racines")
         }
