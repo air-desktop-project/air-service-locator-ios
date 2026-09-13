@@ -34,13 +34,14 @@ machines, et voir quels daemons y écoutent — et sur quel port.
 > biométrie : sur simulateur seulement, un `LAContext` fait le geste avant de
 > signer (`CleAppareil.swift` le dit et le borne).
 >
-> Ce que le serveur ne sait pas encore rendre s'affiche tel quel, sans être
-> deviné : la liste des machines et des appareils vient d'un carnet local
-> (`GET /v1/machines` et `GET /v1/appareils` n'existent pas encore), un
-> service porte son identifiant abrégé en guise de nom, et l'état de clé
-> d'une machine est celui que cet appareil connaît. Deux choses sont dites
-> « pas encore possible » à l'écran plutôt que simulées : les expositions
-> (`501` côté serveur), et l'attestation App Attest, qui exige un iPhone réel.
+> **Le serveur fait foi** : la liste des machines, des appareils, des
+> services avec leur nom et leur état viennent de lui (serveur `2cf05dc`).
+> Ce qu'il ne range pas — les dates, le code d'enrôlement en cours, la trace
+> d'une révocation — n'est connu que du téléphone qui a agi, et s'affiche
+> quand il le sait, jamais inventé : « enrôlée » sans date vaut « enrôlée
+> depuis un autre appareil ». Deux choses sont dites « pas encore possible »
+> à l'écran plutôt que simulées : les expositions (`501` côté serveur), et
+> l'attestation App Attest, qui exige un iPhone réel.
 >
 > **Un second appareil s'enrôle par un échange de QR codes** (`POST
 > /v1/appareils`, `Sources/Coeur/Modele/Invitation.swift`) : le nouveau montre

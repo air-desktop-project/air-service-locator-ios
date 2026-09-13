@@ -100,7 +100,7 @@ private struct LigneAppareil: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: appareil.biometrie == .visage ? "faceid" : "touchid")
+            Image(systemName: icone)
                 .foregroundStyle(appareil.estRevoque ? .tertiary : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 // L'annuaire ne connaît aucun nom : celui de cet appareil vient
@@ -116,9 +116,31 @@ private struct LigneAppareil: View {
         }
     }
 
+    private var icone: String {
+        switch appareil.biometrie {
+        case .visage: "faceid"
+        case .empreinte: "touchid"
+        case nil: "iphone.gen3"
+        }
+    }
+
+    /// Ce que l'on sait, et rien de plus : une date quand cet appareil l'a
+    /// vue, l'attestation quand l'annuaire l'a rendue.
     private var sousTitre: String {
-        if let le = appareil.revoqueLe { return "Révoqué le \(le.jour)" }
-        return "Enrôlé le \(appareil.enroleLe.jour) · \(appareil.biometrie == .visage ? "Face ID" : "empreinte")"
+        if appareil.estRevoque { return appareil.revoqueLe.map { "Révoqué le \($0.jour)" } ?? "Révoqué" }
+        var morceaux = [appareil.enroleLe.map { "Enrôlé le \($0.jour)" } ?? "Enrôlé"]
+        switch appareil.biometrie {
+        case .visage: morceaux.append("Face ID")
+        case .empreinte: morceaux.append("empreinte")
+        case nil: break
+        }
+        switch appareil.attestation {
+        case .apple: morceaux.append("attesté par Apple")
+        case .google: morceaux.append("attesté par Google")
+        case .aucune: morceaux.append("sans attestation")
+        case nil: break
+        }
+        return morceaux.joined(separator: " · ")
     }
 }
 

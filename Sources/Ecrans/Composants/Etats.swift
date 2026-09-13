@@ -80,7 +80,7 @@ extension Service {
         switch etat {
         case .annonce: resume?.detail ?? ""
         case let .parti(volontaire, le):
-            "\(volontaire ? "arrêt volontaire" : "inactivité"), \(le.relatif)"
+            [volontaire.map { $0 ? "arrêt volontaire" : "inactivité" } ?? "motif inconnu", le?.relatif].compactMap { $0 }.joined(separator: ", ")
         }
     }
 }

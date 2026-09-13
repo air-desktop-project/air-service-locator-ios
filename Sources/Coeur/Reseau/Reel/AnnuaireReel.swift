@@ -21,13 +21,16 @@ import OSLog
 /// qui l'a provoqué le temps du geste. Tout passe donc par `file`, une file
 /// série de fond : les méthodes `async` y déposent leur travail et attendent.
 ///
-/// # Ce que le serveur ne sert pas encore, et comment on l'attend
+/// # Ce que le serveur rend, et ce que le carnet sait en plus
 ///
-/// `GET /v1/machines` et `GET /v1/appareils` n'existent pas encore côté
-/// serveur (voir `CLAUDE.md` du dépôt client). Les machines que CET appareil a
-/// déclarées sont donc retenues localement, et l'écran le dit : un second
-/// appareil du même compte ne les verrait pas. Le jour où le verbe existe,
-/// `machines()` le préfère, et le carnet local n'est plus qu'un cache.
+/// `GET /v1/machines` et `GET /v1/appareils` rendent ce qui est RANGÉ, et le
+/// serveur ne range ni horodatage, ni code d'enrôlement, ni la trace d'une
+/// révocation (voir `CLAUDE.md` du dépôt client, « résolu »). **Le serveur
+/// fait foi pour ce qu'il rend** — la liste, les noms, les capacités, la clé
+/// posée ou non — et le `Carnet` local complète avec ce que CE téléphone a
+/// vu faire : le code qu'il a fait émettre, la date à laquelle il a révoqué
+/// une clé ou enrôlé un appareil. Ce que ni l'un ni l'autre ne sait reste
+/// `nil`, et l'écran le dit.
 final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// Où est l'annuaire, sous quel nom, et qui a signé son certificat.
     struct Reglages: Sendable {
@@ -286,31 +289,54 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
 
     func machines() async throws -> [Machine] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/machines") }
-        var machines: [Machine]
-        if statut == 200, let liste = try Self.json(corps) as? [[String: Any]] {
-            machines = liste.compactMap(Self.machine(depuis:))
-            Carnet.machines = machines.map { Carnet.Fiche(machine: $0) }
-        } else {
-            // Le verbe n'existe pas encore : ce que cet appareil a déclaré.
-            machines = Carnet.machines.map(\.machine)
+        guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { throw Self.refus(statut) }
+        let connues = Carnet.machines
+        var machines = liste.compactMap(Self.machine(depuis:)).map { rendue -> Machine in
+            guard let fiche = connues.first(where: { $0.id == rendue.id.texte }) else { return rendue }
+            return Self.completer(rendue, avec: fiche.machine)
         }
+        // Le serveur fait foi : une machine qu'il ne rend plus n'est plus.
+        Carnet.machines = machines.map { Carnet.Fiche(machine: $0) }
         for indice in machines.indices {
             machines[indice].services = (try? await services(de: machines[indice].id)) ?? []
         }
         return machines
     }
 
+    /// Une machine telle que `GET /v1/machines` la rend : `enrolee` ou
+    /// `attendue`, sans date ni code. Les champs plus riches que le protocole
+    /// décrit sont lus s'ils viennent un jour, jamais inventés.
     private static func machine(depuis objet: [String: Any]) -> Machine? {
         guard let texte = objet["machine"] as? String, let id = try? Identifiant.analyser(texte, genre: .machine),
               let nom = objet["nom"] as? String else { return nil }
         let capacites = Set((objet["capacites"] as? [String] ?? []).compactMap(Capacite.init(rawValue:)))
         let cle: Machine.Cle
         switch objet["cle"] as? String {
-        case "enrolee": cle = .enrolee(le: millis(objet["enrolee_a"]) ?? .now)
+        case "enrolee": cle = .enrolee(le: millis(objet["enrolee_a"]))
         case "revoquee": cle = .revoquee(le: millis(objet["revoquee_a"]) ?? .now, code: code(depuis: objet))
-        default: cle = .attendue(code: code(depuis: objet) ?? CodeEnrolement(symboles: "0000000000", expireLe: .distantPast))
+        default: cle = .attendue(code: code(depuis: objet))
         }
         return Machine(id: id, nom: nom, capacites: capacites, cle: cle, services: [])
+    }
+
+    /// Ce que le serveur rend, complété de ce que cet appareil sait : le code
+    /// qu'il a fait émettre tant qu'il vaut, la révocation qu'il a faite, la
+    /// date d'enrôlement s'il l'a vue. Le serveur ne distingue pas « révoquée »
+    /// de « jamais posée » : quand il dit `attendue` et que le carnet dit
+    /// `revoquee`, le carnet en sait plus.
+    private static func completer(_ rendue: Machine, avec connue: Machine) -> Machine {
+        var machine = rendue
+        switch (rendue.cle, connue.cle) {
+        case (.attendue(nil), let .attendue(code)):
+            machine.cle = .attendue(code: code)
+        case (.attendue(nil), let .revoquee(le, code)):
+            machine.cle = .revoquee(le: le, code: code)
+        case (.enrolee(nil), let .enrolee(le)):
+            machine.cle = .enrolee(le: le)
+        default:
+            break
+        }
+        return machine
     }
 
     /// Le code que l'annuaire rend : dix symboles, groupés ou non, et sa date.
@@ -372,13 +398,22 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         }
     }
 
-    /// `GET /v1/machines/{m}/services` — ce que l'annuaire en rend aujourd'hui :
-    /// les réponses d'annonce des services vivants, sans leur nom.
+    /// `GET /v1/machines/{m}/services` — chaque service déclaré, avec son nom
+    /// et son état ; pour un service vivant, la réponse d'annonce du serveur,
+    /// réémise telle quelle sous `annonce` (c'est le même objet que
+    /// `GET /v1/ou`, et il n'est pas aplati pour ne pas exister deux fois).
+    /// Aucune date : le serveur n'en range pas.
     private func services(de machine: Identifiant) async throws -> [Service] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/machines/\(machine.texte)/services") }
         guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { return [] }
-        return liste.compactMap { objet in
-            guard let texte = objet["service"] as? String, let id = try? Identifiant.analyser(texte, genre: .service) else { return nil }
+        return liste.compactMap { enveloppe in
+            guard let texte = enveloppe["service"] as? String, let id = try? Identifiant.analyser(texte, genre: .service) else { return nil }
+            let nom = enveloppe["nom"] as? String ?? id.abrege
+            guard enveloppe["etat"] as? String == "annonce", let objet = enveloppe["annonce"] as? [String: Any] else {
+                // Parti — et le serveur ne sait plus toujours si c'était voulu.
+                return Service(id: id, nom: nom, points: [], etat: .parti(volontaire: enveloppe["volontaire"] as? Bool, le: Self.millis(enveloppe["parti_a"])),
+                               joignabilite: [:], candidats: [])
+            }
             var points: [PointEcoute] = []
             var joignabilite: [PointEcoute: Joignabilite] = [:]
             var candidats: [Candidat] = []
@@ -407,9 +442,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             diagnostic.derriereNat = (objet["derriere_nat"] as? String).flatMap(Diagnostic.Nat.init(rawValue:))
             diagnostic.keepaliveSecondes = objet["keepalive_secondes"] as? Int
             diagnostic.inactiviteSecondes = objet["inactivite_secondes"] as? Int
-            // Le nom manque : l'annuaire ne le rend pas encore. L'identifiant
-            // abrégé tient sa place, et l'écran ne ment pas.
-            return Service(id: id, nom: id.abrege, points: points, etat: .annonce(depuis: .now),
+            return Service(id: id, nom: nom, points: points, etat: .annonce(depuis: Self.millis(enveloppe["annonce_a"]) ?? .now),
                            joignabilite: joignabilite, candidats: candidats, diagnostic: diagnostic)
         }
     }
@@ -424,23 +457,40 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
 
     // MARK: - Appareils
 
+    /// `GET /v1/appareils` — l'identifiant, l'attestation, révoqué ou non ;
+    /// pas de date. Cet appareil-ci et ceux qu'il a enrôlés portent en plus
+    /// ce que le carnet en a retenu. L'index du serveur ne remonte pas avant
+    /// sa mise en place : un appareil absent de sa liste mais connu d'ici
+    /// est ajouté, parce qu'il existe — on est dessus, ou on l'a enrôlé.
     func appareils() async throws -> [Appareil] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/appareils") }
-        if statut == 200, let liste = try Self.json(corps) as? [[String: Any]] {
-            return liste.compactMap { objet in
-                guard let texte = objet["appareil"] as? String, let id = try? Identifiant.analyser(texte, genre: .appareil) else { return nil }
-                return Appareil(id: id, nom: id.abrege, biometrie: .visage, enroleLe: Self.millis(objet["enrole_a"]) ?? .now,
-                                revoqueLe: Self.millis(objet["revoque_a"]), estCeluiCi: id == Carnet.appareilEnrole)
+        guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { throw Self.refus(statut) }
+        var appareils = liste.compactMap { objet -> Appareil? in
+            guard let texte = objet["appareil"] as? String, let id = try? Identifiant.analyser(texte, genre: .appareil) else { return nil }
+            return Appareil(id: id, nom: "Autre appareil", attestation: (objet["attestation"] as? String).flatMap(Appareil.Attestation.init(rawValue:)),
+                            enroleLe: Self.millis(objet["enrole_a"]), revoqueLe: Self.millis(objet["revoque_a"]),
+                            estRevoque: objet["revoque"] as? Bool ?? (objet["revoque_a"] != nil))
+        }
+        if let moi = Carnet.appareilEnrole {
+            if let indice = appareils.firstIndex(where: { $0.id == moi }) {
+                appareils[indice].nom = "Cet appareil"
+                appareils[indice].biometrie = .visage
+                appareils[indice].enroleLe = appareils[indice].enroleLe ?? Carnet.enroleLe
+                appareils[indice].estCeluiCi = true
+            } else {
+                appareils.insert(Appareil(id: moi, nom: "Cet appareil", biometrie: .visage, enroleLe: Carnet.enroleLe, estCeluiCi: true), at: 0)
             }
         }
-        // Le verbe n'existe pas encore : cet appareil, et ceux qu'il a
-        // enrôlés lui-même. Un appareil enrôlé depuis un autre téléphone n'y
-        // paraît pas, et l'écran le dit.
-        guard let moi = Carnet.appareilEnrole else { return [] }
-        return [Appareil(id: moi, nom: "Cet appareil", biometrie: .visage, enroleLe: Carnet.enroleLe ?? .now, revoqueLe: nil, estCeluiCi: true)]
-            + Carnet.appareilsEnrolesDIci.compactMap { enrole in
-                enrole.id.map { Appareil(id: $0, nom: "Autre appareil", biometrie: .empreinte, enroleLe: enrole.le, revoqueLe: enrole.revoqueLe, estCeluiCi: false) }
+        for enrole in Carnet.appareilsEnrolesDIci {
+            guard let id = enrole.id else { continue }
+            if let indice = appareils.firstIndex(where: { $0.id == id }) {
+                appareils[indice].enroleLe = appareils[indice].enroleLe ?? enrole.le
+                appareils[indice].revoqueLe = appareils[indice].revoqueLe ?? enrole.revoqueLe
+            } else {
+                appareils.append(Appareil(id: id, nom: "Autre appareil", enroleLe: enrole.le, revoqueLe: enrole.revoqueLe))
             }
+        }
+        return appareils
     }
 
     func enrolerAppareil(cle: [UInt8]) async throws -> Appareil {
@@ -453,7 +503,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             throw Self.refus(statut)
         }
         let id = try Identifiant.analyser(texte, genre: .appareil)
-        let appareil = Appareil(id: id, nom: "Autre appareil", biometrie: .empreinte, enroleLe: .now, revoqueLe: nil, estCeluiCi: false)
+        let appareil = Appareil(id: id, nom: "Autre appareil", enroleLe: .now)
         Carnet.appareilsEnrolesDIci.append(Carnet.AppareilEnrole(id: id, le: .now, revoqueLe: nil))
         return appareil
     }
@@ -512,8 +562,9 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         case .tout: porteeTexte = "tout"
         case let .machine(id), let .service(id): porteeTexte = id.texte
         }
-        // `etiquette` n'est pas encore un champ du serveur ; elle ne part pas.
-        let corps = try Self.encoder(["a": beneficiaire.texte, "portee": porteeTexte])
+        // L'étiquette est REQUISE par le serveur : c'est ce qu'on relira le
+        // jour où l'on révoque (`modele.md` §2.5).
+        let corps = try Self.encoder(["a": beneficiaire.texte, "portee": porteeTexte, "etiquette": etiquette])
         let (statut, rendu) = try await surLaFile { try self.requete("POST", "/v1/autorisations", corps) }
         guard statut == 201, let objet = try Self.json(rendu) as? [String: Any], let g = objet["autorisation"] as? String,
               let compte = Carnet.compte else { throw Self.refus(statut) }
@@ -548,7 +599,7 @@ enum Carnet {
             nom = machine.nom
             capacites = machine.capacites.map(\.rawValue)
             switch machine.cle {
-            case let .attendue(code): cle = "attendue"; self.code = code.symboles; expireLe = code.expireLe
+            case let .attendue(code): cle = "attendue"; self.code = code?.symboles; expireLe = code?.expireLe
             case let .enrolee(le): cle = "enrolee"; enroleeLe = le
             case let .revoquee(le, code): cle = "revoquee"; revoqueeLe = le; self.code = code?.symboles; expireLe = code?.expireLe
             }
@@ -560,9 +611,9 @@ enum Carnet {
                 let code = self.code.flatMap { symboles in expireLe.map { CodeEnrolement(symboles: symboles, expireLe: $0) } }
                 let cle: Machine.Cle
                 switch self.cle {
-                case "enrolee": cle = .enrolee(le: enroleeLe ?? .now)
+                case "enrolee": cle = .enrolee(le: enroleeLe)
                 case "revoquee": cle = .revoquee(le: revoqueeLe ?? .now, code: code)
-                default: cle = .attendue(code: code ?? CodeEnrolement(symboles: "0000000000", expireLe: .distantPast))
+                default: cle = .attendue(code: code)
                 }
                 return Machine(id: id, nom: nom, capacites: Set(capacites.compactMap(Capacite.init(rawValue:))), cle: cle, services: [])
             }

@@ -62,7 +62,9 @@ struct Service: Identifiable, Hashable, Sendable {
         /// Proprement — le daemon l'a dit — ou par expiration du délai
         /// d'inactivité. Un arrêt volontaire et une coupure n'appellent pas la
         /// même réaction chez celui qui regarde.
-        case parti(volontaire: Bool, le: Date)
+        /// La date n'est connue que si l'on a vu le départ : l'annuaire n'en
+        /// range pas. Et il ne sait plus toujours si c'était voulu.
+        case parti(volontaire: Bool?, le: Date?)
     }
 
     let id: Identifiant

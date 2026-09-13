@@ -66,7 +66,7 @@ struct AnnuaireSimuleEssais {
     @Test func declarerRendUnCodeEtPasDeCle() async throws {
         let (annuaire, _) = try await annuaireAvecCompte()
         let machine = try await annuaire.declarerMachine(nom: "grenier", capacites: [.annonce])
-        guard case let .attendue(code) = machine.cle else { Issue.record("une machine déclarée attend son code"); return }
+        guard case let .attendue(.some(code)) = machine.cle else { Issue.record("une machine déclarée attend son code"); return }
         #expect(code.symboles.count == 10)
         #expect(code.estValide(a: Date(timeIntervalSince1970: 1_700_000_599)))
         #expect(!code.estValide(a: Date(timeIntervalSince1970: 1_700_000_600)))

@@ -38,9 +38,10 @@ Ce qui manque, dans l'ordre où ça se fera :
 2. ~~Le transport~~ — **fait** (`AnnuaireReel.swift`) : l'ABI `asl_appareil_*`
    d'`asl-client-ffi`, en xcframework, la signature par rappel (le natif
    rappelle depuis son fil ; on bloque ce fil le temps que l'enclave signe),
-   la connexion tenue. Ce que le serveur ne rend pas encore vient d'un
-   `Carnet` local (UserDefaults) et l'écran le dit : les manques sont listés
-   dans le `CLAUDE.md` du dépôt client, à l'attention de speedy.
+   la connexion tenue. Le serveur (`2cf05dc`) rend les machines, les
+   appareils, les services nommés avec leur état ; le `Carnet` local
+   (UserDefaults) ne garde que ce qu'il ne range pas — dates, code en cours,
+   révocation — et l'écran dit « inconnu » plutôt qu'une date inventée.
 3. **La capture App Attest** (`outils-capture/`), qui exige un iPhone réel — il
    n'y en a pas sous la main, seulement le simulateur.
 4. ~~Les écrans restants~~ — **faits** : le détail d'un service
@@ -50,8 +51,7 @@ Ce qui manque, dans l'ordre où ça se fera :
    `RejoindreVue.swift` côté nouveau ; `CodeQR.swift` trace et lit). Les
    expositions restent un libellé tant que le serveur rend `501`.
 5. Un état de chargement au lancement : l'accueil apparaît un instant avant
-   que le compte soit relu. Et le nom d'un service, l'état d'une clé, la liste
-   des appareils enrôlés ailleurs : dès que le serveur les rend.
+   que le compte soit relu.
 
 Tu es sur un Mac (oxygen) avec Xcode 26. Un vieil iPad en iOS 12 est parfois
 branché : `xcodebuild` s'en plaint bruyamment, sans conséquence.

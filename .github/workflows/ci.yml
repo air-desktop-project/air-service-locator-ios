@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: air-desktop-project/air-service-locator-client
-          ref: 9d97bde1ce1ebdae78acfa53877c0acc6c5a806d
+          ref: 48c9fa8d5250b3751afdcbb4f8b94a82a540b3ee
           path: air-service-locator-client
 
       # La toolchain est CELLE DU DÉPÔT CLIENT (`rust-toolchain.toml`), lue
@@ -95,7 +95,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             air-service-locator-client/target
-          key: transport-ios-${{ runner.os }}-9d97bde1ce1ebdae78acfa53877c0acc6c5a806d
+          key: transport-ios-${{ runner.os }}-48c9fa8d5250b3751afdcbb4f8b94a82a540b3ee
 
       - name: Transport (xcframework)
         working-directory: air-service-locator-client

@@ -98,10 +98,13 @@ private struct LigneMachineEnAttente: View {
 
     private func sousTitre(a instant: Date) -> String {
         switch machine.cle {
-        case let .attendue(code), let .revoquee(_, .some(code)):
+        case let .attendue(.some(code)), let .revoquee(_, .some(code)):
             code.estValide(a: instant)
                 ? "Code d'enrôlement valable encore \(Duration.seconds(code.reste(a: instant)).formatted(.time(pattern: .minuteSecond)))"
                 : "Code d'enrôlement expiré — émettez-en un nouveau"
+        case .attendue(nil):
+            // Déclarée d'un autre appareil : le code n'est connu que de lui.
+            "Pas de clé — émettez un code d'enrôlement"
         case .revoquee:
             "Clé révoquée — émettez un code pour ré-enrôler"
         case .enrolee:

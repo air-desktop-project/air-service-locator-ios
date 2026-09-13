@@ -33,6 +33,8 @@ struct InvitationEssais {
         #expect(montree.texte.hasPrefix("asl:cle:"))
         #expect(Invitation.analyser(montree.texte) == montree)
         #expect(Invitation.analyser(" " + montree.texte.lowercased() + "\n") == montree)
+        // Un clavier a « corrigé » le préfixe : on lit quand même.
+        #expect(Invitation.analyser(montree.texte.replacingOccurrences(of: "asl:cle:", with: "asl:clé:")) == montree)
 
         let compte = Identifiant(genre: .utilisateur, octets: [UInt8](repeating: 3, count: 16))
         let appareil = Identifiant(genre: .appareil, octets: [UInt8](repeating: 9, count: 16))

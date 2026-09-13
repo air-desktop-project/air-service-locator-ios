@@ -93,9 +93,9 @@ struct CodeEnrolementVue: View {
             // Le code émis à la déclaration est encore bon : on ne le remplace
             // pas pour rien. Un code absent ou expiré, lui, appelle le suivant.
             switch machine.cle {
-            case let .attendue(existant), let .revoquee(_, .some(existant)):
+            case let .attendue(.some(existant)), let .revoquee(_, .some(existant)):
                 if existant.estValide(a: Date()) { code = existant; return }
-            case .revoquee, .enrolee:
+            case .attendue, .revoquee, .enrolee:
                 break
             }
             await emettre()

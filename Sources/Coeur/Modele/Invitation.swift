@@ -44,12 +44,17 @@ enum Invitation: Equatable, Sendable {
     /// Lit une invitation, ou rend `nil` : un QR étranger, une faute de frappe.
     static func analyser(_ texte: String) -> Invitation? {
         let propre = texte.trimmingCharacters(in: .whitespacesAndNewlines)
-        if propre.lowercased().hasPrefix(prefixeCle) {
+        // Un clavier trop zélé fait de `cle` un `clé` : le préfixe se lit sans
+        // ses accents, le corps ne peut pas en porter. (Un `é` composé occupe
+        // un caractère, comme le `e` qu'il remplace : les positions ne
+        // bougent pas.)
+        let minuscules = propre.lowercased().folding(options: .diacriticInsensitive, locale: nil)
+        if minuscules.hasPrefix(prefixeCle) {
             let corps = String(propre.dropFirst(prefixeCle.count))
             guard let octets = Crockford.octets(corps, compte: Messages.cleOctets), octets[0] == 0x02 || octets[0] == 0x03 else { return nil }
             return .cle(octets)
         }
-        if propre.lowercased().hasPrefix(prefixeAppareil) {
+        if minuscules.hasPrefix(prefixeAppareil) {
             let morceaux = propre.dropFirst(prefixeAppareil.count).split(separator: ":", omittingEmptySubsequences: false)
             guard morceaux.count == 2,
                   let compte = try? Identifiant.analyser(String(morceaux[0]), genre: .utilisateur),

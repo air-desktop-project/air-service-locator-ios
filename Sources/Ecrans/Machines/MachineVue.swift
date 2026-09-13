@@ -155,7 +155,7 @@ private struct LigneCle: View {
         switch machine.cle {
         case let .enrolee(le):
             Label {
-                LabeledContent("Clé", value: "enrôlée \(le.relatif)")
+                LabeledContent("Clé", value: le.map { "enrôlée \($0.relatif)" } ?? "enrôlée")
             } icon: {
                 Image(systemName: "checkmark").foregroundStyle(Couleurs.joignable)
             }
