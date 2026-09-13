@@ -81,8 +81,15 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         return toutes
     }
 
-    enum ErreurNative: Error {
+    /// Un code que le natif a rendu, avec l'appel qui l'a rendu — et le mot
+    /// qu'il en donne, pour que l'écran ne dise pas « error 0 ».
+    enum ErreurNative: Error, LocalizedError {
         case code(Int32, String)
+
+        var errorDescription: String? {
+            guard case let .code(code, quoi) = self else { return nil }
+            return "\(quoi) : \(String(cString: asl_faute_texte(code))) (\(code))"
+        }
     }
 
     /// Ce que le natif fait, pas à pas — pour lire une connexion qui n'aboutit
@@ -101,6 +108,14 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
 
     deinit {
         if let handle { asl_appareil_libere(handle) }
+    }
+
+    /// Libère le handle natif — connexion fermée — pour qu'il se recrée à la
+    /// prochaine demande, sans identité.
+    private func oublierLeHandle() {
+        if let handle { asl_appareil_libere(handle) }
+        handle = nil
+        cleCourante = nil
     }
 
     // MARK: - Le natif
@@ -193,7 +208,15 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     private func connecter() throws {
         let handle = try handleOuCreer()
         Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public)…")
-        try exiger(asl_appareil_connecter(handle), "asl_appareil_connecter")
+        let code = asl_appareil_connecter(handle)
+        Self.journal.notice("asl_appareil_connecter → \(code)")
+        switch code {
+        case ASL_OK: break
+        case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
+        case ASL_REFUSE: throw ErreurAnnuaire.preuveInvalide
+        case ASL_INJOIGNABLE: throw ErreurAnnuaire.reseau("aucun annuaire ne répond")
+        default: throw ErreurNative.code(code, "asl_appareil_connecter")
+        }
     }
 
     private func connecte() -> Bool {
@@ -305,11 +328,30 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         return rejoint
     }
 
+    /// Le compte de cet appareil : celui du carnet, relu à l'annuaire.
+    ///
+    /// Se connecter au lancement, c'est prouver la clé — un geste, une fois.
+    /// **Si l'annuaire refuse la preuve, il n'y a plus de compte ici** : la
+    /// clé n'est pas celle qu'il a enrôlée (révoquée, ou perdue), et le carnet
+    /// est vidé. Tout autre échec — pas de réseau, geste annulé — laisse le
+    /// compte tel qu'on le connaît : être hors ligne n'est pas être désenrôlé,
+    /// et l'erreur remonte pour que l'écran la dise.
     func compte() async throws -> Compte? {
         guard var compte = Carnet.compte else { return nil }
         let identifiant = compte.identifiant
-        // Se connecter au lancement, c'est prouver la clé : Face ID, une fois.
-        try await surLaFile { if !self.connecte() { try self.connecter() } }
+        do {
+            try await surLaFile { if !self.connecte() { try self.connecter() } }
+        } catch ErreurAnnuaire.preuveInvalide {
+            Self.journal.error("la preuve de la clé est refusée : ce n'est plus la clé enrôlée, le carnet est vidé")
+            Carnet.vider()
+            // Le handle portait cette identité : il tombe avec elle, et le
+            // prochain se créera nu — d'où l'on ouvre ou rejoint un compte.
+            try? await surLaFile { self.oublierLeHandle() }
+            throw ErreurAnnuaire.preuveInvalide
+        } catch {
+            Self.journal.error("connexion impossible au lancement : \(String(describing: error), privacy: .public)")
+            throw ErreurAnnuaire.reseau("\(error.messageAnnuaire) — compte connu d'ici : \(compte.identifiant.abrege)")
+        }
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/utilisateurs/\(identifiant.texte)") }
         if statut == 200, let objet = try Self.json(corps) as? [String: Any] {
             compte.alias = objet["alias"] as? String

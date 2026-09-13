@@ -1,7 +1,9 @@
 # air-service-locator-ios
 
 L'application iOS d'**air-service-locator** : ouvrir un compte, déclarer ses
-machines, et voir quels daemons y écoutent — et sur quel port.
+machines, et voir quels daemons y écoutent — et sur quel port. **Et
+l'application macOS**, dans la barre de menus, qui partage tout son cœur
+(`Sources/Mac/README.md`).
 
 > ## État : onze écrans, sur le vrai annuaire
 >
@@ -117,7 +119,9 @@ banc en mémoire, peuplé de démonstration.
 | `Sources/Coeur/Reseau/` | L'interface `Annuaire`, ses erreurs ; `Reel/` — le transport QUIC d'`asl-client` et le carnet local ; `Simulation/` — le banc en mémoire et ses données de démonstration. |
 | `Sources/Coeur/Identite/` | Ce que l'appareil sait confirmer, et le geste de confirmation. |
 | `Sources/Ecrans/` | `Compte/`, `Machines/`, `Acces/`, et `Composants/` pour ce qu'ils partagent — dont le QR code et son lecteur (`CodeQR.swift`, AVFoundation, la seule caméra de l'application). |
-| `Sources/Application/` | Le point d'entrée, la `Session`, les onglets. |
+| `Sources/Application/` | Le point d'entrée iOS, la `Session`, les onglets. |
+| `Sources/Mac/` | L'application macOS : le point d'entrée dans la barre de menus, le panneau, ses droits et ses ressources. |
+| `Outils/Icone/` | L'icône, dessinée par programme, pour iOS, macOS et Android (`generer.py`). |
 | `Tests/` | Essais Swift Testing : la grammaire des identifiants et des codes, les règles du banc. |
 
 ## Ce que ce dépôt ne contient pas, et où c'est

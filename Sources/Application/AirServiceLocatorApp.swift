@@ -48,7 +48,14 @@ struct RacineVue: View {
 
     var body: some View {
         Group {
-            if session.compte == nil {
+            if session.premiereRelectureEnCours {
+                // Le compte se relit à l'annuaire — et c'est un geste, sur un
+                // appareil enrôlé. Ni l'accueil ni les onglets avant de savoir.
+                VStack(spacing: 12) {
+                    Logo(taille: 64)
+                    ProgressView()
+                }
+            } else if session.compte == nil {
                 AccueilVue()
             } else {
                 OngletsVue()

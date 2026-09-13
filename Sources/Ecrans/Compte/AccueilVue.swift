@@ -133,18 +133,15 @@ private struct Argument: View {
     }
 }
 
-/// PROVISOIRE : aucun logo « Air » n'existe encore. Une pastille, en attendant.
+/// L'icône de l'application, telle que l'écran d'accueil la montre — le même
+/// dessin que celle de macOS et d'Android (`Outils/Icone/generer.py`).
 struct Logo: View {
     let taille: CGFloat
 
     var body: some View {
-        RoundedRectangle(cornerRadius: taille * 0.22, style: .continuous)
-            .fill(Couleurs.accent)
+        Image("Logo")
+            .resizable()
             .frame(width: taille, height: taille)
-            .overlay {
-                Image(systemName: "desktopcomputer")
-                    .font(.system(size: taille * 0.42, weight: .light))
-                    .foregroundStyle(.white)
-            }
+            .clipShape(RoundedRectangle(cornerRadius: taille * 0.22, style: .continuous))
     }
 }

@@ -1,6 +1,8 @@
 # Consignes — air-service-locator-ios
 
-Tu travailles sur l'**application iOS** d'air-service-locator. Ce fichier te dit
+Tu travailles sur l'**application iOS** d'air-service-locator — et sur
+l'**application macOS** qui vit dans ce même dépôt (`Sources/Mac/`, une
+cible XcodeGen à part, le même `Coeur`). Ce fichier te dit
 la mission, l'état réel, la première tâche, et les règles qui ne se négocient
 pas. Lis-le en entier avant de toucher au code.
 
@@ -50,11 +52,25 @@ Ce qui manque, dans l'ordre où ça se fera :
    (`Invitation.swift`, `EnrolerAppareilVue.swift` côté ancien,
    `RejoindreVue.swift` côté nouveau ; `CodeQR.swift` trace et lit). Les
    expositions restent un libellé tant que le serveur rend `501`.
-5. Un état de chargement au lancement : l'accueil apparaît un instant avant
-   que le compte soit relu.
+5. ~~Un état de chargement au lancement~~ — **fait** : `Session` dit quand la
+   première relecture n'a pas conclu, et l'écran attend au lieu de montrer
+   l'accueil. Hors ligne, le compte connu reste ; seule une preuve refusée
+   par l'annuaire le retire (et libère le handle natif, qui portait cette
+   identité).
+6. ~~L'application macOS~~ — **faite** (`Sources/Mac/`, cible
+   `ServiceLocatorMac`) : une icône dans la barre de menus, le même `Coeur`,
+   Touch ID par la Secure Enclave, le bac à sable avec `network.server` (le
+   `bind` UDP de QUIC l'exige — vérifié). Compte créé sur `nitrogen` depuis ce
+   Mac, en attestation « aucune » (App Attest n'existe pas sur macOS).
+7. ~~L'icône~~ — **faite** (`Outils/Icone/generer.py`) : un dessin, trois
+   plates-formes (iOS, macOS, Android — le dépôt Android copie les
+   VectorDrawable produits ici).
 
-Tu es sur un Mac (oxygen) avec Xcode 26. Un vieil iPad en iOS 12 est parfois
-branché : `xcodebuild` s'en plaint bruyamment, sans conséquence.
+Tu es sur un Mac (oxygen, MacBook Pro 2019 Intel, T2, Touch ID) avec Xcode 26.
+Un vieil iPad en iOS 12 est parfois branché : `xcodebuild` s'en plaint
+bruyamment, sans conséquence. L'application macOS s'y construit signée
+(identité de développement, équipe dans `project.yml`) : c'est ce qui rend
+la Secure Enclave utilisable.
 
 ## Ce qu'il faut tenir en écrivant un écran
 

@@ -27,9 +27,27 @@ final class Session {
         self.ouverture = ouverture
     }
 
+    /// Ce que la dernière relecture n'a pas pu faire, dit à l'écran : hors
+    /// ligne, geste annulé. Un compte connu reste affiché ; seule une preuve
+    /// refusée par l'annuaire le retire.
+    private(set) var erreurDeRelecture: String?
+    /// Vrai tant que la première relecture n'a pas conclu : l'écran ne doit
+    /// dire ni « aucun compte » ni « compte » avant de savoir.
+    private(set) var premiereRelectureEnCours = true
+
     /// Relit le compte que l'annuaire connaît pour cet appareil.
     func rafraichirCompte() async {
-        compte = try? await annuaire.compte()
+        defer { premiereRelectureEnCours = false }
+        do {
+            compte = try await annuaire.compte()
+            erreurDeRelecture = nil
+        } catch ErreurAnnuaire.preuveInvalide {
+            compte = nil
+            erreurDeRelecture = ErreurAnnuaire.preuveInvalide.message
+        } catch {
+            // Le compte qu'on connaît reste ; l'annuaire n'a juste pas répondu.
+            erreurDeRelecture = error.messageAnnuaire
+        }
     }
 
     /// Ouvre le compte : la clé de l'appareil prouve qu'elle est détenue, sur
