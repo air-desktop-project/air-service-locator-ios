@@ -25,6 +25,9 @@ import SwiftUI
 @main
 struct ServiceLocatorMacApp: App {
     @State private var session: Session
+    /// Les gestes en cours survivent au popover, qui se ferme dès qu'il perd
+    /// le focus — Touch ID compris.
+    @State private var gestes = GestesDuPanneau()
 
     init() {
         if let reglages = Self.reglagesDeLAnnuaire() {
@@ -54,6 +57,7 @@ struct ServiceLocatorMacApp: App {
         MenuBarExtra("Service Locator", image: "BarreDeMenus") {
             PanneauVue()
                 .environment(session)
+                .environment(gestes)
                 .tint(Couleurs.accent)
                 .frame(width: 380)
         }
