@@ -230,6 +230,10 @@ actor AnnuaireSimule: Annuaire {
 
     func autorisations() async throws -> [Autorisation] { aretes }
 
+    /// Le banc dit ce qu'il est, pour que l'écran ne confonde jamais une
+    /// démonstration avec un annuaire.
+    func version() async throws -> String? { "banc en mémoire" }
+
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
         id == compteLocal?.identifiant || autresComptes[id] != nil
     }

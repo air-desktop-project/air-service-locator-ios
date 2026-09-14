@@ -14,6 +14,9 @@ struct PanneauVue: View {
     @State private var appareils: [Appareil] = []
     @State private var erreur: String?
     @State private var enCours = false
+    /// Ce que `GET /v1/version` a rendu : `nil` tant qu'on n'a pas demandé,
+    /// `.some(nil)` si l'annuaire ne sait pas le dire.
+    @State private var versionAnnuaire: String??
     /// Le geste en cours et ce qu'il tient : hors de la vue, parce que le
     /// popover la détruit à chaque fermeture (`GestesDuPanneau`).
     @Environment(GestesDuPanneau.self) private var gestes
@@ -71,15 +74,25 @@ struct PanneauVue: View {
 
     private var pied: some View {
         HStack {
-            Text("Annuaire : nitrogen.air-desktop.org").font(.caption2).foregroundStyle(.secondary)
+            Text("Annuaire : nitrogen.air-desktop.org\(versionDeLAnnuaire)").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
             Text("·").font(.caption2).foregroundStyle(.tertiary)
-            Text("version \(Version.texte)").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+            Text("app \(Version.texte)").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
             Spacer()
             Button("Quitter") { NSApp.terminate(nil) }
                 .buttonStyle(.borderless).font(.caption)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+    }
+
+    /// « 0.2.0 », ou ce qu'on sait : rien encore, ou un annuaire trop
+    /// ancien pour le dire.
+    private var versionDeLAnnuaire: String {
+        switch versionAnnuaire {
+        case .some(.some(let version)): " \(version)"
+        case .some(.none): " (version inconnue)"
+        case .none: ""
+        }
     }
 
     // MARK: - Sans compte
@@ -144,6 +157,7 @@ struct PanneauVue: View {
         defer { enCours = false }
         await session.rafraichirCompte()
         guard session.compte != nil else { return }
+        versionAnnuaire = .some(try? await session.annuaire.version())
         do {
             machines = try await session.annuaire.machines()
             appareils = try await session.annuaire.appareils()
