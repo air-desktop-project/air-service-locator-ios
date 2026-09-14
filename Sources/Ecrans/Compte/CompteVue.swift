@@ -4,6 +4,9 @@ import SwiftUI
 struct CompteVue: View {
     @Environment(Session.self) private var session
     @State private var appareils: [Appareil] = []
+    /// Ce que `GET /v1/version` a rendu : `nil` tant qu'on n'a pas demandé,
+    /// `.some(nil)` si l'annuaire ne sait pas le dire.
+    @State private var versionAnnuaire: String??
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
 
@@ -52,10 +55,18 @@ struct CompteVue: View {
                     Text("Annuaire")
                     Text("racines air-desktop-project").font(.footnote).foregroundStyle(.secondary)
                 }
-                // La version de l'application, lisible ici parce que c'est
-                // l'écran où l'on va quand quelque chose ne va pas.
-                LabeledContent("Version") {
+                // Les deux versions, l'application et l'annuaire, lisibles ici
+                // parce que c'est l'écran où l'on va quand quelque chose ne va
+                // pas — et qu'un écart entre les deux est souvent la réponse.
+                LabeledContent("Version de l'application") {
                     Text(Version.texte).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                }
+                LabeledContent("Version de l'annuaire") {
+                    switch versionAnnuaire {
+                    case .some(.some(let version)): Text(version).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                    case .some(.none): Text("ne la dit pas").foregroundStyle(.secondary)
+                    case .none: Text("…").foregroundStyle(.tertiary)
+                    }
                 }
                 NavigationLink {
                     ExpositionsVue()
@@ -84,6 +95,9 @@ struct CompteVue: View {
         do {
             appareils = try await session.annuaire.appareils()
             await session.rafraichirCompte()
+            // La version de l'annuaire ne conditionne rien : si elle manque,
+            // l'écran le dit, sans en faire une erreur de la page.
+            versionAnnuaire = .some(try? await session.annuaire.version())
             erreur = nil
         } catch {
             erreur = error.messageAnnuaire

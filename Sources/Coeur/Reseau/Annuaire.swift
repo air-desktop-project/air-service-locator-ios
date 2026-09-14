@@ -94,4 +94,8 @@ protocol Annuaire: Sendable {
 
     /// `PUT /v1/alias`, `DELETE /v1/alias` avec `nil`.
     func definirAlias(_ alias: String?) async throws
+
+    /// `GET /v1/version` — la version de l'annuaire qui répond, sans rien
+    /// prouver. `nil` si l'annuaire est trop ancien pour la dire (`404`).
+    func version() async throws -> String?
 }

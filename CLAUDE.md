@@ -111,7 +111,14 @@ la Secure Enclave utilisable.
   carnet local qui ne se relit plus) → MAJEURE. La CI compare à `main` et
   refuse une PR qui ne l'a pas touchée (`scripts/check-version.sh`). La
   version se lit à l'écran : Compte › Annuaire sur iPhone, le pied du panneau
-  sur le Mac (`Coeur/Version.swift`).
+  sur le Mac (`Coeur/Version.swift`), à côté de celle de l'annuaire
+  (`GET /v1/version`).
+  **Ce qui passe par PR, et ce qui n'y passe pas.** Tout ce qui touche au
+  code, aux écrans, aux scripts ou à la CI passe par une PR et change la
+  version. Une **note de coordination** — ce que l'autre session attend, ce
+  qu'elle a fait, dans `CLAUDE.md` — va sur `main` en commit direct, sans PR
+  ni bump : une version qui monterait pour une phrase ne dirait plus rien du
+  logiciel.
 - **Ce dépôt est PUBLIC.** Aucun secret dans un commit, un message, un fichier :
   ni clé privée, ni jeton, ni identifiant d'équipe si Thierry le juge sensible.
 - **Commits** : en français, *conventional commits*, **signés GPG** (clé

@@ -654,6 +654,18 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
                             revoqueeLe: revoquee ? (millis(objet["revoquee_a"]) ?? .now) : nil)
     }
 
+    /// Un annuaire d'avant 0.2.0 ne connaît pas cette ressource et rend
+    /// `404` : ce n'est pas une faute, c'est une version qu'on ne sait pas
+    /// lire — et c'est ce que l'écran dit.
+    func version() async throws -> String? {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/version") }
+        if statut == 404 { return nil }
+        guard statut == 200, let objet = try Self.json(corps) as? [String: Any], let version = objet["version"] as? String else {
+            throw Self.refus(statut)
+        }
+        return version
+    }
+
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
         let (statut, _) = try await surLaFile { try self.requete("GET", "/v1/utilisateurs/\(id.texte)") }
         return statut == 200
