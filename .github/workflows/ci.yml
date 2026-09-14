@@ -2,8 +2,9 @@
 #
 # # DEUX JOBS
 #
-# Le gate DCO tourne sur `ubuntu-latest` : il ne compile rien, et lui payer un
-# runner macOS — dix fois le prix en minutes — serait absurde.
+# Les gates DCO et version tournent sur `ubuntu-latest` : ils ne compilent
+# rien, et leur payer un runner macOS — dix fois le prix en minutes — serait
+# absurde.
 #
 # La construction, elle, exige macOS et Xcode : elle construit le transport
 # (le xcframework du dépôt client), régénère le projet, compile pour le
@@ -25,7 +26,7 @@ permissions:
 
 jobs:
   dco:
-    name: DCO et paternité
+    name: DCO, paternité et version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -50,6 +51,11 @@ jobs:
 
       - name: check-dco
         run: ./scripts/check-dco.sh "${{ steps.base.outputs.base }}"
+
+      # Chaque PR change la version : comparée à la branche cible. Sur un push
+      # de `main`, la forme seule.
+      - name: check-version
+        run: ./scripts/check-version.sh "${{ github.event_name == 'pull_request' && steps.base.outputs.base || '' }}"
 
   construction:
     name: xcodegen et build simulateur

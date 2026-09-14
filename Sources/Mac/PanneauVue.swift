@@ -75,6 +75,8 @@ struct PanneauVue: View {
     private var pied: some View {
         HStack {
             Text("Annuaire : nitrogen.air-desktop.org").font(.caption2).foregroundStyle(.secondary)
+            Text("·").font(.caption2).foregroundStyle(.tertiary)
+            Text("version \(Version.texte)").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
             Spacer()
             Button("Quitter") { NSApp.terminate(nil) }
                 .buttonStyle(.borderless).font(.caption)

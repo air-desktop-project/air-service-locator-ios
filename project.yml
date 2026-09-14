@@ -40,6 +40,18 @@ options:
 
 settings:
   base:
+    # ── LA VERSION, EN UN SEUL ENDROIT ───────────────────────────────────
+    #
+    # Semver, `MAJEURE.MINEURE.CORRECTIF`. **Chaque PR la change**, dans le
+    # commit qui porte le changement — la CI compare cette ligne à celle de
+    # `main` et refuse une PR qui ne l'a pas touchée. Les deux applications,
+    # iOS et macOS, la partagent : c'est le même cœur, livré deux fois. Elle
+    # se lit à l'écran (Compte › Annuaire sur iPhone, le pied du panneau sur
+    # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
+    # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
+    # croissant, qu'App Store Connect exige distinct à chaque envoi.
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: 2
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -73,6 +85,8 @@ targets:
       path: Sources/Ressources/Info.plist
       properties:
         CFBundleDisplayName: Service Locator
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         # ── LA PHRASE QUE L'UTILISATEUR LIT AVANT DE POSER SON DOIGT ────────
         #
@@ -140,6 +154,8 @@ targets:
       path: Sources/Mac/Ressources/Info.plist
       properties:
         CFBundleDisplayName: Service Locator
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Pas d'icône dans le Dock, pas de menu d'application : l'icône de la
         # barre de menus est toute l'application.
         LSUIElement: true

@@ -9,6 +9,7 @@
 # (cf. `Sources/Ressources/README.md`), et la première génération sur macOS l'a
 # fait apparaître comme fichier non suivi.
 Sources/Ressources/Info.plist
+Sources/Mac/Ressources/Info.plist
 
 # Les réglages de l'annuaire de TEST : une adresse sur un réseau, le nom d'un
 # certificat, et la racine qui l'a signé. Propres à une machine, jamais

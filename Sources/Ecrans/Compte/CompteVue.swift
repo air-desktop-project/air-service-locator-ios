@@ -52,6 +52,11 @@ struct CompteVue: View {
                     Text("Annuaire")
                     Text("racines air-desktop-project").font(.footnote).foregroundStyle(.secondary)
                 }
+                // La version de l'application, lisible ici parce que c'est
+                // l'écran où l'on va quand quelque chose ne va pas.
+                LabeledContent("Version") {
+                    Text(Version.texte).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                }
                 NavigationLink {
                     ExpositionsVue()
                 } label: {

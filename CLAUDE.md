@@ -104,6 +104,14 @@ la Secure Enclave utilisable.
 
 ## Les règles qui ne se négocient pas
 
+- **Chaque PR change la version semver** de l'application —
+  `MARKETING_VERSION` dans `project.yml`, `MAJEURE.MINEURE.CORRECTIF`, et
+  `CURRENT_PROJECT_VERSION` qui augmente — dans le commit qui porte le
+  changement. Correctif → CORRECTIF ; ajout → MINEURE ; rupture (protocole,
+  carnet local qui ne se relit plus) → MAJEURE. La CI compare à `main` et
+  refuse une PR qui ne l'a pas touchée (`scripts/check-version.sh`). La
+  version se lit à l'écran : Compte › Annuaire sur iPhone, le pied du panneau
+  sur le Mac (`Coeur/Version.swift`).
 - **Ce dépôt est PUBLIC.** Aucun secret dans un commit, un message, un fichier :
   ni clé privée, ni jeton, ni identifiant d'équipe si Thierry le juge sensible.
 - **Commits** : en français, *conventional commits*, **signés GPG** (clé
