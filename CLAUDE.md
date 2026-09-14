@@ -1,6 +1,8 @@
 # Consignes — air-service-locator-ios
 
-Tu travailles sur l'**application iOS** d'air-service-locator. Ce fichier te dit
+Tu travailles sur l'**application iOS** d'air-service-locator — et sur
+l'**application macOS** qui vit dans ce même dépôt (`Sources/Mac/`, une
+cible XcodeGen à part, le même `Coeur`). Ce fichier te dit
 la mission, l'état réel, la première tâche, et les règles qui ne se négocient
 pas. Lis-le en entier avant de toucher au code.
 
@@ -19,30 +21,70 @@ protocole.
 
 ## L'état réel, sans fard
 
-Le dépôt porte une **arborescence** (XcodeGen, `project.yml`), sa CI, et un seul
-type qui fait quelque chose (`Sources/Coeur/Identite/IdentiteLocale.swift`).
-**Rien n'a jamais été compilé** : tout a été posé depuis une machine Linux, sans
-Xcode. Tu es sur un Mac (oxygene) avec Xcode : **la première construction est un
-contrôle qui n'a jamais été passé.** Attends-toi à ce qu'elle échoue, et
-corrige ce qui bloque avant d'ajouter quoi que ce soit.
+Les **onze écrans sont écrits** (SwiftUI, iOS 17+) et **parlent au vrai
+annuaire** par le transport d'`asl-client` (`Sources/Coeur/Reseau/Reel/`),
+ou au banc en mémoire (`Sources/Coeur/Reseau/Simulation/`) quand aucun
+annuaire n'est configuré (`README.md`, « Parler à un vrai annuaire »). Tout
+compile sans avertissement et les essais passent (`xcodebuild test`,
+simulateur iPhone 17). Les maquettes validées sont dans `../maquettes/` (hors
+dépôt). Vérifié de bout en bout sur simulateur contre `asl-server` : compte,
+machine, enrôlement, annonce, service joignable.
 
-## Ta première tâche, concrète
+Ce qui manque, dans l'ordre où ça se fera :
 
-**Faire compiler et produire une capture App Attest réelle**, dans cet ordre :
+1. ~~La clé P-256 dans la Secure Enclave~~ — **faite**
+   (`Sources/Coeur/Identite/CleAppareil.swift`, `Messages.swift`) : CryptoKit
+   rend `r ‖ s` et la clé SEC1 compressée sans rien déplier. La représentation
+   opaque vit dans un fichier protégé, pas dans le Keychain (qui refuse sans
+   identité de signature). Sur simulateur, la biométrie est un `LAContext`.
+2. ~~Le transport~~ — **fait** (`AnnuaireReel.swift`) : l'ABI `asl_appareil_*`
+   d'`asl-client-ffi`, en xcframework, la signature par rappel (le natif
+   rappelle depuis son fil ; on bloque ce fil le temps que l'enclave signe),
+   la connexion tenue. Le serveur (`2cf05dc`) rend les machines, les
+   appareils, les services nommés avec leur état ; le `Carnet` local
+   (UserDefaults) ne garde que ce qu'il ne range pas — dates, code en cours,
+   révocation — et l'écran dit « inconnu » plutôt qu'une date inventée.
+3. **La capture App Attest** (`outils-capture/`), qui exige un iPhone réel — il
+   n'y en a pas sous la main, seulement le simulateur.
+4. ~~Les écrans restants~~ — **faits** : le détail d'un service
+   (`ServiceVue.swift`, verdict par point, candidats, ce que l'annuaire a
+   répondu au daemon), et le second appareil par échange de QR codes
+   (`Invitation.swift`, `EnrolerAppareilVue.swift` côté ancien,
+   `RejoindreVue.swift` côté nouveau ; `CodeQR.swift` trace et lit). Les
+   expositions restent un libellé tant que le serveur rend `501`.
+5. ~~Un état de chargement au lancement~~ — **fait** : `Session` dit quand la
+   première relecture n'a pas conclu, et l'écran attend au lieu de montrer
+   l'accueil. Hors ligne, le compte connu reste ; seule une preuve refusée
+   par l'annuaire le retire (et libère le handle natif, qui portait cette
+   identité).
+6. ~~L'application macOS~~ — **faite** (`Sources/Mac/`, cible
+   `ServiceLocatorMac`) : une icône dans la barre de menus, le même `Coeur`,
+   Touch ID par la Secure Enclave, le bac à sable avec `network.server` (le
+   `bind` UDP de QUIC l'exige — vérifié). Compte créé sur `nitrogen` depuis ce
+   Mac, en attestation « aucune » (App Attest n'existe pas sur macOS).
+7. ~~L'icône~~ — **faite** (`Outils/Icone/generer.py`) : un dessin, trois
+   plates-formes (iOS, macOS, Android — le dépôt Android copie les
+   VectorDrawable produits ici).
 
-1. Générer le projet (`scripts/`, ou `xcodegen`), l'ouvrir dans Xcode, le faire
-   **compiler** sur un simulateur, puis sur un **appareil réel** (App Attest est
-   inerte au simulateur).
-2. Intégrer [`outils-capture/CaptureAppAttest.swift`](outils-capture/CaptureAppAttest.swift) :
-   il tire un défi, génère une clé dans la Secure Enclave, appelle `attestKey`,
-   et imprime l'attestation et le défi en base64.
-3. Lancer sur l'appareil, **récupérer le bloc imprimé**, et le rendre à Thierry.
-   Ce bloc débloque la vérification côté serveur : `asl-apple` est écrit d'après
-   la documentation d'Apple et n'a jamais vu de vraie attestation ; cette
-   capture confirme (ou corrige) nos constantes.
+Tu es sur un Mac (oxygen, MacBook Pro 2019 Intel, T2, Touch ID) avec Xcode 26.
+Un vieil iPad en iOS 12 est parfois branché : `xcodebuild` s'en plaint
+bruyamment, sans conséquence. L'application macOS s'y construit signée
+(identité de développement, équipe dans `project.yml`) : c'est ce qui rend
+la Secure Enclave utilisable.
 
-Le mode d'emploi complet — pré-requis, ce qu'il faut noter, comment le rendre —
-est dans le serveur : `docs/attestation/capture-reelle.md`.
+## Ce qu'il faut tenir en écrivant un écran
+
+- **Les écrans parlent à `Annuaire`, jamais au banc.** `AnnuaireSimule` n'est
+  nommé que dans la composition et les essais.
+- **Le vocabulaire est celui de `modele.md` §4.2** : `annoncé`, `joignable`
+  (avec sa date), `parti (volontaire / inactivité)`, UDP `non sondé`. Le mot
+  « en ligne » n'apparaît nulle part.
+- **Un identifiant se compare sur ses octets** (`Identifiant`), jamais comme
+  une chaîne ; il ne s'affiche que par `.texte` ou `.abrege`.
+- **Ce que l'on ne sait pas faire se dit à l'écran** (`ContentUnavailableView`),
+  on ne le simule pas.
+- Les dates s'affichent en français quel que soit le réglage de l'appareil
+  (`Date.relatif`, `Date.jour`).
 
 ## Le protocole, l'essentiel que l'app devra tenir
 
@@ -59,9 +101,6 @@ est dans le serveur : `docs/attestation/capture-reelle.md`.
   donnée envoyée.
 - **Aucune donnée personnelle** hébergée, hormis un alias public facultatif.
 
-N'écris PAS les écrans tant que le modèle n'est pas arrêté : des vues sur des
-données supposées sont des vues à jeter. Concentre-toi sur le noyau (identité,
-clé, réseau) et la capture.
 
 ## Les règles qui ne se négocient pas
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Le bac à sable, et le réseau dans les deux sens — ET C'EST LE TRANSPORT
+	  QUI L'EXIGE. QUIC vit sur UDP : la pile LIE un socket local pour y
+	  recevoir les datagrammes de l'annuaire, et le bac à sable range ce
+	  `bind` du côté « serveur ». Avec `network.client` seul, la connexion
+	  n'aboutit jamais — vérifié : « aucun annuaire ne répond », alors que le
+	  même binaire hors bac à sable se connecte. Rien n'écoute pour autant :
+	  l'application n'accepte aucune connexion entrante.
+
+	  La clé de la Secure Enclave et sa représentation (un fichier dans le
+	  conteneur de l'app) n'exigent aucun droit de plus ; Touch ID non plus,
+	  seulement une app signée.
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>
