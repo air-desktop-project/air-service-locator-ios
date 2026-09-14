@@ -20,6 +20,8 @@ struct PanneauVue: View {
     /// Le geste en cours et ce qu'il tient : hors de la vue, parce que le
     /// popover la détruit à chaque fermeture (`GestesDuPanneau`).
     @Environment(GestesDuPanneau.self) private var gestes
+    /// Ce Mac en tant que machine — absent sur le banc de démonstration.
+    @Environment(MachineDeCeMac.self) private var machineDeCeMac: MachineDeCeMac?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -130,15 +132,22 @@ struct PanneauVue: View {
                 Text("Aucune machine. Déclarez-en une pour obtenir son code d'enrôlement.").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(machines) { machine in
-                MachineVueMac(machine: machine)
+                MachineVueMac(machine: machine, estCeMac: machine.id == machineDeCeMac?.identifiant)
             }
             Depliant("Déclarer une machine", ouvert: lien(.declarer)) {
                 DeclarerVueMac { await recharger() }
             }
+            // Ce Mac comme machine : proposé tant qu'il n'en est pas une que
+            // l'annuaire connaît — une machine oubliée là-bas se refait ici.
+            if let machineDeCeMac, !machines.contains(where: { $0.id == machineDeCeMac.identifiant }) {
+                Depliant("Faire de ce Mac une machine", ouvert: lien(.ceMac)) {
+                    CeMacMachineVueMac(machineDeCeMac: machineDeCeMac) { await recharger() }
+                }
+            }
 
             Titre("Appareils")
             ForEach(appareils) { appareil in
-                AppareilVueMac(appareil: appareil)
+                AppareilVueMac(appareil: appareil, machineDeCeMac: machines.first { $0.id == machineDeCeMac?.identifiant })
             }
             Depliant("Enrôler un autre appareil", ouvert: lien(.enrolerAppareil)) {
                 EnrolerAppareilVueMac { await recharger() }
@@ -254,12 +263,16 @@ private struct PastilleMac: View {
 
 private struct MachineVueMac: View {
     let machine: Machine
+    /// Cette machine est ce Mac : le lien entre ses deux identités, connu
+    /// d'ici seulement (`MachineDeCeMac`).
+    var estCeMac = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 PastilleMac(couleur: couleur)
                 Text(machine.nom).font(.callout.weight(.semibold))
+                if estCeMac { Text("ce Mac").font(.caption).foregroundStyle(.secondary) }
                 Spacer()
                 Text(cle).font(.caption).foregroundStyle(.secondary)
             }
@@ -313,6 +326,9 @@ private struct MachineVueMac: View {
 
 private struct AppareilVueMac: View {
     let appareil: Appareil
+    /// La machine que ce Mac est aussi, s'il en est une — pour la ligne de
+    /// CET appareil seulement : le lien ne concerne pas les autres.
+    var machineDeCeMac: Machine?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -347,6 +363,7 @@ private struct AppareilVueMac: View {
     private var sousTitre: String {
         if appareil.estRevoque { return appareil.revoqueLe.map { "révoqué le \($0.jour)" } ?? "révoqué" }
         var morceaux = [appareil.enroleLe.map { "enrôlé le \($0.jour)" } ?? "enrôlé"]
+        if appareil.estCeluiCi, let machineDeCeMac { morceaux.append("aussi la machine « \(machineDeCeMac.nom) »") }
         switch appareil.description?.plateforme {
         case .ios: morceaux.append("iOS")
         case .android: morceaux.append("Android")
@@ -392,6 +409,66 @@ private struct DeclarerVueMac: View {
             _ = try await session.annuaire.declarerMachine(nom: nom, capacites: capacites)
             nom = ""
             erreur = nil
+            await apres()
+        } catch {
+            erreur = error.messageAnnuaire
+        }
+    }
+}
+
+/// Ce Mac devient une machine, en un geste : Touch ID la déclare
+/// (`POST /v1/machines`), et le code rendu est consommé sur place par la voie
+/// des daemons d'`asl-client` — l'utilisateur ne le voit jamais.
+private struct CeMacMachineVueMac: View {
+    @Environment(Session.self) private var session
+    @Environment(GestesDuPanneau.self) private var gestes
+    let machineDeCeMac: MachineDeCeMac
+    let apres: () async -> Void
+    @State private var annonce = true
+    @State private var lecture = true
+    @State private var erreur: String?
+    @State private var enCours = false
+
+    var body: some View {
+        @Bindable var gestes = gestes
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Ce Mac administre déjà le compte. Il peut aussi héberger des daemons : c'est une seconde identité, une clé qui signe sans vous — celle d'une machine.")
+                .font(.caption).foregroundStyle(.secondary)
+            TextField("Nom, pour vous", text: $gestes.nomDeCeMac).textFieldStyle(.roundedBorder)
+            Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce).font(.caption)
+            Toggle("Lecture — il peut demander où joindre un service", isOn: $lecture).font(.caption)
+            if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+            HStack {
+                Button("Déclarer et enrôler ce Mac") { Task { await faire() } }
+                    .disabled(enCours || !Machine.nomValide(gestes.nomDeCeMac))
+                if enCours { ProgressView().controlSize(.small) }
+            }
+        }
+        .padding(.top, 6)
+    }
+
+    private func faire() async {
+        enCours = true
+        defer { enCours = false }
+        var capacites: Set<Capacite> = []
+        if annonce { capacites.insert(.annonce) }
+        if lecture { capacites.insert(.lecture) }
+        do {
+            let machine = try await session.annuaire.declarerMachine(nom: gestes.nomDeCeMac, capacites: capacites)
+            guard case let .attendue(.some(code)) = machine.cle else {
+                erreur = "L'annuaire n'a pas rendu de code d'enrôlement."
+                return
+            }
+            let enrolee = try await machineDeCeMac.enroler(code: code)
+            // L'identifiant que le code a ouvert doit être celui de la machine
+            // déclarée : sinon, ce n'est pas ce Mac qu'on vient d'enrôler.
+            guard enrolee == machine.id else {
+                try? machineDeCeMac.oublier()
+                erreur = "L'enrôlement a rendu \(enrolee.abrege), la déclaration \(machine.id.abrege) : ce n'est pas la même machine."
+                return
+            }
+            erreur = nil
+            gestes.enCours = nil
             await apres()
         } catch {
             erreur = error.messageAnnuaire

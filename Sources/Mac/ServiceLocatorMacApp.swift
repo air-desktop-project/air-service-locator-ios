@@ -28,11 +28,15 @@ struct ServiceLocatorMacApp: App {
     /// Les gestes en cours survivent au popover, qui se ferme dès qu'il perd
     /// le focus — Touch ID compris.
     @State private var gestes = GestesDuPanneau()
+    /// Ce Mac en tant que machine — seulement contre un vrai annuaire : le
+    /// banc ne sait pas enrôler une machine.
+    @State private var machineDeCeMac: MachineDeCeMac?
 
     init() {
         if let reglages = Self.reglagesDeLAnnuaire() {
             let reel = AnnuaireReel(reglages: reglages) { try CleAppareil.ouOuvrir() }
             _session = State(initialValue: Session(annuaire: reel) { signataire in try await reel.ouvrirCompte(avec: signataire) })
+            _machineDeCeMac = State(initialValue: MachineDeCeMac(reglages: reglages))
         } else {
             let simule = AnnuaireSimule()
             _session = State(initialValue: Session(annuaire: simule) { signataire in try await simule.ouvrirCompteDeDemonstration(avec: signataire) })
@@ -58,6 +62,7 @@ struct ServiceLocatorMacApp: App {
             PanneauVue()
                 .environment(session)
                 .environment(gestes)
+                .environment(machineDeCeMac)
                 .tint(Couleurs.accent)
                 .frame(width: 380)
         }
