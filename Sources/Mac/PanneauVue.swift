@@ -132,7 +132,7 @@ struct PanneauVue: View {
                 Text("Aucune machine. Déclarez-en une pour obtenir son code d'enrôlement.").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(machines) { machine in
-                MachineVueMac(machine: machine, estCeMac: machine.id == machineDeCeMac?.identifiant)
+                MachineVueMac(machine: machine, estCeMac: machine.id == machineDeCeMac?.identifiant) { await recharger() }
             }
             Depliant("Déclarer une machine", ouvert: lien(.declarer)) {
                 DeclarerVueMac { await recharger() }
@@ -262,10 +262,14 @@ private struct PastilleMac: View {
 }
 
 private struct MachineVueMac: View {
+    @Environment(Session.self) private var session
     let machine: Machine
     /// Cette machine est ce Mac : le lien entre ses deux identités, connu
     /// d'ici seulement (`MachineDeCeMac`).
     var estCeMac = false
+    let apres: () async -> Void
+    @State private var erreur: String?
+    @State private var enCours = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -297,6 +301,23 @@ private struct MachineVueMac: View {
             if case let .attendue(.some(code)) = machine.cle, code.estValide(a: .now) {
                 LigneCopiableMac(titre: "Sur la machine, tapez", texte: code.commande)
             }
+            // Les deux gestes que l'écran iOS a et que le panneau n'avait pas :
+            // un code neuf pour une machine sans clé valable (le précédent
+            // meurt à l'émission), et la révocation d'une clé enrôlée — effet
+            // immédiat, connexions fermées, la machine reste.
+            HStack(spacing: 10) {
+                switch machine.cle {
+                case .enrolee:
+                    Button("Révoquer la clé", role: .destructive) { Task { await revoquerCle() } }
+                case .attendue, .revoquee:
+                    Button("Émettre un nouveau code") { Task { await emettreCode() } }
+                }
+                if enCours { ProgressView().controlSize(.small) }
+                if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+            }
+            .font(.caption)
+            .buttonStyle(.borderless)
+            .disabled(enCours)
         }
         .padding(8)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
@@ -317,6 +338,30 @@ private struct MachineVueMac: View {
             default: Couleurs.accent
             }
         case .parti: Couleurs.parti
+        }
+    }
+
+    private func emettreCode() async {
+        enCours = true
+        defer { enCours = false }
+        do {
+            _ = try await session.annuaire.emettreCode(pour: machine.id)
+            erreur = nil
+            await apres()
+        } catch {
+            erreur = error.messageAnnuaire
+        }
+    }
+
+    private func revoquerCle() async {
+        enCours = true
+        defer { enCours = false }
+        do {
+            try await session.annuaire.revoquerCle(de: machine.id)
+            erreur = nil
+            await apres()
+        } catch {
+            erreur = error.messageAnnuaire
         }
     }
 
