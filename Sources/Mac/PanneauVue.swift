@@ -364,7 +364,8 @@ private struct DeclarerVueMac: View {
     }
 }
 
-/// Rejoindre, depuis ce Mac : montrer sa clé, coller la réponse.
+/// Rejoindre, depuis ce Mac : montrer sa clé — en QR pour la caméra du
+/// téléphone, en texte pour le presse-papiers —, coller la réponse.
 private struct RejoindreVueMac: View {
     @Environment(Session.self) private var session
     @State private var cle: [UInt8]?
@@ -375,7 +376,8 @@ private struct RejoindreVueMac: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let cle {
-                Text("1. Sur le téléphone déjà enrôlé : Compte › Enrôler un autre appareil, et collez-lui cette clé.").font(.caption)
+                Text("1. Sur le téléphone déjà enrôlé : Compte › Enrôler un autre appareil, et lisez ce code à la caméra — ou collez-lui la clé.").font(.caption)
+                CodeQRMac(texte: Invitation.cle(cle).texte)
                 LigneCopiableMac(titre: "La clé publique de ce Mac", texte: Invitation.cle(cle).texte)
                 Text("2. Collez ici sa réponse ; Touch ID prouvera la clé.").font(.caption)
                 TextField("asl:appareil:…", text: $reponse).textFieldStyle(.roundedBorder).font(.system(.caption, design: .monospaced))
@@ -409,7 +411,7 @@ private struct RejoindreVueMac: View {
 }
 
 /// `POST /v1/appareils`, depuis ce Mac : coller la clé du nouveau, lui rendre
-/// la réponse.
+/// la réponse — en QR, qu'il lit à sa caméra, et en texte.
 private struct EnrolerAppareilVueMac: View {
     @Environment(Session.self) private var session
     let apres: () async -> Void
@@ -420,7 +422,8 @@ private struct EnrolerAppareilVueMac: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let reponse {
-                Text("L'appareil est enrôlé. Rendez-lui ce code : il rejoindra le compte en prouvant sa clé, là-bas.").font(.caption)
+                Text("L'appareil est enrôlé. Rendez-lui ce code — à sa caméra, ou collé : il rejoindra le compte en prouvant sa clé, là-bas.").font(.caption)
+                CodeQRMac(texte: reponse.texte)
                 LigneCopiableMac(titre: "La réponse à lui donner", texte: reponse.texte)
                 Button("Terminé") { self.reponse = nil; cle = "" }
             } else {

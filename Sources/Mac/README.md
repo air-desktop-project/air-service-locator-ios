@@ -3,8 +3,10 @@
 Une icône dans la barre de menus, un panneau dessous : le compte, les
 machines et leurs services, les appareils — et trois gestes : ouvrir un
 compte avec ce Mac (Touch ID), déclarer une machine (et lire son code
-d'enrôlement), enrôler un autre appareil ou rejoindre un compte (par le texte
-de l'invitation, collé — pas de caméra sur un Mac).
+d'enrôlement), enrôler un autre appareil ou rejoindre un compte. Ce que le
+Mac MONTRE (sa clé, la réponse) s'affiche en QR code, que le téléphone lit à
+sa caméra, et en texte ; ce que le Mac REÇOIT se colle — il n'a pas de caméra
+qui lise un code.
 
 Tout le cœur est celui de l'application iOS, compilé tel quel pour macOS :
 `Sources/Coeur/` (modèle, `Annuaire`, clé dans la Secure Enclave, transport
