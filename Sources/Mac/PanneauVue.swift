@@ -303,10 +303,12 @@ private struct AppareilVueMac: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: appareil.estCeluiCi ? "laptopcomputer" : "iphone.gen3")
+            Image(systemName: icone)
                 .foregroundStyle(appareil.estRevoque ? .tertiary : .secondary)
             VStack(alignment: .leading, spacing: 1) {
-                Text(appareil.estCeluiCi ? Host.current().localizedName ?? "Ce Mac" : appareil.nom)
+                // Le nom que l'utilisateur a donné à CE Mac reste ici ; les
+                // autres portent le modèle qu'ils ont déclaré, ou le repli.
+                Text(appareil.estCeluiCi ? Host.current().localizedName ?? "Ce Mac" : appareil.titre)
                     .font(.callout).foregroundStyle(appareil.estRevoque ? .secondary : .primary)
                 Text(sousTitre).font(.caption).foregroundStyle(.secondary)
                 // L'identifiant : la seule chose que l'annuaire sait d'un
@@ -321,9 +323,23 @@ private struct AppareilVueMac: View {
         }
     }
 
+    private var icone: String {
+        switch appareil.estCeluiCi ? .macos : appareil.description?.plateforme {
+        case .macos: "laptopcomputer"
+        case .android: "candybarphone"
+        case .ios, nil: "iphone.gen3"
+        }
+    }
+
     private var sousTitre: String {
         if appareil.estRevoque { return appareil.revoqueLe.map { "révoqué le \($0.jour)" } ?? "révoqué" }
         var morceaux = [appareil.enroleLe.map { "enrôlé le \($0.jour)" } ?? "enrôlé"]
+        switch appareil.description?.plateforme {
+        case .ios: morceaux.append("iOS")
+        case .android: morceaux.append("Android")
+        case .macos: morceaux.append("macOS")
+        case nil: break
+        }
         switch appareil.attestation {
         case .apple: morceaux.append("attesté par Apple")
         case .google: morceaux.append("attesté par Google")

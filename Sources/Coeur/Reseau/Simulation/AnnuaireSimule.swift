@@ -217,6 +217,15 @@ actor AnnuaireSimule: Annuaire {
         parcAppareils[indice].revoqueLe = horloge()
     }
 
+    /// Pour soi seulement : le banc, comme le serveur, ne connaît que
+    /// l'appareil qui parle. Sans compte, il n'y a personne à décrire.
+    func decrire(_ description: Appareil.Description) async throws {
+        guard let indice = parcAppareils.firstIndex(where: \.estCeluiCi) else { throw ErreurAnnuaire.introuvable }
+        let octets = description.modele.utf8.count
+        guard octets >= 1, octets <= Appareil.Description.modeleOctetsMax else { throw ErreurAnnuaire.requeteInvalide("modele") }
+        parcAppareils[indice].description = description
+    }
+
     // MARK: - Autorisations
 
     func autorisations() async throws -> [Autorisation] { aretes }

@@ -75,6 +75,10 @@ protocol Annuaire: Sendable {
     func enrolerAppareil(cle: [UInt8]) async throws -> Appareil
     /// `DELETE /v1/appareils/{a}` — marqué, non effacé. Jamais soi-même.
     func revoquerAppareil(_ id: Identifiant) async throws
+    /// `PUT /v1/appareils/{moi}/description` — ce que CET appareil est.
+    /// **Pour soi seulement**, comme le jeton de poussée ; posé juste après
+    /// la preuve, reposé quand il change.
+    func decrire(_ description: Appareil.Description) async throws
 
     /// `GET /v1/autorisations` — les deux sens, révoquées comprises.
     func autorisations() async throws -> [Autorisation]

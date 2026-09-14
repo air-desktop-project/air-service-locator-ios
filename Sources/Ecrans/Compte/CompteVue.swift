@@ -103,9 +103,10 @@ private struct LigneAppareil: View {
             Image(systemName: icone)
                 .foregroundStyle(appareil.estRevoque ? .tertiary : .secondary)
             VStack(alignment: .leading, spacing: 2) {
-                // L'annuaire ne connaît aucun nom : celui de cet appareil vient
-                // du téléphone lui-même.
-                Text(appareil.estCeluiCi ? UIDevice.current.name : appareil.nom)
+                // Le nom que l'utilisateur a donné à CE téléphone reste ici, où
+                // il est né ; les autres portent le modèle qu'ils ont déclaré
+                // à l'annuaire, ou le repli s'ils ne l'ont pas encore fait.
+                Text(appareil.estCeluiCi ? UIDevice.current.name : appareil.titre)
                     .foregroundStyle(appareil.estRevoque ? .secondary : .primary)
                 Text(sousTitre).font(.footnote).foregroundStyle(.secondary)
                 // L'identifiant est la seule chose que l'annuaire sait d'un
@@ -124,11 +125,15 @@ private struct LigneAppareil: View {
         }
     }
 
+    /// La biométrie quand on la connaît (cet appareil), sinon la plate-forme
+    /// déclarée, sinon un téléphone.
     private var icone: String {
-        switch appareil.biometrie {
-        case .visage: "faceid"
-        case .empreinte: "touchid"
-        case nil: "iphone.gen3"
+        switch (appareil.biometrie, appareil.description?.plateforme) {
+        case (.visage, _): "faceid"
+        case (.empreinte, _): "touchid"
+        case (nil, .macos): "laptopcomputer"
+        case (nil, .android): "candybarphone"
+        case (nil, .ios), (nil, nil): "iphone.gen3"
         }
     }
 
@@ -146,6 +151,12 @@ private struct LigneAppareil: View {
         case .apple: morceaux.append("attesté par Apple")
         case .google: morceaux.append("attesté par Google")
         case .aucune: morceaux.append("sans attestation")
+        case nil: break
+        }
+        switch appareil.description?.plateforme {
+        case .ios: morceaux.append("iOS")
+        case .android: morceaux.append("Android")
+        case .macos: morceaux.append("macOS")
         case nil: break
         }
         return morceaux.joined(separator: " · ")

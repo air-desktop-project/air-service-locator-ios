@@ -1,4 +1,5 @@
 import Observation
+import OSLog
 import SwiftUI
 
 /// Ce que tous les écrans partagent : l'annuaire à qui parler, et le compte
@@ -9,6 +10,7 @@ final class Session {
     let annuaire: any Annuaire
     private(set) var compte: Compte?
     let identite = IdentiteLocale()
+    private static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "session")
 
     /// Comment on ouvre un compte — séparé de l'annuaire parce qu'en
     /// démonstration, l'ouverture peuple aussi l'annuaire.
@@ -41,6 +43,7 @@ final class Session {
         do {
             compte = try await annuaire.compte()
             erreurDeRelecture = nil
+            if compte != nil { await seDecrire() }
         } catch ErreurAnnuaire.preuveInvalide {
             compte = nil
             erreurDeRelecture = ErreurAnnuaire.preuveInvalide.message
@@ -58,6 +61,24 @@ final class Session {
     /// signe pas, et rien ne part.
     func ouvrirCompte() async throws {
         compte = try await ouverture(try signataire())
+        await seDecrire()
+    }
+
+    /// Dit à l'annuaire ce que cet appareil est — plate-forme et modèle,
+    /// jamais le nom que l'utilisateur lui a donné (`docs/modele.md` §2.2).
+    /// Juste après chaque preuve : c'est le moment où l'appareil parle de
+    /// lui sur sa propre connexion.
+    ///
+    /// **Une étiquette qui n'a pas pu se poser n'est pas une panne.** Un
+    /// annuaire qui ne sert pas encore ce verbe rend `404` ; le compte, lui,
+    /// est là. On ne le dit pas à l'écran, et l'annuaire réel n'en garde pas
+    /// trace comme posée — elle repartira à la prochaine preuve.
+    private func seDecrire() async {
+        do {
+            try await annuaire.decrire(Appareil.Description.deCetAppareil())
+        } catch {
+            Self.journal.notice("la description de cet appareil n'a pas été posée : \(error.messageAnnuaire, privacy: .public)")
+        }
     }
 
     /// La clé publique de cet appareil — ce que le nouveau téléphone montre à
@@ -71,6 +92,7 @@ final class Session {
     /// l'autre a rendue. Le geste est demandé au moment de prouver la clé.
     func rejoindre(compte: Identifiant, appareil: Identifiant) async throws {
         self.compte = try await annuaire.rejoindre(compte: compte, appareil: appareil, avec: try signataire())
+        await seDecrire()
     }
 
     func definirAlias(_ alias: String?) async throws {
