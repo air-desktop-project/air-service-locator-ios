@@ -309,6 +309,12 @@ private struct AppareilVueMac: View {
                 Text(appareil.estCeluiCi ? Host.current().localizedName ?? "Ce Mac" : appareil.nom)
                     .font(.callout).foregroundStyle(appareil.estRevoque ? .secondary : .primary)
                 Text(sousTitre).font(.caption).foregroundStyle(.secondary)
+                // L'identifiant : la seule chose que l'annuaire sait d'un
+                // appareil, et ce qu'on compare à l'écran du téléphone pour
+                // reconnaître lequel est lequel.
+                Text(appareil.id.texte)
+                    .font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
             Spacer()
             if appareil.estCeluiCi { Text("ce Mac").font(.caption).foregroundStyle(.secondary) }

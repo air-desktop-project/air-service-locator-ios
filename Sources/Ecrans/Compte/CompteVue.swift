@@ -44,7 +44,7 @@ struct CompteVue: View {
             } header: {
                 Text("Appareils")
             } footer: {
-                Text("Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans la liste. Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme.")
+                Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans la liste. Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme.")
             }
 
             Section("Annuaire") {
@@ -108,6 +108,14 @@ private struct LigneAppareil: View {
                 Text(appareil.estCeluiCi ? UIDevice.current.name : appareil.nom)
                     .foregroundStyle(appareil.estRevoque ? .secondary : .primary)
                 Text(sousTitre).font(.footnote).foregroundStyle(.secondary)
+                // L'identifiant est la seule chose que l'annuaire sait d'un
+                // appareil, et la seule qui permette de le reconnaître d'un
+                // écran à l'autre : « Autre appareil » ne dit rien, `a-…` dit
+                // lequel.
+                Text(appareil.id.texte)
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
             Spacer()
             if appareil.estCeluiCi {
