@@ -24,6 +24,16 @@ qu'`asl enrole` sur un Linux, sans terminal. Le **lien** entre les deux
 identités (« la machine *bureau* est ce Mac ») vit dans le conteneur de
 l'application et n'en sort pas : c'est ce Mac qui le sait, pas l'annuaire.
 
+L'identité de machine est écrite **au format d'`asl`** (`identite`, deux
+lignes, mode 0600) dans `Application Support/asl/` du conteneur, et
+l'utilitaire la lit tel quel — le panneau montre la commande à copier :
+
+```sh
+asl --etat "~/Library/Containers/org.airdesktop.servicelocator.mac/Data/Library/Application Support/asl" annonce depot tcp:8080
+```
+
+Une seule clé de machine sur ce Mac, donc : celle que l'app a enrôlée.
+
 ## Ce qui est propre au Mac
 
 - **La Secure Enclave du T2 ou de la puce Apple**, et Touch ID à chaque

@@ -23,20 +23,23 @@ import OSLog
 /// n'en sort pas — un autre appareil du compte n'a pas à savoir que la machine
 /// « bureau » est aussi ton Mac.
 ///
-/// # Le même chemin qu'`asl enrole`, sans terminal
+/// # Le même chemin qu'`asl enrole`, sans terminal — et le même fichier
 ///
 /// L'application embarque `asl-client`, qui porte les deux voies : celle des
 /// téléphones (`asl_appareil_*`) et celle des daemons (`asl_client_*`). Cette
 /// classe emprunte la seconde, exactement comme l'utilitaire `asl` sur un
 /// Linux : un client, l'annuaire, les racines, `asl_enroler` avec le code —
 /// et l'identité rendue (l'identifiant, et la graine dont la clé se dérive)
-/// est rangée dans un fichier du conteneur, comme `asl` la range dans le sien.
-/// C'est le seul justificatif durable de cette machine.
+/// est rangée **dans le format d'`asl`**, un fichier `identite` à deux lignes
+/// (`machine = m-…`, `graine = <hexa>`), en mode 0600, dans un dossier `asl/`
+/// du conteneur. Ainsi ce Mac n'a QU'UNE identité de machine, et l'utilitaire
+/// la lit tel quel : `asl --etat <ce dossier> annonce …`. C'est le seul
+/// justificatif durable de cette machine.
 @MainActor
 @Observable
 final class MachineDeCeMac {
     /// L'identité rendue par l'enrôlement, telle qu'on la conserve.
-    private struct Identite: Codable {
+    private struct Identite {
         let machine: String
         let graine: Data
     }
@@ -95,6 +98,10 @@ final class MachineDeCeMac {
         identifiant = nil
     }
 
+    /// Le dossier que l'utilitaire `asl` prend en `--etat` pour parler au nom
+    /// de cette machine — à montrer, pour qu'on le copie.
+    static var dossierPourAsl: String? { (try? dossier)?.path }
+
     // MARK: - Le natif
 
     private nonisolated static func enrolerBloquant(code: String, reglages: AnnuaireReel.Reglages) throws -> (String, Data) {
@@ -120,28 +127,83 @@ final class MachineDeCeMac {
         guard code == ASL_OK else { throw Erreur.natif(code, quoi) }
     }
 
-    // MARK: - Le fichier
+    // MARK: - Le fichier, au format d'`asl`
 
-    /// Dans le conteneur du bac à sable, protégé par lui et par la session
-    /// de l'utilisateur — comme `~/.config/asl` sur un Linux. La graine est
-    /// la clé : ce fichier ne se partage pas, ne se sauvegarde pas.
-    private static var chemin: URL {
+    /// `Application Support/asl/` dans le conteneur du bac à sable — le
+    /// pendant de `~/.config/asl` sur un Linux, et ce qu'on donne à
+    /// `asl --etat`. La graine est la clé : ce dossier ne se partage pas, ne
+    /// se sauvegarde pas.
+    private static var dossier: URL {
         get throws {
-            let dossier = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            return dossier.appendingPathComponent("machine-de-ce-mac.json", isDirectory: false)
+            let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            return support.appendingPathComponent("asl", isDirectory: true)
         }
     }
 
-    private static func lire() -> Identite? {
-        guard let chemin = try? chemin, let donnees = try? Data(contentsOf: chemin) else { return nil }
-        return try? JSONDecoder().decode(Identite.self, from: donnees)
+    /// `identite`, le nom qu'`asl` cherche.
+    private static var chemin: URL {
+        get throws { try dossier.appendingPathComponent("identite", isDirectory: false) }
     }
 
+    /// Le format d'`asl` (`crates/asl-cli/src/etat.rs` du dépôt client) : des
+    /// lignes `clé = valeur`, les commentaires en `#`, la graine en
+    /// hexadécimal. Lu ici avec la même tolérance qu'il l'écrit.
+    private static func lire() -> Identite? {
+        guard let chemin = try? chemin, let contenu = try? String(contentsOf: chemin, encoding: .utf8) else { return nil }
+        var machine: String?
+        var graine: Data?
+        for ligne in contenu.split(whereSeparator: \.isNewline) {
+            let ligne = ligne.trimmingCharacters(in: .whitespaces)
+            guard !ligne.isEmpty, !ligne.hasPrefix("#"), let egal = ligne.firstIndex(of: "=") else { continue }
+            let cle = ligne[..<egal].trimmingCharacters(in: .whitespaces)
+            let valeur = ligne[ligne.index(after: egal)...].trimmingCharacters(in: .whitespaces)
+            switch cle {
+            case "machine": machine = valeur
+            case "graine": graine = depuisHexa(valeur)
+            default: break
+            }
+        }
+        guard let machine, let graine, graine.count == Int(ASL_GRAINE_OCTETS) else { return nil }
+        return Identite(machine: machine, graine: graine)
+    }
+
+    /// Mode 0600 dès la création, comme `asl` : une clé lisible par d'autres
+    /// n'est plus une clé — et `asl` refuserait de la lire.
     private static func ecrire(_ identite: Identite) throws {
+        let dossier = try dossier
+        try FileManager.default.createDirectory(at: dossier, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         var chemin = try chemin
-        try JSONEncoder().encode(identite).write(to: chemin, options: [.atomic, .completeFileProtection])
+        let contenu = """
+        # asl — l'identité de cette machine, écrite par l'application Service Locator.
+        #
+        # LA MOITIÉ PRIVÉE D'UNE PAIRE DE CLÉS. Elle n'a jamais quitté ce disque,
+        # et elle ne le doit pas : l'annuaire ne connaît que la moitié publique.
+        # Ne la copiez pas sur une autre machine — enrôlez-la, c'est gratuit.
+        machine = \(identite.machine)
+        graine = \(enHexa(identite.graine))
+
+        """
+        try Data(contenu.utf8).write(to: chemin, options: [.atomic, .completeFileProtection])
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: chemin.path)
         var valeurs = URLResourceValues()
         valeurs.isExcludedFromBackup = true
         try chemin.setResourceValues(valeurs)
+    }
+
+    private static func enHexa(_ octets: Data) -> String {
+        octets.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func depuisHexa(_ texte: String) -> Data? {
+        let caracteres = Array(texte.utf8)
+        guard caracteres.count % 2 == 0 else { return nil }
+        var octets = Data(capacity: caracteres.count / 2)
+        var i = 0
+        while i < caracteres.count {
+            guard let octet = UInt8(String(decoding: caracteres[i..<i + 2], as: UTF8.self), radix: 16) else { return nil }
+            octets.append(octet)
+            i += 2
+        }
+        return octets
     }
 }

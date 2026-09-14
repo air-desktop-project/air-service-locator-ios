@@ -276,6 +276,11 @@ private struct MachineVueMac: View {
                 Spacer()
                 Text(cle).font(.caption).foregroundStyle(.secondary)
             }
+            // L'utilitaire `asl` parle au nom de cette machine avec la même
+            // identité : on lui montre où elle est.
+            if estCeMac, let dossier = MachineDeCeMac.dossierPourAsl {
+                LigneCopiableMac(titre: "Pour l'utilitaire asl, dans un terminal", texte: "asl --etat \"\(dossier)\"")
+            }
             if !machine.capacitesTexte.isEmpty {
                 Text(machine.capacitesTexte).font(.caption).foregroundStyle(.secondary)
             }
