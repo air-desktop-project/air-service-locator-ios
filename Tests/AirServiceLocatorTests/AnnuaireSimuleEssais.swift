@@ -42,6 +42,30 @@ struct AnnuaireSimuleEssais {
         await #expect(throws: ErreurAnnuaire.interdit) { try await annuaire.revoquerAppareil(moi.id) }
     }
 
+    /// `PUT /v1/appareils/{a}/description` : pour soi seulement, le modèle
+    /// aux règles du nom de machine, et l'étiquette survit à la révocation.
+    @Test func unAppareilSeDecritEtLEtiquetteResteApresRevocation() async throws {
+        let sansCompte = AnnuaireSimule()
+        await #expect(throws: ErreurAnnuaire.introuvable) {
+            try await sansCompte.decrire(Appareil.Description(plateforme: .ios, modele: "iPhone18,1"))
+        }
+        let (annuaire, _) = try await annuaireAvecCompte()
+        await #expect(throws: ErreurAnnuaire.requeteInvalide("modele")) {
+            try await annuaire.decrire(Appareil.Description(plateforme: .ios, modele: ""))
+        }
+        await #expect(throws: ErreurAnnuaire.requeteInvalide("modele")) {
+            try await annuaire.decrire(Appareil.Description(plateforme: .ios, modele: String(repeating: "é", count: 33)))
+        }
+        try await annuaire.decrire(Appareil.Description(plateforme: .macos, modele: "MacBookPro16,1"))
+        let moi = try #require(try await annuaire.appareils().first { $0.estCeluiCi })
+        #expect(moi.description == Appareil.Description(plateforme: .macos, modele: "MacBookPro16,1"))
+        #expect(moi.titre == "MacBookPro16,1")
+        // Ce que cet appareil dit de lui-même n'est jamais le nom de
+        // l'utilisateur : la description de CET appareil vient du système.
+        let mienne = Appareil.Description.deCetAppareil()
+        #expect(!mienne.modele.isEmpty && mienne.modele.utf8.count <= Appareil.Description.modeleOctetsMax)
+    }
+
     @Test func unAppareilRevoqueResteMarque() async throws {
         let (annuaire, _) = try await annuaireAvecCompte()
         let autre = Appareil(id: Identifiant(genre: .appareil, octets: [UInt8](repeating: 7, count: 16)), nom: "autre",

@@ -554,7 +554,15 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { throw Self.refus(statut) }
         var appareils = liste.compactMap { objet -> Appareil? in
             guard let texte = objet["appareil"] as? String, let id = try? Identifiant.analyser(texte, genre: .appareil) else { return nil }
+            // Plate-forme et modèle viennent ensemble, ou pas du tout : absents
+            // tant que l'appareil ne les a pas posés (`protocole.md` §2.2).
+            var description: Appareil.Description?
+            if let plateforme = (objet["plateforme"] as? String).flatMap(Appareil.Plateforme.init(rawValue:)),
+               let modele = objet["modele"] as? String {
+                description = Appareil.Description(plateforme: plateforme, modele: modele)
+            }
             return Appareil(id: id, nom: "Autre appareil", attestation: (objet["attestation"] as? String).flatMap(Appareil.Attestation.init(rawValue:)),
+                            description: description,
                             enroleLe: Self.millis(objet["enrole_a"]), revoqueLe: Self.millis(objet["revoque_a"]),
                             estRevoque: objet["revoque"] as? Bool ?? (objet["revoque_a"] != nil))
         }
@@ -593,6 +601,20 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         let appareil = Appareil(id: id, nom: "Autre appareil", enroleLe: .now)
         Carnet.appareilsEnrolesDIci.append(Carnet.AppareilEnrole(id: id, le: .now, revoqueLe: nil))
         return appareil
+    }
+
+    /// Pour soi seulement : l'identifiant visé est celui du carnet, jamais un
+    /// autre. Ce qui a déjà été posé tel quel ne repart pas — l'annuaire le
+    /// range, et le reposer à chaque lancement serait du bruit ; ce qui change
+    /// (une mise à jour du système, un autre simulateur) repart.
+    func decrire(_ description: Appareil.Description) async throws {
+        guard let moi = Carnet.appareilEnrole else { throw ErreurAnnuaire.introuvable }
+        let empreinte = "\(description.plateforme.rawValue):\(description.modele)"
+        guard Carnet.descriptionPosee != empreinte else { return }
+        let corps = try Self.encoder(["plateforme": description.plateforme.rawValue, "modele": description.modele])
+        let (statut, _) = try await surLaFile { try self.requete("PUT", "/v1/appareils/\(moi.texte)/description", corps) }
+        guard statut == 204 else { throw Self.refus(statut) }
+        Carnet.descriptionPosee = empreinte
     }
 
     func revoquerAppareil(_ id: Identifiant) async throws {
@@ -733,6 +755,13 @@ enum Carnet {
 
     static var enroleLe: Date? { defauts.object(forKey: "enrole_le") as? Date }
 
+    /// La dernière description que cet appareil a posée, telle quelle, pour
+    /// ne pas la reposer à chaque lancement.
+    static var descriptionPosee: String? {
+        get { defauts.string(forKey: "description_posee") }
+        set { defauts.set(newValue, forKey: "description_posee") }
+    }
+
     /// Un appareil que CE téléphone a enrôlé, faute de `GET /v1/appareils`.
     struct AppareilEnrole: Codable {
         var texte: String
@@ -766,6 +795,6 @@ enum Carnet {
 
     /// Efface tout — ce qu'on fait quand on quitte un annuaire.
     static func vider() {
-        for cle in ["compte", "alias", "appareil", "enrole_le", "machines", "appareils"] { defauts.removeObject(forKey: cle) }
+        for cle in ["compte", "alias", "appareil", "enrole_le", "machines", "appareils", "description_posee"] { defauts.removeObject(forKey: cle) }
     }
 }

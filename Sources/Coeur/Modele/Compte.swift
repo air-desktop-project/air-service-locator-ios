@@ -22,12 +22,38 @@ struct Appareil: Identifiable, Hashable, Sendable {
     /// pas une absence — c'est ce qu'on regarde le jour où l'on resserre.
     enum Attestation: String, Sendable { case aucune, apple, google }
 
+    /// Ce que l'appareil fait tourner : une liste fermée, celle des
+    /// applications de ce produit (`docs/protocole.md` §2.2).
+    enum Plateforme: String, Sendable { case ios, android, macos }
+
+    /// Ce que l'appareil dit de lui-même (`docs/modele.md` §2.2) : sa
+    /// plate-forme et son **modèle** — « iPhone 17 », jamais « iPhone de
+    /// Thierry », qui porte un prénom (C13).
+    ///
+    /// **Une étiquette, pas une preuve.** L'annuaire ne vérifie rien de ce
+    /// qu'elle dit ; un appareil pirate peut se dire « iPhone 17 ». Ce qui
+    /// identifie un appareil est son `a-…`, affiché à côté. L'étiquette sert à
+    /// ce que l'écran Compte montre « MacBook Pro » plutôt que « Autre » — de
+    /// quoi reconnaître les siens, pas de quoi les prouver.
+    struct Description: Hashable, Sendable {
+        let plateforme: Plateforme
+        let modele: String
+
+        /// Le modèle, 1 à 64 octets : les règles du nom de machine. Un modèle
+        /// que le système rendrait trop long est coupé, pas refusé — c'est une
+        /// étiquette.
+        static let modeleOctetsMax = 64
+    }
+
     let id: Identifiant
-    /// Un nom d'affichage, tenu par l'appareil lui-même — l'annuaire ne le
-    /// connaît pas : il ne connaît qu'une clé publique.
+    /// Un nom d'affichage de repli, tenu par l'appareil lui-même — quand
+    /// l'annuaire n'a pas de ``description`` à rendre.
     var nom: String
     var biometrie: Biometrie?
     var attestation: Attestation?
+    /// Absente tant que l'appareil ne l'a pas posée ; reste sur un appareil
+    /// révoqué (« iPhone 17, révoqué » dit ce qu'on a retiré).
+    var description: Description?
     var enroleLe: Date?
     /// Un appareil révoqué reste dans la liste, marqué : l'écran qu'on regarde
     /// après avoir perdu un téléphone doit montrer ce qu'on a retiré.
@@ -39,12 +65,17 @@ struct Appareil: Identifiable, Hashable, Sendable {
     /// Celui qui affiche l'écran. Il ne peut pas se révoquer lui-même.
     var estCeluiCi: Bool
 
-    init(id: Identifiant, nom: String, biometrie: Biometrie? = nil, attestation: Attestation? = nil, enroleLe: Date? = nil,
-         revoqueLe: Date? = nil, estRevoque: Bool? = nil, estCeluiCi: Bool = false) {
+    /// Ce que l'écran affiche en titre : le modèle que l'annuaire rend, sinon
+    /// le nom de repli.
+    var titre: String { description?.modele ?? nom }
+
+    init(id: Identifiant, nom: String, biometrie: Biometrie? = nil, attestation: Attestation? = nil, description: Description? = nil,
+         enroleLe: Date? = nil, revoqueLe: Date? = nil, estRevoque: Bool? = nil, estCeluiCi: Bool = false) {
         self.id = id
         self.nom = nom
         self.biometrie = biometrie
         self.attestation = attestation
+        self.description = description
         self.enroleLe = enroleLe
         self.revoqueLe = revoqueLe
         self.estRevoque = estRevoque ?? (revoqueLe != nil)

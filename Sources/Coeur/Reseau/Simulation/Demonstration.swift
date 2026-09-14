@@ -94,8 +94,12 @@ extension AnnuaireSimule {
         )
         for machine in [cave, grenier, bureau, portable, nas] { poser(machine) }
 
-        poser(Appareil(id: id(.appareil, 60), nom: "Fairphone 5", biometrie: .empreinte, enroleLe: il(ya: 5 * 86_400), revoqueLe: nil, estCeluiCi: false))
-        poser(Appareil(id: id(.appareil, 61), nom: "iPad", biometrie: .empreinte, enroleLe: il(ya: 40 * 86_400), revoqueLe: il(ya: 3 * 86_400), estCeluiCi: false))
+        // L'un s'est décrit, l'autre non : la démonstration montre les deux
+        // formes de la liste — le modèle que l'annuaire rend, et le repli.
+        poser(Appareil(id: id(.appareil, 60), nom: "Autre appareil", biometrie: .empreinte,
+                       description: Appareil.Description(plateforme: .android, modele: "Fairphone FP5"),
+                       enroleLe: il(ya: 5 * 86_400), revoqueLe: nil, estCeluiCi: false))
+        poser(Appareil(id: id(.appareil, 61), nom: "Autre appareil", biometrie: .empreinte, enroleLe: il(ya: 40 * 86_400), revoqueLe: il(ya: 3 * 86_400), estCeluiCi: false))
 
         let moi = compte.identifiant
         recevoir(Autorisation(id: id(.autorisation, 70), accordeePar: moi, accordeeA: vero, portee: .tout, etiquette: "maison", accordeeLe: il(ya: 20 * 86_400), revoqueeLe: nil))
