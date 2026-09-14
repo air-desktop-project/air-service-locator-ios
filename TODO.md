@@ -1,38 +1,44 @@
 # TODO — ce que le serveur attend de l'app iOS
 
 Ce fichier dit **précisément** ce que la vérification côté serveur attend de
-toi, pour que tu puisses le produire sans aller-retour. Il y a deux livrables,
-dans cet ordre : faire compiler, puis rendre UNE capture App Attest réelle.
+toi, pour que tu puisses le produire sans aller-retour. Il y avait deux
+livrables ; le premier est rendu, le second attend un iPhone.
 
-Tout le reste de l'app (écrans, modèle) n'est PAS demandé ici — n'y touche pas.
+Tout le reste de l'app (écrans, modèle, transport) est décrit dans `CLAUDE.md`,
+« L'état réel, sans fard » — ce fichier ne parle que de l'attestation.
 
-## Livrable 1 — l'app compile et tourne sur un appareil
+## Livrable 1 — l'app compile et tourne — FAIT
 
-1. Générer le projet (`xcodegen`, ou le script du dépôt) et l'ouvrir dans Xcode.
-2. Le faire **compiler** sur un simulateur. La CI échoue actuellement sur
-   « Unable to find a device matching the provided destination specifier » : la
-   destination de simulateur codée dans `.github/workflows` ne correspond plus à
-   l'image du runner. **Corrige-la** (une destination générique comme
-   `generic/platform=iOS Simulator` évite de dépendre d'un modèle précis), et
-   vérifie que la CI repasse au vert.
-3. Le faire **compiler et se lancer sur un appareil réel** (App Attest est inerte
-   au simulateur).
+- La CI compile sur une destination de simulateur générique et lance les
+  essais (`14b603c`) : verte.
+- Construite et lancée sur oxygen : simulateur iPhone 17, et la cible macOS
+  signée sur le Mac lui-même (`322922e`). Vérifiée de bout en bout contre
+  `asl-server`, puis contre `nitrogen`.
+- Ce qui n'a PAS été fait : la lancer sur un **iPhone réel**. Il n'y en a pas
+  sous la main — seulement un iPad en iOS 12, trop vieux pour la cible (iOS
+  17+) et sans App Attest.
 
-Commite chaque correctif (français, signé GPG, `Signed-off-by`, aucune mention
-d'outil) et lis la CI après push.
-
-## Livrable 2 — une capture App Attest réelle
+## Livrable 2 — une capture App Attest réelle — BLOQUÉ (pas d'iPhone)
 
 Le but : `asl-apple`, côté serveur, est écrit d'après la documentation d'Apple
 et n'a JAMAIS vu de vraie attestation. Cette capture confirme (ou corrige) nos
 constantes. Le mode d'emploi détaillé est dans le dépôt serveur,
 `docs/attestation/capture-reelle.md`.
 
-1. Intégrer `outils-capture/CaptureAppAttest.swift`, appeler
-   `capturerUneAttestation()` une fois (bouton, ou `applicationDidBecomeActive`).
+Ce qui bloque est matériel : **App Attest est inerte au simulateur et n'existe
+pas sur macOS**. L'app macOS d'enrôlement a validé la chaîne clé-d'appareil
+P-256 (Secure Enclave + Touch ID) sur du vrai matériel Apple, en attestation
+« aucune » — elle valide `asl-cle` et l'enrôlement, pas `asl-apple`.
+
+Le jour où un iPhone (iOS 17+) est là :
+
+1. Intégrer `outils-capture/CaptureAppAttest.swift` (il n'est pas encore dans
+   la cible — rien ne l'appelle), appeler `capturerUneAttestation()` une fois
+   (bouton, ou `applicationDidBecomeActive`).
 2. Lancer **sur l'appareil**, lire la console Xcode, récupérer le bloc imprimé.
 3. **Compléter l'`APP_ID`** avec le Team ID à 10 caractères (Xcode ne le donne
-   pas à l'exécution : il est dans *Signing & Capabilities*).
+   pas à l'exécution : il est dans *Signing & Capabilities*, ou dans
+   `project.yml`).
 
 ### Ce que tu me rends, EXACTEMENT
 
@@ -64,3 +70,8 @@ la clé, ou la forme de l'extension —, et je te le répercuterai.
   habituelle : une attestation de **développement** (lancée depuis Xcode) suffit
   pour la première capture.
 - Pas d'entitlement spécial pour une capture de développement.
+
+## Les règles
+
+Commite chaque correctif (français, signé GPG, `Signed-off-by`, aucune mention
+d'outil) et lis la CI après push. Le détail est dans `CLAUDE.md`.
