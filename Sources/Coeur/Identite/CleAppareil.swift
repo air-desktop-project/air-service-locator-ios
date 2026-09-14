@@ -131,10 +131,18 @@ struct CleAppareil: Signataire {
 
     // MARK: - Le fichier, pour la représentation opaque
 
+    /// **Sous un hôte de test, un AUTRE fichier.** L'hôte des essais est
+    /// l'application elle-même — même paquet, même conteneur — et un essai
+    /// qui crée puis efface une clé effacerait celle du compte réel du
+    /// simulateur de développement : l'annuaire refuserait alors la clé
+    /// neuve, et l'app se désenrôlerait toute seule. C'est arrivé. Le
+    /// lanceur d'essais se signale par `XCTestConfigurationFilePath` ; sous
+    /// lui, la clé vit à côté, et l'essai ne touche jamais la vraie.
     private static var chemin: URL {
         get throws {
             let dossier = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            return dossier.appendingPathComponent("cle-appareil.p256", isDirectory: false)
+            let sousEssai = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            return dossier.appendingPathComponent(sousEssai ? "cle-appareil-essais.p256" : "cle-appareil.p256", isDirectory: false)
         }
     }
 
