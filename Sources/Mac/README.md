@@ -12,6 +12,18 @@ Tout le cœur est celui de l'application iOS, compilé tel quel pour macOS :
 `Sources/Coeur/` (modèle, `Annuaire`, clé dans la Secure Enclave, transport
 QUIC) et `Session`. Seuls ce dossier et `Couleurs.swift` s'y ajoutent.
 
+## Ce Mac est aussi une machine — si on le lui demande
+
+Un Mac est un **appareil** (il administre le compte, sous Touch ID) et peut
+être une **machine** (il héberge des daemons, avec une clé qui signe sans
+personne). Deux rôles, deux clés, deux identifiants — `modele.md` §2.2 et
+§2.3, et `MachineDeCeMac.swift` pour la raison. Le panneau propose « Faire de
+ce Mac une machine » : Touch ID la déclare, et le code d'enrôlement est
+consommé sur place par la voie des daemons d'`asl-client` — le même chemin
+qu'`asl enrole` sur un Linux, sans terminal. Le **lien** entre les deux
+identités (« la machine *bureau* est ce Mac ») vit dans le conteneur de
+l'application et n'en sort pas : c'est ce Mac qui le sait, pas l'annuaire.
+
 ## Ce qui est propre au Mac
 
 - **La Secure Enclave du T2 ou de la puce Apple**, et Touch ID à chaque

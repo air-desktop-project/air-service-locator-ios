@@ -22,7 +22,7 @@ import SwiftUI
 final class GestesDuPanneau {
     /// Le geste déplié, s'il y en a un : un seul à la fois.
     enum Geste: Hashable {
-        case rejoindre, declarer, enrolerAppareil
+        case rejoindre, declarer, enrolerAppareil, ceMac
     }
 
     var enCours: Geste?
@@ -33,6 +33,10 @@ final class GestesDuPanneau {
     /// Ce que l'annuaire a rendu, à donner au nouvel appareil — gardé jusqu'à
     /// « Terminé », quel que soit le nombre de fois où le panneau se ferme.
     var reponseRendue: Invitation?
+
+    // Faire de ce Mac une machine.
+    /// Le nom sous lequel ce Mac sera déclaré, tant qu'il ne l'est pas.
+    var nomDeCeMac = "Mac"
 
     // Rejoindre un compte, depuis ce Mac.
     /// La réponse collée, `asl:appareil:…`, tant qu'elle n'est pas prouvée.
