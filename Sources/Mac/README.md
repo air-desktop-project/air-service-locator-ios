@@ -1,16 +1,33 @@
 # L'application macOS
 
-Une icône dans la barre de menus, un panneau dessous : le compte, les
-machines et leurs services, les appareils — et trois gestes : ouvrir un
-compte avec ce Mac (Touch ID), déclarer une machine (et lire son code
-d'enrôlement), enrôler un autre appareil ou rejoindre un compte. Ce que le
-Mac MONTRE (sa clé, la réponse) s'affiche en QR code, que le téléphone lit à
-sa caméra, et en texte ; ce que le Mac REÇOIT se colle — il n'a pas de caméra
-qui lise un code.
+Deux surfaces, deux rôles.
+
+**Le widget** sous l'icône de la barre de menus ne fait que *dire*, d'un coup
+d'œil : le compte (l'identifiant en entier, à copier), les machines avec leur
+puce d'état, leur nom, leur identifiant abrégé et leur état, la version de
+l'annuaire et celle de l'application. Un seul bouton, « Ouvrir Service
+Locator » ; un clic sur une machine ouvre la fenêtre dessus. Aucun geste n'y
+vit : un popover se ferme dès qu'il perd le focus, et Touch ID le lui fait
+perdre.
+
+**La fenêtre** est une vraie fenêtre d'application (`FenetreVue`) : une barre
+latérale — Compte, Machines (chacune sous son nom, avec sa puce), Appareils,
+Accès, les versions en pied — et des pages où rien n'est tronqué :
+identifiants complets, dates, verdicts de sonde, commande `asl` entière, et
+tous les gestes (déclarer, enrôler, révoquer, émettre un code, renommer,
+accorder un accès, alias). La barre d'outils porte « Ajouter une machine »,
+« Faire de ce Mac une machine » et « Relire l'annuaire » ; le menu
+« Machines » les reprend avec leurs raccourcis (⌘N, ⇧⌘M, ⌘R) ; Préférences
+(⌘,) dit l'annuaire et les identités de ce Mac. Tant que la fenêtre est
+ouverte, l'application est dans le Dock et ⌘-Tab ; fermée, elle se retire
+dans la barre de menus (`LSUIElement`, et le va-et-vient de politique
+d'activation dans `FenetreVue`).
 
 Tout le cœur est celui de l'application iOS, compilé tel quel pour macOS :
 `Sources/Coeur/` (modèle, `Annuaire`, clé dans la Secure Enclave, transport
-QUIC) et `Session`. Seuls ce dossier et `Couleurs.swift` s'y ajoutent.
+QUIC) et `Session`. Ce dossier ajoute le widget, la fenêtre, ses pages, et
+`Donnees` — ce que l'annuaire a rendu, tenu une fois pour les deux surfaces.
+Les maquettes validées sont dans `../maquettes/macos/` (hors dépôt).
 
 ## Ce Mac est aussi une machine — si on le lui demande
 

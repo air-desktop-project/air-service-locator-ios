@@ -58,10 +58,15 @@ Ce qui manque, dans l'ordre où ça se fera :
    par l'annuaire le retire (et libère le handle natif, qui portait cette
    identité).
 6. ~~L'application macOS~~ — **faite** (`Sources/Mac/`, cible
-   `ServiceLocatorMac`) : une icône dans la barre de menus, le même `Coeur`,
-   Touch ID par la Secure Enclave, le bac à sable avec `network.server` (le
-   `bind` UDP de QUIC l'exige — vérifié). Compte créé sur `nitrogen` depuis ce
-   Mac, en attestation « aucune » (App Attest n'existe pas sur macOS).
+   `ServiceLocatorMac`) : un widget dans la barre de menus qui ne fait que
+   dire (compte, machines avec leur puce, versions), et une vraie fenêtre
+   (`FenetreVue` : barre latérale, pages où rien n'est tronqué, barre
+   d'outils, menu « Machines », Préférences). Le même `Coeur`, Touch ID par
+   la Secure Enclave, le bac à sable avec `network.server` (le `bind` UDP de
+   QUIC l'exige — vérifié). Ce Mac peut aussi être une machine
+   (`MachineDeCeMac`, l'identité au format d'`asl`). Les maquettes validées
+   sont dans `../maquettes/macos/`. Compte créé sur `nitrogen` depuis ce Mac,
+   en attestation « aucune » (App Attest n'existe pas sur macOS).
 7. ~~L'icône~~ — **faite** (`Outils/Icone/generer.py`) : un dessin, trois
    plates-formes (iOS, macOS, Android — le dépôt Android copie les
    VectorDrawable produits ici).

@@ -232,6 +232,7 @@ actor AnnuaireSimule: Annuaire {
 
     /// Le banc dit ce qu'il est, pour que l'écran ne confonde jamais une
     /// démonstration avec un annuaire.
+    nonisolated var nom: String { "banc en mémoire" }
     func version() async throws -> String? { "banc en mémoire" }
 
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
