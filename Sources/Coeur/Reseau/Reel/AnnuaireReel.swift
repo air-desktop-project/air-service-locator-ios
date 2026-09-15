@@ -630,6 +630,16 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
 
     // MARK: - Autorisations
 
+    func machines(de utilisateur: Identifiant) async throws -> [MachineVisible] {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/utilisateurs/\(utilisateur.texte)/machines") }
+        guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { throw Self.refus(statut) }
+        return liste.compactMap { objet in
+            guard let texte = objet["machine"] as? String, let id = try? Identifiant.analyser(texte, genre: .machine),
+                  let nom = objet["nom"] as? String else { return nil }
+            return MachineVisible(id: id, nom: nom)
+        }
+    }
+
     func autorisations() async throws -> [Autorisation] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/autorisations") }
         guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { throw Self.refus(statut) }

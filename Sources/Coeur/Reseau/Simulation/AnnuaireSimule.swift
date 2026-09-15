@@ -239,6 +239,19 @@ actor AnnuaireSimule: Annuaire {
         id == compteLocal?.identifiant || autresComptes[id] != nil
     }
 
+    /// Le banc tient la même règle que le serveur : mes machines si c'est
+    /// moi ; sinon ce que les arêtes vivantes de `u` vers moi nomment —
+    /// « tout » ouvre chacune, une machine elle-même, un service celle qui
+    /// le porte ; et rien, vide, sans arête. Le banc n'a de machines que
+    /// pour le compte local : les autres comptes rendent vide.
+    func machines(de utilisateur: Identifiant) async throws -> [MachineVisible] {
+        guard let compteLocal else { throw ErreurAnnuaire.introuvable }
+        if utilisateur == compteLocal.identifiant {
+            return parcMachines.map { MachineVisible(id: $0.id, nom: $0.nom) }
+        }
+        return []
+    }
+
     func identifiant(pourAlias alias: String) async throws -> Identifiant? {
         if let compteLocal, compteLocal.alias?.lowercased() == alias.lowercased() { return compteLocal.identifiant }
         return autresComptes.first { $0.value?.lowercased() == alias.lowercased() }?.key

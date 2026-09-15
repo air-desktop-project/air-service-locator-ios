@@ -40,12 +40,16 @@ struct AccesVue: View {
                     Text("Personne ne vous a encore accordé d'accès.").foregroundStyle(.secondary)
                 }
                 ForEach(recues) { autorisation in
-                    LigneAutorisation(autorisation: autorisation, machines: machines, sens: .recue)
+                    NavigationLink {
+                        MachinesVisiblesVue(de: autorisation.accordeePar, autorisation: autorisation)
+                    } label: {
+                        LigneAutorisation(autorisation: autorisation, machines: machines, sens: .recue)
+                    }
                 }
             } header: {
                 Text("Accordés à moi")
             } footer: {
-                Text("Vos machines portant la capacité « lecture » peuvent résoudre ces services.")
+                Text("Vos machines portant la capacité « lecture » peuvent résoudre ces services. Touchez un accès pour voir les machines qu'il vous donne à voir.")
             }
         }
         .navigationTitle("Accès")

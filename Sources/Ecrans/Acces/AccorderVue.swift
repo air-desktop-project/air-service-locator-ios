@@ -81,9 +81,14 @@ struct AccorderVue: View {
                     Text("Pour savoir ce que vous révoquez dans six mois.")
                 }
 
+                // Ce que la spécification impose de dire au moment d'accorder,
+                // et non dans une page d'aide (`modele.md` §2.5) — « tout le
+                // compte » livre aussi la liste des machines.
                 Section {
                     Label {
-                        Text("Ce compte verra les **noms** de vos machines et services concernés, leurs **adresses IP réelles** et ports, et leur état de joignabilité.")
+                        Text(portee == .tout
+                             ? "Ce compte verra **la liste de toutes vos machines** — leurs identifiants et leurs noms —, les **noms** de vos services, leurs **adresses IP réelles** et ports, et leur état de joignabilité."
+                             : "Ce compte verra les **noms** de vos machines et services concernés, leurs **adresses IP réelles** et ports, et leur état de joignabilité.")
                             .font(.footnote)
                     } icon: {
                         Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.attention)
