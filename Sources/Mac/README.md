@@ -37,7 +37,7 @@ personne). Deux rôles, deux clés, deux identifiants — `modele.md` §2.2 et
 §2.3, et `MachineDeCeMac.swift` pour la raison. Le panneau propose « Faire de
 ce Mac une machine » : Touch ID la déclare, et le code d'enrôlement est
 consommé sur place par la voie des daemons d'`asl-client` — le même chemin
-qu'`asl enrole` sur un Linux, sans terminal. Le **lien** entre les deux
+qu'`asl enroll` sur un Linux, sans terminal. Le **lien** entre les deux
 identités (« la machine *bureau* est ce Mac ») vit dans le conteneur de
 l'application et n'en sort pas : c'est ce Mac qui le sait, pas l'annuaire.
 
@@ -46,7 +46,7 @@ lignes, mode 0600) dans `Application Support/asl/` du conteneur, et
 l'utilitaire la lit tel quel — le panneau montre la commande à copier :
 
 ```sh
-asl --etat "~/Library/Containers/org.airdesktop.servicelocator.mac/Data/Library/Application Support/asl" annonce depot tcp:8080
+asl --state "~/Library/Containers/org.airdesktop.servicelocator.mac/Data/Library/Application Support/asl" announce depot tcp:8080
 ```
 
 Une seule clé de machine sur ce Mac, donc : celle que l'app a enrôlée.

@@ -30,7 +30,7 @@ l'application macOS**, dans la barre de menus, qui partage tout son cœur
 > le défi de l'annuaire et la liaison du canal TLS — que le serveur vérifie.
 > Face ID est demandé au moment de signer, par l'enclave, quand le transport
 > le rappelle. Vérifié de bout en bout contre un serveur `asl-server` :
-> compte, machine, enrôlement par `asl enrole`, annonce, service joignable.
+> compte, machine, enrôlement par `asl enroll`, annonce, service joignable.
 >
 > Le simulateur émule une enclave mais refuse d'y lier une clé à la
 > biométrie : sur simulateur seulement, un `LAContext` fait le geste avant de

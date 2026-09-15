@@ -52,7 +52,7 @@ struct CodeEnrolementEssais {
         let code = CodeEnrolement(entropie: [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], emisLe: .distantPast)
         #expect(code.symboles == "ZZZZZZZZZZ")
         #expect(code.texteGroupe == "ZZZZZ-ZZZZZ")
-        #expect(code.commande == "asl enrole ZZZZZ-ZZZZZ")
+        #expect(code.commande == "asl enroll ZZZZZ-ZZZZZ")
     }
 
     @Test func laMemeEntropieQueLeServeur() {

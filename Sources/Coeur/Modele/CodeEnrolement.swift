@@ -1,7 +1,7 @@
 import Foundation
 
 /// Le code qu'un administrateur recopie du téléphone vers un terminal :
-/// `asl enrole 4K9M2-P7R1T`.
+/// `asl enroll 4K9M2-P7R1T`.
 ///
 /// Dix symboles de Crockford — cinquante bits — à usage unique, valables dix
 /// minutes (`docs/modele.md` §2.3). Il est groupé pour l'œil, cinq par cinq :
@@ -25,7 +25,7 @@ struct CodeEnrolement: Hashable, Sendable {
     }
 
     /// La commande à taper sur la machine.
-    var commande: String { "asl enrole \(texteGroupe)" }
+    var commande: String { "asl enroll \(texteGroupe)" }
 
     func estValide(a instant: Date) -> Bool { instant < expireLe }
 

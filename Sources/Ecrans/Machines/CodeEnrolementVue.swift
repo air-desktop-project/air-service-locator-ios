@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Le code à taper sur la machine : `asl enrole 4K9M2-P7R1T`.
+/// Le code à taper sur la machine : `asl enroll 4K9M2-P7R1T`.
 struct CodeEnrolementVue: View {
     @Environment(Session.self) private var session
     let machine: Machine
