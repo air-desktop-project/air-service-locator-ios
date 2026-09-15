@@ -96,6 +96,10 @@ protocol Annuaire: Sendable {
     /// `DELETE /v1/autorisations/{g}` — effet immédiat.
     func revoquerAutorisation(_ id: Identifiant) async throws
 
+    /// `GET /v1/utilisateurs/{u}/machines` — les machines de `u` que ses
+    /// autorisations envers moi donnent à voir ; les miennes si `u` est moi ;
+    /// vide sans aucune arête — vide, pas une erreur.
+    func machines(de utilisateur: Identifiant) async throws -> [MachineVisible]
     /// `PUT /v1/alias`, `DELETE /v1/alias` avec `nil`.
     func definirAlias(_ alias: String?) async throws
 

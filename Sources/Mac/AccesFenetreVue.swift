@@ -73,6 +73,16 @@ struct AccesFenetreVue: View {
                 TextField("Étiquette, pour vous — « Marie », « le NAS du bureau »", text: $etiquette).textFieldStyle(.roundedBorder)
                 Text("L'étiquette est la seule chose qui vous dira, plus tard, à qui vous avez donné : l'annuaire ne connaît de l'autre que son identifiant.")
                     .font(.caption).foregroundStyle(.secondary)
+                // Ce que la spécification impose de dire au moment d'accorder
+                // (`modele.md` §2.5) — « tout le compte » livre aussi les machines.
+                Label {
+                    Text(portee == .tout
+                         ? "Ce compte verra la liste de toutes vos machines — leurs identifiants et leurs noms —, les noms de vos services, leurs adresses IP réelles et ports, et leur état de joignabilité."
+                         : "Ce compte verra le nom de cette machine et de ses services, leurs adresses IP réelles et ports, et leur état de joignabilité.")
+                        .font(.caption)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.attention)
+                }
                 HStack {
                     Button("Accorder") { Task { await accorder() } }
                         .buttonStyle(.borderedProminent)
@@ -92,11 +102,16 @@ struct AccesFenetreVue: View {
             }
             ForEach(Array(autorisations.enumerated()), id: \.element.id) { indice, autorisation in
                 if indice > 0 { Divider() }
-                HStack(alignment: .top) {
-                    LigneAcces(autorisation: autorisation, machines: donnees.machines, sens: sens)
-                    Spacer()
-                    if sens == .accordee, !autorisation.estRevoquee {
-                        Button("Révoquer", role: .destructive) { aRevoquer = autorisation }.controlSize(.small)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top) {
+                        LigneAcces(autorisation: autorisation, machines: donnees.machines, sens: sens)
+                        Spacer()
+                        if sens == .accordee, !autorisation.estRevoquee {
+                            Button("Révoquer", role: .destructive) { aRevoquer = autorisation }.controlSize(.small)
+                        }
+                    }
+                    if sens == .recue, !autorisation.estRevoquee {
+                        MachinesVisiblesMac(de: autorisation.accordeePar)
                     }
                 }
                 .padding(12)
@@ -189,6 +204,44 @@ struct LigneAcces: View {
         case .tout: sens == .accordee ? "tout mon compte" : "tout son compte"
         case let .machine(id): "la machine « \(machines.first { $0.id == id }?.nom ?? id.abrege) »"
         case let .service(id): "le service « \(machines.flatMap(\.services).first { $0.id == id }?.nom ?? id.abrege) »"
+        }
+    }
+}
+
+/// Ce qu'un accès reçu me donne à voir : les machines de l'autre compte,
+/// dans la portée accordée — identifiant et nom, rien d'autre. Vide n'est
+/// pas une erreur : l'annuaire ne dit pas si c'est faute d'accord ou faute
+/// de machine.
+struct MachinesVisiblesMac: View {
+    @Environment(Session.self) private var session
+    let de: Identifiant
+    @State private var machines: [MachineVisible]?
+    @State private var erreur: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Ce que je vois de lui").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let erreur {
+                Text(erreur).font(.caption).foregroundStyle(.red)
+            } else if let machines {
+                if machines.isEmpty {
+                    Text("aucune machine visible — cet accès n'en nomme aucune, ou ce compte n'en a aucune ; l'annuaire ne dit pas lequel")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(machines) { machine in
+                    HStack(spacing: 8) {
+                        Image(systemName: "desktopcomputer").font(.caption).foregroundStyle(.secondary)
+                        Text(machine.nom).font(.callout)
+                        Copiable(machine.id.texte)
+                    }
+                }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .padding(.leading, 2)
+        .task(id: de) {
+            do { machines = try await session.annuaire.machines(de: de) } catch { erreur = error.messageAnnuaire }
         }
     }
 }

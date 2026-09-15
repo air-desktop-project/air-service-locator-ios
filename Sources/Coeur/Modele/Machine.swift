@@ -73,3 +73,12 @@ struct Machine: Identifiable, Hashable, Sendable {
     /// oscille, et l'application le signale.
     var unServiceOscille: Bool { services.contains(where: \.oscille) }
 }
+
+/// Une machine d'un AUTRE compte, telle qu'une autorisation la donne à voir
+/// (`docs/protocole.md` §2.2, `GET /v1/utilisateurs/{u}/machines`) : son
+/// identifiant et son nom — rien d'autre, ni capacités, ni clé, ni code, qui
+/// n'appartiennent qu'au propriétaire.
+struct MachineVisible: Identifiable, Hashable, Sendable {
+    let id: Identifiant
+    let nom: String
+}
