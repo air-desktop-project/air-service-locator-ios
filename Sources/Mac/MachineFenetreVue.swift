@@ -94,7 +94,7 @@ struct MachineFenetreVue: View {
                         Carte(fond: Color(nsColor: .controlBackgroundColor)) {
                             HStack(spacing: 10) {
                                 Image(systemName: "terminal").foregroundStyle(.secondary)
-                                Copiable("asl --etat \"\(dossier)\" annonce <service> tcp:<port>")
+                                Copiable("asl --state \"\(dossier)\" announce <service> tcp:<port>")
                             }
                             .padding(4)
                         }
@@ -138,7 +138,7 @@ struct MachineFenetreVue: View {
             }
             Carte(marges: 0) {
                 if machine.services.isEmpty {
-                    Text("Aucun service annoncé. Sur la machine : asl annonce <service> tcp:<port>")
+                    Text("Aucun service annoncé. Sur la machine : asl announce <service> tcp:<port>")
                         .font(.callout).foregroundStyle(.secondary).padding(12)
                 } else {
                     Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 0) {

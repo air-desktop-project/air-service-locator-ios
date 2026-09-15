@@ -23,7 +23,7 @@ import OSLog
 /// n'en sort pas — un autre appareil du compte n'a pas à savoir que la machine
 /// « bureau » est aussi ton Mac.
 ///
-/// # Le même chemin qu'`asl enrole`, sans terminal — et le même fichier
+/// # Le même chemin qu'`asl enroll`, sans terminal — et le même fichier
 ///
 /// L'application embarque `asl-client`, qui porte les deux voies : celle des
 /// téléphones (`asl_appareil_*`) et celle des daemons (`asl_client_*`). Cette
@@ -33,7 +33,7 @@ import OSLog
 /// est rangée **dans le format d'`asl`**, un fichier `identite` à deux lignes
 /// (`machine = m-…`, `graine = <hexa>`), en mode 0600, dans un dossier `asl/`
 /// du conteneur. Ainsi ce Mac n'a QU'UNE identité de machine, et l'utilitaire
-/// la lit tel quel : `asl --etat <ce dossier> annonce …`. C'est le seul
+/// la lit tel quel : `asl --state <ce dossier> announce …`. C'est le seul
 /// justificatif durable de cette machine.
 @MainActor
 @Observable
@@ -98,7 +98,7 @@ final class MachineDeCeMac {
         identifiant = nil
     }
 
-    /// Le dossier que l'utilitaire `asl` prend en `--etat` pour parler au nom
+    /// Le dossier que l'utilitaire `asl` prend en `--state` pour parler au nom
     /// de cette machine — à montrer, pour qu'on le copie.
     static var dossierPourAsl: String? { (try? dossier)?.path }
 
@@ -131,7 +131,7 @@ final class MachineDeCeMac {
 
     /// `Application Support/asl/` dans le conteneur du bac à sable — le
     /// pendant de `~/.config/asl` sur un Linux, et ce qu'on donne à
-    /// `asl --etat`. La graine est la clé : ce dossier ne se partage pas, ne
+    /// `asl --state`. La graine est la clé : ce dossier ne se partage pas, ne
     /// se sauvegarde pas.
     private static var dossier: URL {
         get throws {

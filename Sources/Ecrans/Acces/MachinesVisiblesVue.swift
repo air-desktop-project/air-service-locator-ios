@@ -42,7 +42,7 @@ struct MachinesVisiblesVue: View {
             } header: {
                 Text("Ses machines, dans la portée accordée")
             } footer: {
-                Text("Identifiant et nom : ce qu'il faut pour demander où joindre un service (asl ou <machine> <service>). Le reste n'appartient qu'à lui.")
+                Text("Identifiant et nom : ce qu'il faut pour demander où joindre un service (asl where <machine> <service>). Le reste n'appartient qu'à lui.")
             }
         }
         .navigationTitle("Ce que je vois de lui")
