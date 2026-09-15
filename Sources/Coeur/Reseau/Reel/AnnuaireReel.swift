@@ -97,6 +97,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     private static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "annuaire")
     private let file = DispatchQueue(label: "org.airdesktop.servicelocator.annuaire", qos: .userInitiated)
     private let reglages: Reglages
+    var nom: String { reglages.nom }
     private let signataire: @Sendable () throws -> any Signataire
     private var handle: OpaquePointer?
     private var cleCourante: (any Signataire)?

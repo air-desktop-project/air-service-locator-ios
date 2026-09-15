@@ -38,6 +38,10 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
 /// une condition d'usage de cette clé, appliquée par le matériel. Ce n'est pas
 /// un paramètre : c'est ce qui se passe quand une méthode d'ici est appelée.
 protocol Annuaire: Sendable {
+    /// Le nom sous lequel cet annuaire répond — celui qu'on exige de son
+    /// certificat —, pour que l'écran dise à qui il parle sans le deviner.
+    var nom: String { get }
+
     /// `POST /v1/comptes` — crée le compte et enrôle cet appareil.
     ///
     /// **C'est l'annuaire qui conduit** : il tire le défi, connaît la liaison

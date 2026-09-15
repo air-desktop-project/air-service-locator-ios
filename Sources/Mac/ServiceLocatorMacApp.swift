@@ -1,14 +1,23 @@
+import AppKit
 import SwiftUI
 
-/// L'application macOS : une icône dans la barre de menus, et rien d'autre.
+/// L'application macOS : une icône dans la barre de menus, ET une fenêtre.
 ///
-/// # Pourquoi la barre de menus
+/// # Deux surfaces, deux rôles
 ///
-/// Sur un Mac, cette application n'a pas d'écran à occuper : elle dit où en
-/// sont les machines, et sert à enrôler — ce Mac, ou un téléphone de plus.
-/// C'est une information qu'on regarde d'un coup d'œil, et un geste qu'on
-/// fait rarement. Un panneau sous une icône, c'est sa juste place ;
-/// `LSUIElement` la tient hors du Dock.
+/// Le **widget** sous l'icône ne fait que DIRE, d'un coup d'œil : le compte,
+/// les machines avec leur puce d'état, la version. C'est ce qu'on regarde
+/// vingt fois par jour, et il n'a pas de place pour un geste.
+///
+/// La **fenêtre** est une vraie fenêtre d'application : tout ce que l'écran
+/// iPhone sait faire, avec la place d'un Mac — les identifiants en entier,
+/// les dates, les verdicts de sonde, la commande `asl` complète, et tous les
+/// gestes (déclarer, enrôler, révoquer, émettre un code). Elle s'ouvre depuis
+/// le widget, ou sur une machine du widget.
+///
+/// `LSUIElement` tient l'application hors du Dock tant que la fenêtre est
+/// fermée ; ouverte, l'application redevient ordinaire (Dock, menu, ⌘-Tab),
+/// et se retire quand la fenêtre se ferme — `FenetreVue` fait ce va-et-vient.
 ///
 /// # Ce qu'elle réemploie, et ce qu'elle apporte
 ///
@@ -31,6 +40,10 @@ struct ServiceLocatorMacApp: App {
     /// Ce Mac en tant que machine — seulement contre un vrai annuaire : le
     /// banc ne sait pas enrôler une machine.
     @State private var machineDeCeMac: MachineDeCeMac?
+    /// Ce que l'annuaire a rendu, partagé par le widget et la fenêtre.
+    @State private var donnees = Donnees()
+    /// La page ouverte dans la fenêtre — le widget peut la choisir.
+    @State private var etatFenetre = EtatFenetre()
 
     init() {
         if let reglages = Self.reglagesDeLAnnuaire() {
@@ -59,13 +72,56 @@ struct ServiceLocatorMacApp: App {
 
     var body: some Scene {
         MenuBarExtra("Service Locator", image: "BarreDeMenus") {
-            PanneauVue()
+            WidgetVue()
                 .environment(session)
-                .environment(gestes)
+                .environment(donnees)
+                .environment(etatFenetre)
                 .environment(machineDeCeMac)
                 .tint(Couleurs.accent)
                 .frame(width: 380)
         }
         .menuBarExtraStyle(.window)
+
+        Window("Service Locator", id: FenetreVue.identifiant) {
+            FenetreVue()
+                .environment(session)
+                .environment(donnees)
+                .environment(etatFenetre)
+                .environment(gestes)
+                .environment(machineDeCeMac)
+                .tint(Couleurs.accent)
+        }
+        .defaultSize(width: 1100, height: 720)
+        .windowResizability(.contentMinSize)
+        // Le menu de l'application porte les mêmes gestes que la barre
+        // d'outils, avec leurs raccourcis : c'est ce qu'un utilisateur de Mac
+        // cherche en premier, et ce que la barre d'outils masquée lui laisse.
+        .commands {
+            CommandMenu("Machines") {
+                Button("Ajouter une machine…") { ouvrir(.declarerMachine) }
+                    .keyboardShortcut("n", modifiers: .command)
+                Button("Faire de ce Mac une machine…") { ouvrir(.ceMacMachine) }
+                    .keyboardShortcut("m", modifiers: [.command, .shift])
+                Divider()
+                Button("Relire l'annuaire") { Task { await donnees.recharger(session) } }
+                    .keyboardShortcut("r", modifiers: .command)
+            }
+        }
+
+        Settings {
+            PreferencesVue()
+                .environment(session)
+                .environment(donnees)
+                .environment(machineDeCeMac)
+        }
+    }
+
+    @Environment(\.openWindow) private var ouvrirFenetre
+
+    /// Un geste du menu ouvre la fenêtre s'il le faut, puis la feuille.
+    private func ouvrir(_ feuille: EtatFenetre.Feuille) {
+        ouvrirFenetre(id: FenetreVue.identifiant)
+        NSApp.activate(ignoringOtherApps: true)
+        etatFenetre.feuille = feuille
     }
 }
