@@ -51,6 +51,10 @@ final class Donnees {
     }
 
     func machine(_ id: Identifiant) -> Machine? { machines.first { $0.id == id } }
+
+    /// Les appareils qui tiennent le compte — les révoqués restent dans
+    /// l'annuaire, marqués, mais ne comptent pas.
+    var appareilsVivants: [Appareil] { appareils.filter { !$0.estRevoque } }
 }
 
 /// Où la fenêtre en est : la page ouverte. Portée par l'application, pour
