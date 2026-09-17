@@ -75,7 +75,7 @@ struct WidgetVue: View {
                 .buttonStyle(.borderless)
                 .help("Copier l'identifiant")
             }
-            Text("alias public : \(compte.alias ?? "aucun") · \(donnees.appareils.count) appareil\(donnees.appareils.count > 1 ? "s" : "")")
+            Text("alias public : \(compte.alias ?? "aucun") · \(donnees.appareilsVivants.count) appareil\(donnees.appareilsVivants.count > 1 ? "s" : "")")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 14)

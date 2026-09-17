@@ -97,12 +97,29 @@ struct AppareilsSection: View {
     @Environment(MachineDeCeMac.self) private var machineDeCeMac: MachineDeCeMac?
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
+    /// Les révoqués ne s'affichent pas par défaut : ils restent dans
+    /// l'annuaire, marqués, mais une liste qui les mêle aux vivants dit mal
+    /// combien d'appareils tiennent le compte. Le réglage est retenu.
+    @AppStorage("appareils.revoques.visibles") private var revoquesVisibles = false
+
+    /// Ce qu'on montre : tous, ou les vivants seulement.
+    private var appareilsMontres: [Appareil] {
+        revoquesVisibles ? donnees.appareils : donnees.appareils.filter { !$0.estRevoque }
+    }
+
+    private var nombreDeRevoques: Int { donnees.appareils.filter(\.estRevoque).count }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Titre("Appareils")
                 Spacer()
+                if nombreDeRevoques > 0 {
+                    Toggle(isOn: $revoquesVisibles) {
+                        Text("Voir les révoqués (\(nombreDeRevoques))")
+                    }
+                    .toggleStyle(.switch).controlSize(.small)
+                }
                 Button {
                     gestes.enCours = gestes.enCours == .enrolerAppareil ? nil : .enrolerAppareil
                 } label: {
@@ -117,15 +134,15 @@ struct AppareilsSection: View {
             }
             if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
             Carte(marges: 0) {
-                ForEach(Array(donnees.appareils.enumerated()), id: \.element.id) { indice, appareil in
+                ForEach(Array(appareilsMontres.enumerated()), id: \.element.id) { indice, appareil in
                     if indice > 0 { Divider() }
                     ligne(appareil)
                 }
-                if donnees.appareils.isEmpty {
+                if appareilsMontres.isEmpty {
                     Text("Aucun appareil.").foregroundStyle(.secondary).padding(12)
                 }
             }
-            Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres. Un appareil que vous ne reconnaissez pas se révoque ; il reste dans la liste, marqué. Un appareil ne peut pas se révoquer lui-même.")
+            Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres. Un appareil que vous ne reconnaissez pas se révoque ; il reste dans l'annuaire, marqué, et « Voir les révoqués » le montre. Un appareil ne peut pas se révoquer lui-même.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .confirmationDialog("Révoquer \(aRevoquer?.titre ?? "cet appareil") ?", isPresented: Binding(get: { aRevoquer != nil }, set: { if !$0 { aRevoquer = nil } }), titleVisibility: .visible) {
@@ -178,7 +195,8 @@ struct AppareilsSection: View {
         if appareil.estCeluiCi { morceaux.append("Touch ID") }
         switch appareil.attestation {
         case .apple: morceaux.append("attesté par Apple")
-        case .google: morceaux.append("attesté par Google")
+        case .android: morceaux.append("clé attestée (Android)")
+        case .invitation: morceaux.append("sur invitation")
         case .aucune: morceaux.append("sans attestation")
         case nil: break
         }

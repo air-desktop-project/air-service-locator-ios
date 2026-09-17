@@ -9,6 +9,16 @@ struct CompteVue: View {
     @State private var versionAnnuaire: String??
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
+    /// Les révoqués ne s'affichent pas par défaut : ils restent dans
+    /// l'annuaire, marqués, mais une liste qui les mêle aux vivants dit mal
+    /// combien d'appareils tiennent le compte. Le réglage est retenu.
+    @AppStorage("appareils.revoques.visibles") private var revoquesVisibles = false
+
+    private var appareilsMontres: [Appareil] {
+        revoquesVisibles ? appareils : appareils.filter { !$0.estRevoque }
+    }
+
+    private var nombreDeRevoques: Int { appareils.filter(\.estRevoque).count }
 
     var body: some View {
         List {
@@ -31,7 +41,7 @@ struct CompteVue: View {
             }
 
             Section {
-                ForEach(appareils) { appareil in
+                ForEach(appareilsMontres) { appareil in
                     LigneAppareil(appareil: appareil)
                         .swipeActions {
                             if !appareil.estRevoque && !appareil.estCeluiCi {
@@ -44,10 +54,13 @@ struct CompteVue: View {
                 } label: {
                     Label("Enrôler un autre appareil", systemImage: "plus").foregroundStyle(Couleurs.accent)
                 }
+                if nombreDeRevoques > 0 {
+                    Toggle("Voir les appareils révoqués (\(nombreDeRevoques))", isOn: $revoquesVisibles)
+                }
             } header: {
                 Text("Appareils")
             } footer: {
-                Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans la liste. Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme.")
+                Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans l'annuaire, marqué, et « Voir les appareils révoqués » le montre. Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme.")
             }
 
             Section("Annuaire") {
@@ -168,7 +181,8 @@ private struct LigneAppareil: View {
         }
         switch appareil.attestation {
         case .apple: morceaux.append("attesté par Apple")
-        case .google: morceaux.append("attesté par Google")
+        case .android: morceaux.append("clé attestée (Android)")
+        case .invitation: morceaux.append("sur invitation")
         case .aucune: morceaux.append("sans attestation")
         case nil: break
         }

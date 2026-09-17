@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.6.1"
-    CURRENT_PROJECT_VERSION: 10
+    MARKETING_VERSION: "0.6.2"
+    CURRENT_PROJECT_VERSION: 11
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.

@@ -118,7 +118,7 @@ struct FenetreVue: View {
                 HStack {
                     Label("Appareils", systemImage: "iphone.gen3")
                     Spacer()
-                    Text("\(donnees.appareils.count)").foregroundStyle(.secondary)
+                    Text("\(donnees.appareilsVivants.count)").foregroundStyle(.secondary)
                 }
                 .tag(EtatFenetre.Page.appareils)
                 HStack {
