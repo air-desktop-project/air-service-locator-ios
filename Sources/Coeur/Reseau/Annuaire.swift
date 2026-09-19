@@ -103,6 +103,13 @@ protocol Annuaire: Sendable {
     /// `PUT /v1/alias`, `DELETE /v1/alias` avec `nil`.
     func definirAlias(_ alias: String?) async throws
 
+    /// `DELETE /v1/compte` — efface MON compte, celui de la clé qui signe :
+    /// appareils, machines et services, autorisations dans les deux sens,
+    /// alias libéré — dans une transaction (`modele.md` §2.1). `204`, puis
+    /// l'annuaire ferme la connexion : la clé qui a demandé est révoquée, et
+    /// ce n'est pas une panne. Le dernier acte d'une clé.
+    func effacerCompte() async throws
+
     /// `GET /v1/version` — la version de l'annuaire qui répond, sans rien
     /// prouver. `nil` si l'annuaire est trop ancien pour la dire (`404`).
     func version() async throws -> String?

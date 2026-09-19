@@ -77,6 +77,17 @@ struct AnnuaireSimuleEssais {
         #expect(liste.first { $0.id == autre.id }?.estRevoque == true)
     }
 
+    @Test func effacerLeCompteEmporteToutEtNeSeRefaitPas() async throws {
+        let (annuaire, _) = try await annuaireAvecCompte()
+        try await annuaire.definirAlias("thierry")
+        try await annuaire.effacerCompte()
+        #expect(try await annuaire.compte() == nil)
+        #expect(try await annuaire.appareils().isEmpty)
+        #expect(try await annuaire.machines().isEmpty)
+        // Le dernier acte d'une clé : une seconde fois, l'annuaire ne sait plus qui demande.
+        await #expect(throws: ErreurAnnuaire.nonConfirme) { try await annuaire.effacerCompte() }
+    }
+
     @Test func unAliasPrisRendConflit() async throws {
         let (annuaire, _) = try await annuaireAvecCompte()
         await annuaire.inscrireAutreCompte(Identifiant(genre: .utilisateur, octets: [UInt8](repeating: 9, count: 16)), alias: "vero")

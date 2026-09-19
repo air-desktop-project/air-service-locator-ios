@@ -7,10 +7,12 @@ import SwiftUI
 struct CompteFenetreVue: View {
     @Environment(Session.self) private var session
     @Environment(Donnees.self) private var donnees
+    @Environment(MachineDeCeMac.self) private var machineDeCeMac: MachineDeCeMac?
     @State private var editeAlias = false
     @State private var alias = ""
     @State private var erreur: String?
     @State private var enCours = false
+    @State private var confirmeEffacement = false
 
     var body: some View {
         ScrollView {
@@ -45,11 +47,41 @@ struct CompteFenetreVue: View {
                     }
                 }
                 AppareilsSection()
+                // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas,
+                // derrière une confirmation qui dit ce qui part. Sur le Mac,
+                // l'identité de machine part avec — sa clé est révoquée.
+                VStack(alignment: .leading, spacing: 8) {
+                    Titre("Effacer le compte")
+                    HStack(spacing: 12) {
+                        Button("Effacer mon compte", role: .destructive) { confirmeEffacement = true }.disabled(enCours)
+                        if enCours { ProgressView().controlSize(.small) }
+                    }
+                    Text("Tout part : vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias — et l'identité de machine de ce Mac. Rien ne revient. Un compte dont le dernier appareil est révoqué s'efface de lui-même à trente jours.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Compte")
+        .confirmationDialog("Effacer ce compte ?", isPresented: $confirmeEffacement, titleVisibility: .visible) {
+            Button("Effacer mon compte", role: .destructive) { Task { await effacer() } }
+        } message: {
+            Text("Vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias, l'identité de machine de ce Mac — tout part, et rien ne revient.")
+        }
+    }
+
+    private func effacer() async {
+        enCours = true
+        defer { enCours = false }
+        do {
+            let machine = machineDeCeMac
+            try await session.effacerCompte { try machine?.oublier() }
+            erreur = nil
+            await donnees.recharger(session)
+        } catch {
+            erreur = error.messageAnnuaire
+        }
     }
 
     private var versionDeLAnnuaire: String {

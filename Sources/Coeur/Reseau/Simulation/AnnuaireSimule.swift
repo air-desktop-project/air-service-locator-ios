@@ -209,6 +209,17 @@ actor AnnuaireSimule: Annuaire {
         return appareil
     }
 
+    /// Le banc efface tout ce qui est au compte : ce qu'il reste ne prouve
+    /// plus rien — la clé qui demandait est révoquée avec les autres.
+    func effacerCompte() async throws {
+        guard compteLocal != nil else { throw ErreurAnnuaire.nonConfirme }
+        compteLocal = nil
+        parcAppareils = []
+        parcMachines = []
+        clesEnrolees = [:]
+        aretes = []
+    }
+
     func revoquerAppareil(_ id: Identifiant) async throws {
         guard let indice = parcAppareils.firstIndex(where: { $0.id == id }) else {
             throw ErreurAnnuaire.introuvable
