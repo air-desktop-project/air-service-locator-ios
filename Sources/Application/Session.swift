@@ -99,4 +99,19 @@ final class Session {
         try await annuaire.definirAlias(alias)
         await rafraichirCompte()
     }
+
+    /// Efface le compte — le dernier acte de la clé de cet appareil
+    /// (`modele.md` §2.1). L'annuaire d'abord ; puis, ici, la clé est
+    /// détruite (elle est révoquée là-bas, la garder ne prouverait plus
+    /// rien), le carnet est vidé, et `compte` revient à `nil` : l'écran
+    /// d'accueil reprend, comme au premier lancement. `apresLAnnuaire` est
+    /// ce que la plate-forme a de plus à oublier — sur le Mac, l'identité de
+    /// machine, dont la clé est révoquée avec le compte.
+    func effacerCompte(apresLAnnuaire: @MainActor () throws -> Void = {}) async throws {
+        try await annuaire.effacerCompte()
+        do { try CleAppareil.effacer() } catch { Self.journal.error("la clé n'a pas pu être détruite : \(error.localizedDescription, privacy: .public)") }
+        do { try apresLAnnuaire() } catch { Self.journal.error("ce qui suit l'effacement n'a pas pu se faire : \(error.localizedDescription, privacy: .public)") }
+        compte = nil
+        erreurDeRelecture = nil
+    }
 }

@@ -628,6 +628,18 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         }
     }
 
+    /// `DELETE /v1/compte` — le dernier acte de la clé de cet appareil. Le
+    /// `204` est lu AVANT que l'annuaire ferme la connexion ; ce qui suit — la
+    /// tenue tombée — est le comportement attendu, pas une faute : le handle
+    /// est oublié pour que rien ne tente de reprendre sous une clé révoquée,
+    /// et le carnet est vidé.
+    func effacerCompte() async throws {
+        let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/compte") }
+        guard statut == 204 else { throw Self.refus(statut) }
+        try await surLaFile { self.oublierLeHandle() }
+        Carnet.vider()
+    }
+
     // MARK: - Autorisations
 
     func machines(de utilisateur: Identifiant) async throws -> [MachineVisible] {

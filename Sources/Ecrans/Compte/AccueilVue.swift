@@ -107,7 +107,7 @@ struct AccueilVue: View {
     private func pied(pour etat: IdentiteLocale.Etat) -> String {
         switch etat {
         case .visage, .empreinte:
-            "Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme. Vous pourrez en enrôler un second."
+            "Un compte sur un seul appareil est un compte qu'un téléphone perdu efface, à trente jours. Vous pourrez en enrôler un second."
         case .rienEnrole:
             "Aucune biométrie n'est enrôlée sur cet appareil. Enrôlez un visage ou une empreinte dans les Réglages, puis revenez."
         case let .indisponible(raison):

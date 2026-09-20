@@ -9,6 +9,8 @@ struct CompteVue: View {
     @State private var versionAnnuaire: String??
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
+    @State private var confirmeEffacement = false
+    @State private var effacementEnCours = false
     /// Les révoqués ne s'affichent pas par défaut : ils restent dans
     /// l'annuaire, marqués, mais une liste qui les mêle aux vivants dit mal
     /// combien d'appareils tiennent le compte. Le réglage est retenu.
@@ -60,7 +62,7 @@ struct CompteVue: View {
             } header: {
                 Text("Appareils")
             } footer: {
-                Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans l'annuaire, marqué, et « Voir les appareils révoqués » le montre. Un compte sur un seul appareil est un compte qu'un téléphone perdu ferme.")
+                Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans l'annuaire, marqué, et « Voir les appareils révoqués » le montre. Un compte sur un seul appareil est un compte qu'un téléphone perdu efface, à trente jours.")
             }
 
             Section("Annuaire") {
@@ -91,8 +93,27 @@ struct CompteVue: View {
                     }
                 }
             }
+
+            // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas, en
+            // rouge, derrière une confirmation qui dit ce qui part.
+            Section {
+                Button(role: .destructive) { confirmeEffacement = true } label: {
+                    HStack {
+                        Text("Effacer mon compte")
+                        if effacementEnCours { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(effacementEnCours)
+            } footer: {
+                Text("Tout part : vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias. Rien ne revient. Un compte dont le dernier appareil est révoqué s'efface de lui-même à trente jours.")
+            }
         }
         .navigationTitle("Compte")
+        .confirmationDialog("Effacer ce compte ?", isPresented: $confirmeEffacement, titleVisibility: .visible) {
+            Button("Effacer mon compte", role: .destructive) { Task { await effacer() } }
+        } message: {
+            Text("Vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias — tout part, et rien ne revient.")
+        }
         .confirmationDialog("Révoquer \(aRevoquer?.nom ?? "cet appareil") ?", isPresented: Binding(get: { aRevoquer != nil }, set: { if !$0 { aRevoquer = nil } }), titleVisibility: .visible) {
             Button("Révoquer", role: .destructive) {
                 if let aRevoquer { Task { await revoquer(aRevoquer) } }
@@ -102,6 +123,16 @@ struct CompteVue: View {
         }
         .task { await charger() }
         .refreshable { await charger() }
+    }
+
+    private func effacer() async {
+        effacementEnCours = true
+        defer { effacementEnCours = false }
+        do {
+            try await session.effacerCompte()
+        } catch {
+            erreur = error.messageAnnuaire
+        }
     }
 
     private func charger() async {
