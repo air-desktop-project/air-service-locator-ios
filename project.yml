@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.7.0"
-    CURRENT_PROJECT_VERSION: 12
+    MARKETING_VERSION: "0.7.1"
+    CURRENT_PROJECT_VERSION: 13
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -128,9 +128,12 @@ targets:
   # écrans iOS, eux, sont d'UIKit et restent à iOS.
   #
   # LA SIGNATURE EST NÉCESSAIRE À L'EXÉCUTION, PAS À LA CONSTRUCTION : la
-  # Secure Enclave refuse une application non signée (ou ad hoc). L'équipe
-  # ci-dessous signe les builds locaux ; la CI passe `CODE_SIGNING_ALLOWED=NO`
-  # et ne fait que compiler — elle n'a pas d'enclave à interroger.
+  # Secure Enclave refuse une application non signée (ou ad hoc), et une app
+  # non signée n'est pas sandboxée — elle ne lit plus le conteneur. L'équipe
+  # ci-dessous sert à Xcode ; `xcodebuild` en ligne de commande, lui, doit
+  # recevoir l'identité explicitement (`Sources/Mac/README.md`, « Construire
+  # et lancer »). La CI passe `CODE_SIGNING_ALLOWED=NO` et ne fait que
+  # compiler — elle n'a pas d'enclave à interroger.
   ServiceLocatorMac:
     type: application
     platform: macOS
