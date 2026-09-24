@@ -35,8 +35,9 @@ actor AnnuaireSimule: Annuaire {
     /// Les autres comptes que cet annuaire connaît : identifiant → alias.
     private var autresComptes: [Identifiant: String?] = [:]
 
-    init(horloge: @escaping Horloge = { Date() }) {
+    init(horloge: @escaping Horloge = { Date() }, posture: PostureAnnuaire? = .optional) {
         self.horloge = horloge
+        self.posture = posture
     }
 
     // MARK: - Compte
@@ -49,9 +50,11 @@ actor AnnuaireSimule: Annuaire {
     /// transport réel dérive cette valeur de sa connexion TLS.
     static let liaisonDeCanal = [UInt8](repeating: 0, count: Messages.liaisonOctets)
 
-    /// La posture que ce banc annonce. Un essai la règle pour éprouver l'écran
-    /// d'accueil sous chacune ; par défaut, celle des racines d'aujourd'hui.
-    var posture: PostureAnnuaire? = .optional
+    /// La posture que ce banc annonce — posée à la construction, comme
+    /// l'horloge : un acteur ne se règle pas de l'extérieur après coup, et
+    /// un essai qui la changerait en cours de route décrirait un annuaire
+    /// qui n'existe pas. Par défaut, celle des racines d'aujourd'hui.
+    private let posture: PostureAnnuaire?
 
     func ouvrirCompte(avec signataire: any Signataire, invitation: CodeInvitation?) async throws -> Compte {
         if let compteLocal { return compteLocal }

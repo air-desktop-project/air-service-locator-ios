@@ -76,14 +76,12 @@ struct CodeInvitationEssais {
 /// Ce que le banc fait d'une invitation — la règle du serveur, tenue en
 /// mémoire : sous `invitation` un code est exigé, ailleurs il n'a rien à
 /// recevoir.
-@MainActor
 struct OuvertureSurInvitationEssais {
     /// Une racine en `invitation` refuse un compte sans code, et le dit d'une
     /// seule phrase : ni « faux », ni « expiré », ni « déjà servi » — le
     /// serveur rend le même `403` pour les trois.
     @Test func sansCodeUneRacineSurInvitationRefuse() async throws {
-        let annuaire = AnnuaireSimule()
-        annuaire.posture = .invitation
+        let annuaire = AnnuaireSimule(posture: .invitation)
         await #expect(throws: ErreurAnnuaire.invitationRefusee) {
             try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: nil)
         }
@@ -92,8 +90,7 @@ struct OuvertureSurInvitationEssais {
     /// Un mauvais code est refusé comme une absence de code : c'est le même
     /// refus, et l'écran dit la même chose.
     @Test func unMauvaisCodeEstRefuseCommeUneAbsence() async throws {
-        let annuaire = AnnuaireSimule()
-        annuaire.posture = .invitation
+        let annuaire = AnnuaireSimule(posture: .invitation)
         let mauvais = try CodeInvitation(saisie: "00000-00000")
         await #expect(throws: ErreurAnnuaire.invitationRefusee) {
             try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: mauvais)
@@ -102,8 +99,7 @@ struct OuvertureSurInvitationEssais {
 
     /// Le bon code ouvre le compte.
     @Test func leBonCodeOuvreLeCompte() async throws {
-        let annuaire = AnnuaireSimule()
-        annuaire.posture = .invitation
+        let annuaire = AnnuaireSimule(posture: .invitation)
         let bon = try CodeInvitation(saisie: AnnuaireSimule.invitationAttendue)
         let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: bon)
         #expect(compte.identifiant.genre == .utilisateur)
@@ -112,12 +108,8 @@ struct OuvertureSurInvitationEssais {
     /// Et la posture voyage bien jusqu'à l'écran, par la même lecture que la
     /// version : c'est ce qui décide du champ.
     @Test func laPostureSeLitAvecLaVersion() async throws {
-        let annuaire = AnnuaireSimule()
-        annuaire.posture = .invitation
-        #expect(try await annuaire.version()?.exigeUneInvitation == true)
-        annuaire.posture = .optional
-        #expect(try await annuaire.version()?.exigeUneInvitation == false)
-        annuaire.posture = nil
-        #expect(try await annuaire.version()?.exigeUneInvitation == false)
+        #expect(try await AnnuaireSimule(posture: .invitation).version()?.exigeUneInvitation == true)
+        #expect(try await AnnuaireSimule(posture: .optional).version()?.exigeUneInvitation == false)
+        #expect(try await AnnuaireSimule(posture: nil).version()?.exigeUneInvitation == false)
     }
 }
