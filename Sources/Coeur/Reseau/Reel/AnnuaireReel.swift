@@ -363,24 +363,24 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             // réessayer coûtait une clé neuve — l'ancien `a-…` restant à
             // révoquer à la main. Le geste dure ce que dure un Touch ID, et
             // c'est long pour laisser un fait dépendre d'un ornement.
-            let rejoint = Compte(identifiant: compte)
+            let entre = Compte(identifiant: compte)
             Carnet.vider()
-            Carnet.compte = rejoint
+            Carnet.compte = entre
             Carnet.appareilEnrole = appareil
-            return rejoint
+            return entre
         }
         // L'alias, lui, est un ornement : il s'affiche, il ne prouve rien. On
         // le lit après, et son échec ne remonte pas — le compte est rejoint
         // avec ou sans lui, et la prochaine relecture le rattrapera.
-        if let (statut, corps) = try? await surLaFile({ try self.requete("GET", "/v1/utilisateurs/\(compte.texte)") }),
-           statut == 200, let objet = try? Self.json(corps) as? [String: Any] {
-            var avecAlias = rejoint
-            avecAlias.alias = objet["alias"] as? String
-            Carnet.compte = avecAlias
-            return avecAlias
+        guard let lu = try? await surLaFile({ try self.requete("GET", "/v1/utilisateurs/\(compte.texte)") }),
+              lu.statut == 200 else {
+            Self.journal.notice("compte rejoint ; l'alias n'a pas été lu, la prochaine relecture le dira")
+            return rejoint
         }
-        Self.journal.notice("compte rejoint ; l'alias n'a pas été lu, la prochaine relecture le dira")
-        return rejoint
+        var avecAlias = rejoint
+        if let objet = (try? Self.json(lu.corps)) as? [String: Any] { avecAlias.alias = objet["alias"] as? String }
+        Carnet.compte = avecAlias
+        return avecAlias
     }
 
     /// Le compte de cet appareil : celui du carnet, relu à l'annuaire.
