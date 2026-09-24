@@ -210,13 +210,7 @@ private struct LigneAppareil: View {
         case .empreinte: morceaux.append("empreinte")
         case nil: break
         }
-        switch appareil.attestation {
-        case .apple: morceaux.append("attesté par Apple")
-        case .android: morceaux.append("clé attestée (Android)")
-        case .invitation: morceaux.append("sur invitation")
-        case .aucune: morceaux.append("sans attestation")
-        case nil: break
-        }
+        if let attestation = appareil.attestation { morceaux.append(attestation.libelle) }
         switch appareil.description?.plateforme {
         case .ios: morceaux.append("iOS")
         case .android: morceaux.append("Android")

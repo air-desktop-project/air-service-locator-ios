@@ -296,12 +296,45 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         }
     }
 
+    /// Rejoindre un compte : prouver, sur sa propre connexion, la clé qu'un
+    /// autre appareil vient d'apporter (`protocole.md` §2.2).
+    ///
+    /// # POURQUOI CE N'EST PAS `asl_appareil_rejoindre_atteste`
+    ///
+    /// Le verbe `POST /v1/attestation` existe depuis le 2026-09-21, et
+    /// l'Android s'en sert : le Keystore exige que le défi soit tiré AVANT
+    /// que la clé naisse, donc la chaîne ne peut venir que du nouvel
+    /// appareil, sur la connexion qui a vu ce défi. **Rien de tout cela ne
+    /// s'applique ici.** Un Mac n'a pas d'enclave attestable, et App Attest —
+    /// le seul candidat côté Apple — atteste une clé à lui sur un défi qui
+    /// nomme la nôtre : l'ordre « défi avant clé » n'est une contrainte que
+    /// du Keystore (`protocole.md` §2.2, dernier paragraphe).
+    ///
+    /// Sans chaîne à présenter, le verbe ne prouverait rien de plus : l'ABI
+    /// le dit mot pour mot — une attestation vide sous `ASL_PLATEFORME_AUCUNE`
+    /// « vaut alors `POST /v1/defi` » —, et `asl_appareil_connecter` est
+    /// désigné par le même en-tête comme **le chemin d'un Mac**. Deux appels
+    /// pour un seul effet, ce serait une cérémonie de plus à maintenir et
+    /// rien à montrer. Sous une racine `required`, les deux échouent
+    /// pareillement (`401` contre `403`) : un appareil qui n'atteste rien
+    /// n'entre pas là où l'attestation est exigée, et c'est voulu.
+    ///
+    /// # CE QU'IL FAUDRA CÂBLER LE JOUR OÙ UN IPHONE SERA LÀ
+    ///
+    /// Tirer `asl_appareil_defi` sur la connexion nue avant de prouver,
+    /// composer l'objet App Attest par-dessus
+    /// `asl_appareil_message_pour_attestation` (qui porte la clé), puis
+    /// appeler `asl_appareil_rejoindre_atteste(handle, appareil,
+    /// ASL_PLATEFORME_APPLE, objet, taille)` à la place de
+    /// `asl_appareil_connecter` — en traitant `ASL_CHAINE_REFUSEE` (−12), le
+    /// `403` d'une racine qui exige une chaîne qu'elle a refusée. Le reste de
+    /// la cérémonie — clé montrée, apportée, rendue — ne bouge pas.
     func rejoindre(compte: Identifiant, appareil: Identifiant, avec signataire: any Signataire) async throws -> Compte {
         // Le natif signe avec la clé qu'on lui a donnée à la création du
         // handle — la même que `signataire`, celle de l'enclave. Le paramètre
         // dit où le geste est demandé, pas avec quoi.
         _ = signataire
-        try await surLaFile {
+        let rejoint = try await surLaFile {
             let handle = try self.handleOuCreer()
             try self.exiger(asl_appareil_identite(handle, appareil.texte), "asl_appareil_identite")
             // Se connecter sous cette identité, c'est la prouver : le natif
@@ -316,17 +349,38 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             case ASL_INJOIGNABLE: throw ErreurAnnuaire.reseau("aucun annuaire ne répond")
             default: throw ErreurNative.code(code, "asl_appareil_connecter")
             }
+            // **LE CARNET S'ÉCRIT ICI**, sous le même passage que la preuve,
+            // comme `ouvrirCompte` le fait à quelques lignes d'ici. La preuve
+            // tient : l'appareil A REJOINT, et c'est vrai là-bas, chez
+            // l'annuaire. Tout ce qui viendrait après ne peut plus que
+            // décorer ce fait — jamais le défaire.
+            //
+            // Ce que cela évite, appris d'Android le 2026-09-23 : la version
+            // d'avant rendait la file après la preuve, lisait l'alias par le
+            // réseau, et n'écrivait le carnet qu'ensuite. Un alias qui ne
+            // répondait pas 200 jetait un compte DÉJÀ rejoint : l'appareil
+            // vivait chez l'annuaire, l'application n'en savait plus rien, et
+            // réessayer coûtait une clé neuve — l'ancien `a-…` restant à
+            // révoquer à la main. Le geste dure ce que dure un Touch ID, et
+            // c'est long pour laisser un fait dépendre d'un ornement.
+            let entre = Compte(identifiant: compte)
+            Carnet.vider()
+            Carnet.compte = entre
+            Carnet.appareilEnrole = appareil
+            return entre
         }
-        // La preuve tient : c'est bien la clé que l'autre téléphone a enrôlée.
-        // Le compte, lui, ne se vérifie qu'en le lisant.
-        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/utilisateurs/\(compte.texte)") }
-        guard statut == 200 else { throw Self.refus(statut) }
-        var rejoint = Compte(identifiant: compte)
-        if let objet = try Self.json(corps) as? [String: Any] { rejoint.alias = objet["alias"] as? String }
-        Carnet.vider()
-        Carnet.compte = rejoint
-        Carnet.appareilEnrole = appareil
-        return rejoint
+        // L'alias, lui, est un ornement : il s'affiche, il ne prouve rien. On
+        // le lit après, et son échec ne remonte pas — le compte est rejoint
+        // avec ou sans lui, et la prochaine relecture le rattrapera.
+        guard let lu = try? await surLaFile({ try self.requete("GET", "/v1/utilisateurs/\(compte.texte)") }),
+              lu.statut == 200 else {
+            Self.journal.notice("compte rejoint ; l'alias n'a pas été lu, la prochaine relecture le dira")
+            return rejoint
+        }
+        var avecAlias = rejoint
+        if let objet = (try? Self.json(lu.corps)) as? [String: Any] { avecAlias.alias = objet["alias"] as? String }
+        Carnet.compte = avecAlias
+        return avecAlias
     }
 
     /// Le compte de cet appareil : celui du carnet, relu à l'annuaire.

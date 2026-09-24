@@ -59,6 +59,25 @@ extension Service {
     }
 }
 
+extension Appareil.Attestation {
+    /// Sous quoi l'appareil est entré, en toutes lettres — le même mot sur
+    /// l'iPhone et sur le Mac, parce qu'il vient d'ici et non de deux écrans
+    /// qui finiraient par diverger.
+    ///
+    /// **`attendue` se dit au présent** : l'appareil n'est pas entré, il est
+    /// en train de le faire, et c'est ce que son porteur doit lire pour
+    /// savoir qu'il lui reste un geste (`protocole.md` §2.2).
+    var libelle: String {
+        switch self {
+        case .apple: "attesté par Apple"
+        case .android: "clé attestée (Android)"
+        case .invitation: "sur invitation"
+        case .aucune: "sans attestation"
+        case .attendue: "en attente d'attestation"
+        }
+    }
+}
+
 extension Machine {
     var resumeListe: String {
         var morceaux = [capacitesTexte]
