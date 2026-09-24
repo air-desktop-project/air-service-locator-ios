@@ -14,7 +14,7 @@ final class Session {
 
     /// Comment on ouvre un compte — séparé de l'annuaire parce qu'en
     /// démonstration, l'ouverture peuple aussi l'annuaire.
-    private let ouverture: @Sendable (any Signataire) async throws -> Compte
+    private let ouverture: @Sendable (any Signataire, CodeInvitation?) async throws -> Compte
     /// D'où vient la clé : la Secure Enclave sur un appareil, une clé
     /// logicielle dans un essai.
     private let signataire: @Sendable () throws -> any Signataire
@@ -22,7 +22,7 @@ final class Session {
     init(
         annuaire: any Annuaire,
         signataire: @escaping @Sendable () throws -> any Signataire = { try CleAppareil.ouOuvrir() },
-        ouverture: @escaping @Sendable (any Signataire) async throws -> Compte
+        ouverture: @escaping @Sendable (any Signataire, CodeInvitation?) async throws -> Compte
     ) {
         self.annuaire = annuaire
         self.signataire = signataire
@@ -59,8 +59,10 @@ final class Session {
     /// **C'est là que la biométrie est demandée**, par la Secure Enclave, au
     /// moment de signer — et nulle part avant. Sans confirmation, la clé ne
     /// signe pas, et rien ne part.
-    func ouvrirCompte() async throws {
-        compte = try await ouverture(try signataire())
+    /// ``invitation`` n'est attendue que d'une racine en posture
+    /// ``PostureAnnuaire/invitation`` ; ailleurs, `nil`.
+    func ouvrirCompte(invitation: CodeInvitation? = nil) async throws {
+        compte = try await ouverture(try signataire(), invitation)
         await seDecrire()
     }
 

@@ -145,7 +145,7 @@ struct FenetreVue: View {
 
     private var versionDeLAnnuaire: String {
         switch donnees.versionAnnuaire {
-        case .some(.some(let version)): " · annuaire \(version)"
+        case .some(.some(let annuaire)): " · annuaire \(annuaire.version)"
         case .some(.none): " · version inconnue"
         case .none: ""
         }
@@ -216,6 +216,14 @@ struct SansCompteVue: View {
     @Environment(GestesDuPanneau.self) private var gestes
     @State private var erreur: String?
     @State private var enCours = false
+    /// Ce que `GET /v1/version` a dit : `nil` tant qu'on n'a pas demandé. Ce
+    /// Mac n'a pas de compte, donc `Donnees` n'a rien relu — c'est cet écran
+    /// qui demande, et lui seul.
+    @State private var annuaire: VersionAnnuaire??
+    @State private var codeSaisi = ""
+
+    private var exigeUneInvitation: Bool { (annuaire ?? nil)?.exigeUneInvitation ?? false }
+    private var invitation: CodeInvitation? { CodeInvitation.essai(codeSaisi) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -224,6 +232,17 @@ struct SansCompteVue: View {
             Text("Vos machines, leurs daemons, et le port où les joindre.").font(.title3).foregroundStyle(.secondary)
             Text("Un compte est un jeu d'appareils, sans mot de passe. La clé de ce Mac vit dans sa Secure Enclave et signe sous Touch ID ; rien d'autre ne quitte la machine.")
                 .font(.callout).foregroundStyle(.secondary)
+            if exigeUneInvitation {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(TextesInvitation.titre).font(.headline)
+                    Text(TextesInvitation.explication).font(.callout).foregroundStyle(.secondary)
+                    TextField(TextesInvitation.exemple, text: $codeSaisi)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: 220)
+                    Text(TextesInvitation.duree).font(.caption).foregroundStyle(.secondary)
+                }
+            }
             if let erreur = erreur ?? session.erreurDeRelecture { Text(erreur).font(.callout).foregroundStyle(.red) }
             HStack {
                 Button {
@@ -232,7 +251,7 @@ struct SansCompteVue: View {
                     Label("Ouvrir un compte avec Touch ID", systemImage: "touchid")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(enCours)
+                .disabled(enCours || (exigeUneInvitation && invitation == nil))
                 if enCours { ProgressView().controlSize(.small) }
             }
             Depliant("Rejoindre un compte existant", ouvert: Binding(get: { gestes.enCours == .rejoindre }, set: { gestes.enCours = $0 ? .rejoindre : nil })) {
@@ -242,13 +261,14 @@ struct SansCompteVue: View {
         .frame(maxWidth: 520)
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .task { annuaire = .some(try? await session.annuaire.version()) }
     }
 
     private func ouvrir() async {
         enCours = true
         defer { enCours = false }
         do {
-            try await session.ouvrirCompte()
+            try await session.ouvrirCompte(invitation: exigeUneInvitation ? invitation : nil)
             erreur = nil
             await donnees.recharger(session)
         } catch {

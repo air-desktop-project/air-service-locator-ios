@@ -7,6 +7,17 @@ struct AccueilVue: View {
     @State private var enCours = false
     @State private var erreur: String?
     @State private var rejoindre = false
+    /// Ce que `GET /v1/version` a dit de l'annuaire : `nil` tant qu'on n'a
+    /// pas demandé. Le champ d'invitation en dépend, et lui seul.
+    @State private var annuaire: VersionAnnuaire??
+    @State private var codeSaisi = ""
+
+    /// Le champ ne se montre que si cet annuaire-là l'exige. Tant qu'on ne
+    /// sait pas, on ne demande rien : un annuaire d'avant 0.16.0 ne dit pas
+    /// sa posture, et lui réclamer un code serait poser une question sans
+    /// réponse.
+    private var exigeUneInvitation: Bool { (annuaire ?? nil)?.exigeUneInvitation ?? false }
+    private var invitation: CodeInvitation? { CodeInvitation.essai(codeSaisi) }
 
     var body: some View {
         let etat = session.identite.etat()
@@ -38,6 +49,18 @@ struct AccueilVue: View {
                 } footer: {
                     Text("Vous pourrez désigner votre propre annuaire, ou celui de votre organisation.")
                 }
+                if exigeUneInvitation {
+                    Section {
+                        TextField(TextesInvitation.exemple, text: $codeSaisi)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .font(.system(.body, design: .monospaced))
+                    } header: {
+                        Text(TextesInvitation.titre)
+                    } footer: {
+                        Text("\(TextesInvitation.explication) \(TextesInvitation.duree)")
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
@@ -54,7 +77,7 @@ struct AccueilVue: View {
                         .frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(enCours || !peutOuvrir(etat))
+                .disabled(enCours || !peutOuvrir(etat) || (exigeUneInvitation && invitation == nil))
                 Button("Rejoindre un compte existant") { rejoindre = true }
                     .font(.subheadline)
                     .disabled(enCours || !peutOuvrir(etat))
@@ -68,13 +91,19 @@ struct AccueilVue: View {
         .sheet(isPresented: $rejoindre) {
             NavigationStack { RejoindreVue() }
         }
+        .task {
+            // **AVANT TOUT COMPTE, ET SANS RIEN PROUVER.** C'est la seule
+            // ressource qu'un appareil sans clé enrôlée puisse lire, et c'est
+            // pour cela qu'elle porte la posture.
+            annuaire = .some(try? await session.annuaire.version())
+        }
     }
 
     private func ouvrir() async {
         enCours = true
         defer { enCours = false }
         do {
-            try await session.ouvrirCompte()
+            try await session.ouvrirCompte(invitation: exigeUneInvitation ? invitation : nil)
         } catch {
             erreur = error.messageAnnuaire
         }

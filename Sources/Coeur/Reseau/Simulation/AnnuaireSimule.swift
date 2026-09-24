@@ -49,8 +49,21 @@ actor AnnuaireSimule: Annuaire {
     /// transport réel dérive cette valeur de sa connexion TLS.
     static let liaisonDeCanal = [UInt8](repeating: 0, count: Messages.liaisonOctets)
 
-    func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte {
+    /// La posture que ce banc annonce. Un essai la règle pour éprouver l'écran
+    /// d'accueil sous chacune ; par défaut, celle des racines d'aujourd'hui.
+    var posture: PostureAnnuaire? = .optional
+
+    func ouvrirCompte(avec signataire: any Signataire, invitation: CodeInvitation?) async throws -> Compte {
         if let compteLocal { return compteLocal }
+        // Le banc tient la règle du serveur : sous `invitation`, un code est
+        // exigé, et sous toute autre posture il n'a rien à recevoir.
+        if posture == .invitation {
+            guard let invitation, invitation.symboles == Self.invitationAttendue else {
+                throw ErreurAnnuaire.invitationRefusee
+            }
+        } else if invitation != nil {
+            throw ErreurAnnuaire.requeteInvalide("cet annuaire n'attend pas d'invitation")
+        }
         // Un défi neuf, à usage unique, puis la preuve — signée par le
         // signataire, sur le message que le serveur recomposera.
         let defi = (0..<Messages.defiOctets).map { _ in UInt8.random(in: .min ... .max) }
@@ -244,7 +257,12 @@ actor AnnuaireSimule: Annuaire {
     /// Le banc dit ce qu'il est, pour que l'écran ne confonde jamais une
     /// démonstration avec un annuaire.
     nonisolated var nom: String { "banc en mémoire" }
-    func version() async throws -> String? { "banc en mémoire" }
+    func version() async throws -> VersionAnnuaire? {
+        VersionAnnuaire(version: "banc en mémoire", posture: posture)
+    }
+
+    /// Le seul code que ce banc accepte, sous la posture `invitation`.
+    static let invitationAttendue = "4K9M2P7R1T"
 
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
         id == compteLocal?.identifiant || autresComptes[id] != nil

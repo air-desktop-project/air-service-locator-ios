@@ -26,7 +26,7 @@ struct PreferencesVue: View {
             LabeledContent("Annuaire", value: session.annuaire.nom)
             LabeledContent("Version de l'annuaire") {
                 switch donnees.versionAnnuaire {
-                case .some(.some(let version)): Text(version)
+                case .some(.some(let annuaire)): Text(annuaire.version)
                 case .some(.none): Text("ne la dit pas").foregroundStyle(.secondary)
                 case .none: Text("—").foregroundStyle(.secondary)
                 }

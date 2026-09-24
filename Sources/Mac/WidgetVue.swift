@@ -137,7 +137,7 @@ struct WidgetVue: View {
     /// « 0.2.2 », ou rien tant qu'on ne sait pas.
     private var versionDeLAnnuaire: String {
         switch donnees.versionAnnuaire {
-        case .some(.some(let version)): " · \(version)"
+        case .some(.some(let annuaire)): " · \(annuaire.version)"
         case .some(.none): " · version inconnue"
         case .none: ""
         }

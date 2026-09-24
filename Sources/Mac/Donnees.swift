@@ -21,7 +21,7 @@ final class Donnees {
     private(set) var autorisations: [Autorisation] = []
     /// `nil` tant qu'on n'a pas demandé ; `.some(nil)` si l'annuaire ne
     /// sait pas la dire.
-    private(set) var versionAnnuaire: String??
+    private(set) var versionAnnuaire: VersionAnnuaire??
     private(set) var erreur: String?
     private(set) var enCours = false
     /// Quand la dernière relecture a conclu — l'écran le dit, pour qu'on

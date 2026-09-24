@@ -275,18 +275,38 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
 
     // MARK: - Compte
 
-    func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte {
+    func ouvrirCompte(avec signataire: any Signataire, invitation: CodeInvitation?) async throws -> Compte {
         try await surLaFile {
             if let compte = Carnet.compte { return compte }
             let handle = try self.handleOuCreer()
             if !self.connecte() { try self.connecter() }
             var compte = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
             var appareil = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
-            let code = asl_appareil_creer_compte(handle, UInt8(ASL_PLATEFORME_AUCUNE), nil, 0, &compte, &appareil)
+            // **CE QUE PORTE LA CASE D'ATTESTATION, ET SOUS QUELLE
+            // PLATE-FORME.** Une invitation voyage là où une chaîne Keystore
+            // voyage sous la plate-forme `2` : dix octets ASCII, les symboles
+            // canoniques du code, sous la plate-forme `3`. Sans invitation,
+            // rien — l'application Apple n'atteste pas (pas d'enclave
+            // attestable sur un Mac, et App Attest attend un iPhone), donc
+            // « aucune », comme depuis toujours.
+            let code: Int32 = if let invitation {
+                invitation.octets.withUnsafeBufferPointer { octets in
+                    asl_appareil_creer_compte(handle, UInt8(ASL_PLATEFORME_INVITATION),
+                                              octets.baseAddress, octets.count, &compte, &appareil)
+                }
+            } else {
+                asl_appareil_creer_compte(handle, UInt8(ASL_PLATEFORME_AUCUNE), nil, 0, &compte, &appareil)
+            }
             switch code {
             case ASL_OK: break
             case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
-            case ASL_REFUSE: throw ErreurAnnuaire.preuveInvalide
+            // **LE MÊME `ASL_REFUSE` POUR DEUX HISTOIRES.** L'ABI écrase tous
+            // les statuts refusés en un seul code : sans invitation, le refus
+            // ne peut être que celui de la preuve ; avec, c'est le code qui
+            // n'a pas été accepté — et l'annuaire ne dit pas s'il était faux,
+            // expiré ou déjà consommé, ni si c'est la limite de débit qui a
+            // parlé. On le dit tel quel plutôt que de deviner.
+            case ASL_REFUSE: throw invitation == nil ? ErreurAnnuaire.preuveInvalide : .invitationRefusee
             default: throw ErreurNative.code(code, "asl_appareil_creer_compte")
             }
             let cree = Compte(identifiant: try Identifiant.analyser(Self.texte(compte), genre: .utilisateur))
@@ -734,13 +754,20 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// Un annuaire d'avant 0.2.0 ne connaît pas cette ressource et rend
     /// `404` : ce n'est pas une faute, c'est une version qu'on ne sait pas
     /// lire — et c'est ce que l'écran dit.
-    func version() async throws -> String? {
+    func version() async throws -> VersionAnnuaire? {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/version") }
         if statut == 404 { return nil }
         guard statut == 200, let objet = try Self.json(corps) as? [String: Any], let version = objet["version"] as? String else {
             throw Self.refus(statut)
         }
-        return version
+        // **UNE POSTURE QU'ON NE SAIT PAS LIRE N'EN EST PAS UNE.** Le champ
+        // manque avant 0.16.0, et une version future pourrait en nommer une
+        // que ce code ignore : `nil` dans les deux cas, ce qui fait taire le
+        // champ d'invitation. Se tromper dans ce sens coûte un refus de
+        // l'annuaire, qui se lit ; se tromper dans l'autre ferait réclamer un
+        // code à qui n'en a pas besoin, et il n'y aurait rien à répondre.
+        let posture = (objet["posture"] as? String).flatMap(PostureAnnuaire.init(rawValue:))
+        return VersionAnnuaire(version: version, posture: posture)
     }
 
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {

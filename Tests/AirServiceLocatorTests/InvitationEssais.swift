@@ -53,7 +53,7 @@ struct InvitationEssais {
         let nouveau = CleLogicielle()
         // Sans compte, rien à enrôler.
         await #expect(throws: ErreurAnnuaire.introuvable) { try await annuaire.enrolerAppareil(cle: nouveau.clePublique) }
-        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle())
+        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: nil)
         let enrole = try await annuaire.enrolerAppareil(cle: nouveau.clePublique)
         #expect(enrole.id.genre == .appareil && !enrole.estCeluiCi)
         #expect(try await annuaire.appareils().count == 2)

@@ -100,6 +100,8 @@ extension ErreurAnnuaire {
         case let .reseau(detail): "Annuaire injoignable : \(detail)"
         case .nonConfirme: "Identité non confirmée ; rien n'a été envoyé."
         case .preuveInvalide: "La preuve de possession de la clé ne vérifie pas."
+        case .invitationRefusee:
+            "Ce code d'invitation n'a pas été accepté. Vérifiez-le auprès de qui vous l'a donné : il ne vaut qu'une fois, et il expire. Si vous venez d'essayer plusieurs fois, patientez une minute."
         }
     }
 }
@@ -108,4 +110,27 @@ extension Error {
     var messageAnnuaire: String {
         (self as? ErreurAnnuaire)?.message ?? localizedDescription
     }
+}
+
+/// Ce que les deux écrans d'ouverture de compte — iOS et macOS — disent du
+/// code d'invitation.
+///
+/// **Les mêmes mots des deux côtés.** Les deux écrans ne se ressemblent pas
+/// (une `List` sur iPhone, une colonne sur le Mac), mais ce qu'ils expliquent
+/// est identique, et deux rédactions jumelles finissent par diverger : la
+/// première correction n'est portée qu'à un endroit. C'est la leçon des deux
+/// `switch` d'attestation, réunis pour la même raison.
+enum TextesInvitation {
+    static let titre = "Code d'invitation"
+    static let exemple = "4K9M2-P7R1T"
+
+    /// Pourquoi l'on demande ce code — dit sans jargon : l'utilisateur ne
+    /// connaît ni « posture » ni « attestation », il sait qu'on lui a donné
+    /// un code.
+    static let explication =
+        "Cet annuaire n'ouvre un compte que sur invitation. Saisissez le code que son exploitant vous a donné."
+
+    /// Ce que le code vaut, dit avant qu'on le tape plutôt qu'après qu'il a
+    /// échoué : il ne sert qu'une fois, et il ne dure pas.
+    static let duree = "Dix symboles, à usage unique. Il expire — demandez-en un autre s'il est trop vieux."
 }

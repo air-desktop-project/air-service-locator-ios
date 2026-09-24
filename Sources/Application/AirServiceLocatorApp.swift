@@ -14,10 +14,10 @@ struct AirServiceLocatorApp: App {
     init() {
         if let reglages = Self.reglagesDeLAnnuaire() {
             let reel = AnnuaireReel(reglages: reglages) { try CleAppareil.ouOuvrir() }
-            _session = State(initialValue: Session(annuaire: reel) { signataire in try await reel.ouvrirCompte(avec: signataire) })
+            _session = State(initialValue: Session(annuaire: reel) { signataire, invitation in try await reel.ouvrirCompte(avec: signataire, invitation: invitation) })
         } else {
             let simule = AnnuaireSimule()
-            _session = State(initialValue: Session(annuaire: simule) { signataire in try await simule.ouvrirCompteDeDemonstration(avec: signataire) })
+            _session = State(initialValue: Session(annuaire: simule) { signataire, invitation in try await simule.ouvrirCompteDeDemonstration(avec: signataire, invitation: invitation) })
         }
     }
 

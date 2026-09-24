@@ -6,7 +6,7 @@ import Testing
 struct AnnuaireSimuleEssais {
     private func annuaireAvecCompte() async throws -> (AnnuaireSimule, Compte) {
         let annuaire = AnnuaireSimule(horloge: { Date(timeIntervalSince1970: 1_700_000_000) })
-        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle())
+        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: nil)
         return (annuaire, compte)
     }
 
@@ -28,12 +28,12 @@ struct AnnuaireSimuleEssais {
 
     @Test func ouvrirUnCompteExigeUnePreuveSousLaClePresentee() async throws {
         let annuaire = AnnuaireSimule()
-        await #expect(throws: ErreurAnnuaire.preuveInvalide) { try await annuaire.ouvrirCompte(avec: Usurpateur()) }
-        await #expect(throws: ErreurAnnuaire.nonConfirme) { try await annuaire.ouvrirCompte(avec: Refus()) }
-        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle())
+        await #expect(throws: ErreurAnnuaire.preuveInvalide) { try await annuaire.ouvrirCompte(avec: Usurpateur(), invitation: nil) }
+        await #expect(throws: ErreurAnnuaire.nonConfirme) { try await annuaire.ouvrirCompte(avec: Refus(), invitation: nil) }
+        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: nil)
         #expect(compte.identifiant.genre == .utilisateur)
         // Une seconde ouverture rend le même compte, sans redemander de preuve.
-        #expect(try await annuaire.ouvrirCompte(avec: Refus()) == compte)
+        #expect(try await annuaire.ouvrirCompte(avec: Refus(), invitation: nil) == compte)
     }
 
     @Test func unAppareilNeSeRevoquePasLuiMeme() async throws {
