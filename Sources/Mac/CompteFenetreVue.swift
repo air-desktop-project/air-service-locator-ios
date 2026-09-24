@@ -225,13 +225,7 @@ struct AppareilsSection: View {
         if appareil.estRevoque { return appareil.revoqueLe.map { "révoqué le \($0.jour)" } ?? "révoqué" }
         var morceaux = [appareil.enroleLe.map { "enrôlé le \($0.jour)" } ?? "enrôlé"]
         if appareil.estCeluiCi { morceaux.append("Touch ID") }
-        switch appareil.attestation {
-        case .apple: morceaux.append("attesté par Apple")
-        case .android: morceaux.append("clé attestée (Android)")
-        case .invitation: morceaux.append("sur invitation")
-        case .aucune: morceaux.append("sans attestation")
-        case nil: break
-        }
+        if let attestation = appareil.attestation { morceaux.append(attestation.libelle) }
         if let plateforme = appareil.description?.plateforme { morceaux.append(plateforme.libelle) }
         if appareil.estCeluiCi, let machine = donnees.machine(machineDeCeMac?.identifiant ?? appareil.id) {
             morceaux.append("aussi la machine « \(machine.nom) »")

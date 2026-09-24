@@ -20,10 +20,16 @@ struct Appareil: Identifiable, Hashable, Sendable {
     enum Biometrie: Sendable { case visage, empreinte }
     /// Sous quoi l'appareil est entré (`docs/modele.md` §2.2) : une valeur,
     /// pas une absence — c'est ce qu'on regarde le jour où l'on resserre.
-    /// Sous quoi l'appareil est entré (`docs/modele.md` §2.2) : `android`
-    /// est l'attestation de clé du Keystore, vérifiée hors ligne (C19) ;
-    /// `invitation`, un code de l'exploitant.
-    enum Attestation: String, Sendable { case aucune, apple, android, invitation }
+    /// `android` est l'attestation de clé du Keystore, vérifiée hors ligne
+    /// (C19) ; `invitation`, un code de l'exploitant.
+    ///
+    /// **`attendue` n'est pas une entrée** : une clé qu'un autre appareil du
+    /// compte a apportée sous une posture exigée, et que son porteur n'a pas
+    /// encore prouvée. Elle se révoque comme les autres et compte comme
+    /// vivante tant qu'elle ne l'est pas — un compte dont le seul appareil
+    /// est `attendue` n'est pas orphelin, il est en train de rejoindre
+    /// (`protocole.md` §2.2, 2026-09-21).
+    enum Attestation: String, Sendable { case aucune, apple, android, invitation, attendue }
 
     /// Ce que l'appareil fait tourner : une liste fermée, celle des
     /// applications de ce produit (`docs/protocole.md` §2.2).
