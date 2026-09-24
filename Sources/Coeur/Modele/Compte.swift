@@ -10,6 +10,49 @@ struct Compte: Hashable, Sendable {
     var alias: String?
 }
 
+/// Ce qu'un annuaire exige de qui ouvre un compte (`docs/protocole.md` §2.1).
+///
+/// **Elle qualifie l'entrée, jamais le service rendu** (C19) : une racine en
+/// `optional` rend exactement ce qu'une racine en `required` rend. Ce qui
+/// change est qui peut entrer.
+///
+/// # Pourquoi l'application la lit
+///
+/// Pour une seule raison : sous ``invitation``, l'ouverture d'un compte exige
+/// un code que l'exploitant a émis, et il faut bien un champ pour le taper.
+/// Partout ailleurs ce champ n'aurait rien à recevoir, et le montrer serait
+/// demander à l'utilisateur de résoudre une énigme qui ne le concerne pas.
+///
+/// **Une valeur inconnue, ou absente, se lit comme « pas d'invitation ».** Un
+/// annuaire d'avant 0.16.0 ne dit pas sa posture, et un annuaire plus récent
+/// pourrait en nommer une que cette version ignore : dans les deux cas, ne rien
+/// demander est le comportement sûr — l'annuaire refusera si c'était à tort, et
+/// il le dira.
+enum PostureAnnuaire: String, Sendable {
+    /// L'attestation de plate-forme est exigée pour entrer.
+    case required
+    /// Elle est facultative : n'importe qui peut ouvrir un compte.
+    case optional
+    /// Un code d'invitation, émis par l'exploitant, est exigé pour entrer.
+    case invitation
+}
+
+/// Ce que `GET /v1/version` rend : la version, et depuis 0.16.0 la posture.
+///
+/// **Une lecture, deux réponses.** L'écran d'accueil a besoin de la posture
+/// avant tout compte, et le pied de l'écran Compte affiche la version : les
+/// demander séparément serait deux allers-retours pour ce que l'annuaire dit
+/// d'un souffle.
+struct VersionAnnuaire: Hashable, Sendable {
+    let version: String
+    /// `nil` si l'annuaire est trop ancien pour la dire, ou s'il en nomme une
+    /// que cette version ne connaît pas.
+    let posture: PostureAnnuaire?
+
+    /// Faut-il demander un code d'invitation pour ouvrir un compte ici ?
+    var exigeUneInvitation: Bool { posture == .invitation }
+}
+
 /// Un téléphone enrôlé. **C'est l'appareil qui signe**, jamais l'utilisateur.
 ///
 /// L'annuaire en rend l'identifiant, l'attestation sous laquelle il est entré

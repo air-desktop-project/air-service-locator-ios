@@ -86,7 +86,7 @@ struct CompteFenetreVue: View {
 
     private var versionDeLAnnuaire: String {
         switch donnees.versionAnnuaire {
-        case .some(.some(let version)): " — version \(version)"
+        case .some(.some(let annuaire)): " — version \(annuaire.version)"
         case .some(.none): " — version inconnue"
         case .none: ""
         }

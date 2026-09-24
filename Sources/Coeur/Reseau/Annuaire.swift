@@ -21,6 +21,15 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
     case nonConfirme
     /// La preuve de possession ne vérifie pas sous la clé présentée.
     case preuveInvalide
+    /// Le code d'invitation n'a pas été accepté.
+    ///
+    /// **Et l'on ne sait pas lequel des trois** — faux, expiré, déjà
+    /// consommé : l'annuaire rend le même `403` pour les trois, à dessein
+    /// (`protocole.md` §2.1), parce que distinguer dirait à qui essaie des
+    /// codes lesquels ont existé. La voie native ne distingue pas non plus le
+    /// `429` d'une limite de débit ; le message couvre donc les deux sans
+    /// prétendre savoir.
+    case invitationRefusee
 }
 
 /// La voie des applications mobiles (`docs/protocole.md` §2), telle que les
@@ -49,7 +58,11 @@ protocol Annuaire: Sendable {
     /// signataire — un seul geste biométrique, au moment exact où la preuve
     /// est exigée. Le banc et le transport réel font la même chose, chacun
     /// avec ce qu'il a.
-    func ouvrirCompte(avec signataire: any Signataire) async throws -> Compte
+    /// **Le code d'invitation** n'est attendu que d'une racine en posture
+    /// ``PostureAnnuaire/invitation`` — l'appelant le sait par
+    /// ``version()``. Il part dans la case d'attestation, sous la plate-forme
+    /// `3` ; `nil` ailleurs, et la plate-forme reste « aucune ».
+    func ouvrirCompte(avec signataire: any Signataire, invitation: CodeInvitation?) async throws -> Compte
     /// Rejoint un compte existant, **depuis le nouveau téléphone** : un
     /// appareil déjà enrôlé a posté sa clé (``enrolerAppareil(cle:)``) et lui
     /// a rendu l'invitation. Rien n'est posté ici — la clé est déjà connue de
@@ -110,7 +123,12 @@ protocol Annuaire: Sendable {
     /// ce n'est pas une panne. Le dernier acte d'une clé.
     func effacerCompte() async throws
 
-    /// `GET /v1/version` — la version de l'annuaire qui répond, sans rien
-    /// prouver. `nil` si l'annuaire est trop ancien pour la dire (`404`).
-    func version() async throws -> String?
+    /// `GET /v1/version` — ce que l'annuaire dit de lui-même, sans rien
+    /// prouver : sa version, et **depuis 0.16.0 sa posture d'attestation**.
+    /// `nil` si l'annuaire est trop ancien pour répondre à ce verbe (`404`).
+    ///
+    /// C'est par là que l'écran d'accueil sait s'il doit demander un code
+    /// d'invitation — la seule ressource qu'il puisse lire avant d'avoir un
+    /// compte.
+    func version() async throws -> VersionAnnuaire?
 }

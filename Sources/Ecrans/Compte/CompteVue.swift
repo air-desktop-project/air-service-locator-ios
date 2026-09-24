@@ -6,7 +6,7 @@ struct CompteVue: View {
     @State private var appareils: [Appareil] = []
     /// Ce que `GET /v1/version` a rendu : `nil` tant qu'on n'a pas demandé,
     /// `.some(nil)` si l'annuaire ne sait pas le dire.
-    @State private var versionAnnuaire: String??
+    @State private var versionAnnuaire: VersionAnnuaire??
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
     @State private var confirmeEffacement = false
@@ -78,7 +78,7 @@ struct CompteVue: View {
                 }
                 LabeledContent("Version de l'annuaire") {
                     switch versionAnnuaire {
-                    case .some(.some(let version)): Text(version).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                    case .some(.some(let annuaire)): Text(annuaire.version).font(.system(.body, design: .monospaced)).textSelection(.enabled)
                     case .some(.none): Text("ne la dit pas").foregroundStyle(.secondary)
                     case .none: Text("…").foregroundStyle(.tertiary)
                     }
