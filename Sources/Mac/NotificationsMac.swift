@@ -32,12 +32,19 @@ final class NotificationsMac {
         case inconnu
         /// Jamais demandé : le bouton « Activer » est proposé.
         case aDemander
+        /// Demandé, pas encore répondu. macOS pose la question dans une
+        /// bannière en haut à droite de l'écran — facile à manquer, vu le
+        /// 2026-09-25 : l'écran le dit tant que la réponse n'est pas venue.
+        case enAttente
         case autorisees
         /// Refusé — ne se redemande pas d'ici : macOS renvoie aux Réglages.
         case refusees
     }
 
     private(set) var etat: Etat = .inconnu
+    /// « Activer » a été touché dans cette session : un statut encore
+    /// indéterminé veut dire « en attente », pas « jamais demandé ».
+    private var demandee = false
 
     // # RIEN DU CENTRE NE TRAVERSE L'ACTEUR
     //
@@ -53,7 +60,7 @@ final class NotificationsMac {
             UNUserNotificationCenter.current().getNotificationSettings { suite.resume(returning: $0.authorizationStatus) }
         }
         etat = switch statut {
-        case .notDetermined: .aDemander
+        case .notDetermined: demandee ? .enAttente : .aDemander
         case .denied: .refusees
         default: .autorisees
         }
@@ -61,6 +68,11 @@ final class NotificationsMac {
 
     /// Le geste « Activer » : la seule question que macOS posera.
     func activer() async {
+        // Tracé AVANT la demande : le 2026-09-25, un « Activer » touché n'a
+        // laissé aucune trace et la cause n'a pas pu être reproduite. La
+        // prochaine fois, le journal dira si le toucher est arrivé.
+        journal.notice("« Activer » touché : demande de permission")
+        demandee = true
         let erreur = await withCheckedContinuation { (suite: CheckedContinuation<String?, Never>) in
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, erreur in
                 suite.resume(returning: erreur?.localizedDescription)

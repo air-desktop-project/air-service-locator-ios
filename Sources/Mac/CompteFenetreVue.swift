@@ -264,6 +264,9 @@ struct NotificationsSection: View {
                     case .aDemander:
                         Button("Activer") { Task { await notifications.activer() } }
                         Text("Désactivées").foregroundStyle(.secondary)
+                    case .enAttente:
+                        Label("En attente de votre réponse", systemImage: "hourglass").foregroundStyle(Couleurs.attention)
+                        Text("— macOS affiche une demande en haut à droite de l'écran").foregroundStyle(.secondary)
                     case .autorisees:
                         Label("Activées", systemImage: "bell.badge").foregroundStyle(Couleurs.accent)
                     case .refusees:
@@ -275,5 +278,11 @@ struct NotificationsSection: View {
             Text(TextesNouveautes.explication).font(.caption).foregroundStyle(.secondary)
         }
         .task { await notifications.relireEtat() }
+        // Un « Autoriser » cliqué dans la bannière, ou un réglage changé dans
+        // Réglages Système, se voit au retour dans l'application — sans la
+        // relancer.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await notifications.relireEtat() }
+        }
     }
 }
