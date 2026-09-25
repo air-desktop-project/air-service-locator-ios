@@ -2,6 +2,9 @@ import Observation
 import OSLog
 import UserNotifications
 
+/// Hors de l'acteur : `Logger` est `Sendable`, et rien ne l'y attache.
+private let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "notifications")
+
 /// Les notifications locales du Mac — le seul endroit où l'application en
 /// montre (`protocole.md` §2, « notifications sans tiers »).
 ///
@@ -35,15 +38,19 @@ final class NotificationsMac {
     }
 
     private(set) var etat: Etat = .inconnu
-    private static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "notifications")
 
-    private var centre: UNUserNotificationCenter { .current() }
+    // # RIEN DU CENTRE NE TRAVERSE L'ACTEUR
+    //
+    // `UNUserNotificationCenter`, ses réglages et ses contenus ne sont pas
+    // `Sendable`. Les appeler par leurs méthodes `async` depuis cet acteur,
+    // c'est les envoyer hors de lui — ce que le Swift 6 de la CI refuse.
+    // Chaque appel se fait donc par sa forme à rappel, dans une fermeture qui
+    // obtient le centre elle-même et construit ce qu'elle poste : seuls un
+    // statut et un texte d'erreur en reviennent.
 
     func relireEtat() async {
-        // Le statut seul, lu dans le rappel : les réglages entiers ne sont pas
-        // `Sendable`, et le SDK de la CI refuse de les faire traverser.
         let statut = await withCheckedContinuation { suite in
-            centre.getNotificationSettings { suite.resume(returning: $0.authorizationStatus) }
+            UNUserNotificationCenter.current().getNotificationSettings { suite.resume(returning: $0.authorizationStatus) }
         }
         etat = switch statut {
         case .notDetermined: .aDemander
@@ -54,11 +61,12 @@ final class NotificationsMac {
 
     /// Le geste « Activer » : la seule question que macOS posera.
     func activer() async {
-        do {
-            _ = try await centre.requestAuthorization(options: [.alert, .sound])
-        } catch {
-            Self.journal.error("la permission n'a pas pu être demandée : \(error.localizedDescription, privacy: .public)")
+        let erreur = await withCheckedContinuation { (suite: CheckedContinuation<String?, Never>) in
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, erreur in
+                suite.resume(returning: erreur?.localizedDescription)
+            }
         }
+        if let erreur { journal.error("la permission n'a pas pu être demandée : \(erreur, privacy: .public)") }
         await relireEtat()
     }
 
@@ -68,14 +76,16 @@ final class NotificationsMac {
     func annoncer() async {
         await relireEtat()
         guard etat == .autorisees else { return }
-        let contenu = UNMutableNotificationContent()
-        contenu.title = TextesNouveautes.titre
-        contenu.body = TextesNouveautes.corps
-        contenu.sound = .default
-        do {
-            try await centre.add(UNNotificationRequest(identifier: "acces", content: contenu, trigger: nil))
-        } catch {
-            Self.journal.error("la notification n'a pas pu être posée : \(error.localizedDescription, privacy: .public)")
+        let (titre, corps) = (TextesNouveautes.titre, TextesNouveautes.corps)
+        let erreur = await withCheckedContinuation { (suite: CheckedContinuation<String?, Never>) in
+            let contenu = UNMutableNotificationContent()
+            contenu.title = titre
+            contenu.body = corps
+            contenu.sound = .default
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "acces", content: contenu, trigger: nil)) { erreur in
+                suite.resume(returning: erreur?.localizedDescription)
+            }
         }
+        if let erreur { journal.error("la notification n'a pas pu être posée : \(erreur, privacy: .public)") }
     }
 }
