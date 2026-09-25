@@ -45,6 +45,7 @@ struct AirServiceLocatorApp: App {
 /// Accueil tant qu'il n'y a pas de compte, les onglets ensuite.
 struct RacineVue: View {
     @Environment(Session.self) private var session
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
         Group {
@@ -61,11 +62,24 @@ struct RacineVue: View {
                 OngletsVue()
             }
         }
-        .task { await session.rafraichirCompte() }
+        .task {
+            await session.rafraichirCompte()
+            // L'ouverture a prouvé la clé : la relecture des accès suit sans
+            // autre geste. C'est tout ce que l'iPhone a pour apprendre qu'on
+            // lui a accordé quelque chose — il n'y a pas de poussée.
+            await session.relire()
+        }
+        // De retour au premier plan, la même relecture — mais seulement si la
+        // connexion tient encore : pas de Face ID pour une pastille.
+        .onChange(of: phase) { _, phase in
+            if phase == .active { Task { await session.relire(sansGeste: true) } }
+        }
     }
 }
 
 struct OngletsVue: View {
+    @Environment(Session.self) private var session
+
     var body: some View {
         // `.tabItem` plutôt que `Tab` : la cible est iOS 17, et `Tab` demande 18.
         TabView {
@@ -73,6 +87,8 @@ struct OngletsVue: View {
                 .tabItem { Label("Machines", systemImage: "desktopcomputer") }
             NavigationStack { AccesVue() }
                 .tabItem { Label("Accès", systemImage: "key.horizontal") }
+                // Zéro n'affiche rien.
+                .badge(session.nouveautes)
             NavigationStack { CompteVue() }
                 .tabItem { Label("Compte", systemImage: "person") }
         }

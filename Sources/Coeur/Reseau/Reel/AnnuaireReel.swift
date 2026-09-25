@@ -101,6 +101,8 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     private let signataire: @Sendable () throws -> any Signataire
     private var handle: OpaquePointer?
     private var cleCourante: (any Signataire)?
+    /// L'écoute de `GET /v1/nouvelles`, sur un fil à elle (``nouvelles()``).
+    private let veille = Veille()
 
     init(reglages: Reglages, signataire: @escaping @Sendable () throws -> any Signataire) {
         self.reglages = reglages
@@ -108,12 +110,14 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     }
 
     deinit {
+        veille.arreter()
         if let handle { asl_appareil_libere(handle) }
     }
 
     /// Libère le handle natif — connexion fermée — pour qu'il se recrée à la
     /// prochaine demande, sans identité.
     private func oublierLeHandle() {
+        veille.arreter()
         if let handle { asl_appareil_libere(handle) }
         handle = nil
         cleCourante = nil
@@ -208,6 +212,9 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// ici que Face ID est demandé, une fois par connexion.
     private func connecter() throws {
         let handle = try handleOuCreer()
+        // La connexion va être remplacée : l'écoute, qui la lit, s'arrête
+        // d'abord — l'ABI l'exige, et son échéance la borne.
+        veille.arreter()
         Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public)…")
         let code = asl_appareil_connecter(handle)
         Self.journal.notice("asl_appareil_connecter → \(code)")
@@ -300,6 +307,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             if !self.connecte() { try self.connecter() }
             var compte = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
             var appareil = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
+            self.veille.arreter()
             // **CE QUE PORTE LA CASE D'ATTESTATION, ET SOUS QUELLE
             // PLATE-FORME.** Une invitation voyage là où une chaîne Keystore
             // voyage sous la plate-forme `2` : dix octets ASCII, les symboles
@@ -369,6 +377,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         _ = signataire
         let rejoint = try await surLaFile {
             let handle = try self.handleOuCreer()
+            self.veille.arreter()
             try self.exiger(asl_appareil_identite(handle, appareil.texte), "asl_appareil_identite")
             // Se connecter sous cette identité, c'est la prouver : le natif
             // ferme la connexion nue s'il y en a une, et rappelle la clé.
@@ -807,6 +816,122 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     func revoquerAutorisation(_ id: Identifiant) async throws {
         let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/autorisations/\(id.texte)") }
         guard statut == 204 else { throw Self.refus(statut) }
+    }
+}
+
+// MARK: - Les nouvelles
+
+extension AnnuaireReel {
+    /// Ouvre `GET /v1/nouvelles` sur la connexion tenue, et l'écoute sur un
+    /// fil à lui (`asl.h`, « LES NOUVELLES »).
+    ///
+    /// **Jamais de connexion ici** : sans connexion vivante, `nil`. La
+    /// reconnexion est un geste Touch ID, et une écoute qui en demanderait un
+    /// seule, au détour d'une coupure, surprendrait l'utilisateur au pire
+    /// moment. La prochaine relecture qu'il lance reconnecte ; celle-là
+    /// rouvrira l'écoute.
+    func nouvelles() async -> AsyncStream<Void>? {
+        let ouverte = try? await surLaFile { () -> AsyncStream<Void>? in
+            guard let handle = self.handle, self.connecte(), !self.veille.enMarche else { return nil }
+            let code = asl_appareil_nouvelles_ouvrir(handle)
+            Self.journal.notice("asl_appareil_nouvelles_ouvrir → \(code)")
+            // `ASL_DEJA` : un flux vit déjà sur cette connexion — personne
+            // ne le lit, puisque la veille ne tourne pas ; on le reprend.
+            guard code == ASL_OK || code == ASL_DEJA else { return nil }
+            return self.veille.demarrer(Veille.Poignee(handle))
+        }
+        return ouverte ?? nil
+    }
+
+    func connexionTenue() async -> Bool {
+        (try? await surLaFile { self.connecte() }) ?? false
+    }
+
+    /// Le fil qui attend les nouvelles, et ce qu'il faut pour l'arrêter.
+    ///
+    /// # POURQUOI UN FIL À PART, ET POURQUOI IL S'ARRÊTE SI VITE
+    ///
+    /// `asl_appareil_nouvelle` bloque jusqu'à son échéance : sur `file`, il
+    /// tiendrait toutes les requêtes derrière lui. L'ABI le laisse tourner
+    /// ailleurs, en même temps que `asl_appareil_requete` — mais **pas** en
+    /// même temps que ce qui remplace la connexion ou libère le handle. Ces
+    /// verbes-là appellent ``arreter()`` d'abord, qui attend la fin du tour en
+    /// cours : l'échéance est donc courte (``echeanceMs``), pour qu'une
+    /// reconnexion ne fasse pas patienter l'écran. Une attente plus longue
+    /// n'économiserait rien : elle est locale, rien ne passe sur le réseau
+    /// entre deux lignes.
+    final class Veille: @unchecked Sendable {
+        /// Un handle natif, passé au fil de la veille. Sûr parce que les
+        /// verbes qui le changent arrêtent la veille avant.
+        struct Poignee: @unchecked Sendable {
+            let handle: OpaquePointer
+            init(_ handle: OpaquePointer) { self.handle = handle }
+        }
+
+        static let echeanceMs: UInt32 = 2_000
+
+        private let verrou = NSLock()
+        private var fin: DispatchSemaphore?
+        private var arret = false
+
+        var enMarche: Bool { verrou.withLock { fin != nil } }
+
+        func demarrer(_ poignee: Poignee) -> AsyncStream<Void> {
+            let fin = DispatchSemaphore(value: 0)
+            verrou.withLock {
+                self.fin = fin
+                arret = false
+            }
+            let (flux, suite) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+            let fil = Thread { [self] in
+                ecouter(poignee, suite)
+                suite.finish()
+                verrou.withLock { self.fin = nil }
+                fin.signal()
+            }
+            fil.name = "org.airdesktop.servicelocator.nouvelles"
+            fil.start()
+            return flux
+        }
+
+        /// Arrête l'écoute et attend qu'elle ait rendu le handle ; rien si
+        /// elle ne tourne pas.
+        func arreter() {
+            let fin: DispatchSemaphore? = verrou.withLock {
+                if self.fin != nil { arret = true }
+                return self.fin
+            }
+            fin?.wait()
+            // Rendu pour la prochaine écoute : le fil l'a déjà consommé.
+            fin?.signal()
+        }
+
+        private var doitSArreter: Bool { verrou.withLock { arret } }
+
+        private func ecouter(_ poignee: Poignee, _ suite: AsyncStream<Void>.Continuation) {
+            var ligne = [UInt8](repeating: 0, count: Int(ASL_NOUVELLE_MAX))
+            while !doitSArreter {
+                var ecrit = 0
+                let code = ligne.withUnsafeMutableBufferPointer { tampon in
+                    asl_appareil_nouvelle(poignee.handle, Self.echeanceMs, tampon.baseAddress, tampon.count, &ecrit)
+                }
+                switch code {
+                case ASL_OK:
+                    // `{"quoi":"autorisation"}` — et l'on saute les genres
+                    // qu'on ne connaît pas : un annuaire plus récent peut en
+                    // dire d'autres.
+                    let objet = try? JSONSerialization.jsonObject(with: Data(ligne.prefix(ecrit))) as? [String: Any]
+                    if objet?["quoi"] as? String == "autorisation" { suite.yield() }
+                case ASL_PAS_DE_POUSSEE:
+                    continue
+                default:
+                    // `ASL_NON_CONNECTE` : le flux est tombé avec la
+                    // connexion. On sort sans reconnecter — c'est un geste.
+                    AnnuaireReel.journal.notice("asl_appareil_nouvelle → \(code) : fin de l'écoute")
+                    return
+                }
+            }
+        }
     }
 }
 

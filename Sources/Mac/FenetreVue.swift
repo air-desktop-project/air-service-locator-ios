@@ -124,6 +124,15 @@ struct FenetreVue: View {
                 HStack {
                     Label("Accès", systemImage: "key.horizontal")
                     Spacer()
+                    // Les accès reçus jamais montrés — ce que la page « Accès »
+                    // marquera « nouveau », et remettra à zéro en s'ouvrant.
+                    if session.nouveautes > 0 {
+                        Text("\(session.nouveautes) \(TextesNouveautes.marque)")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Couleurs.accent.opacity(0.18), in: Capsule())
+                            .foregroundStyle(Couleurs.accent)
+                    }
                     Text("\(donnees.autorisations.filter { !$0.estRevoquee }.count)").foregroundStyle(.secondary)
                 }
                 .tag(EtatFenetre.Page.acces)

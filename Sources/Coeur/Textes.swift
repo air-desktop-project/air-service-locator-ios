@@ -144,3 +144,22 @@ enum TextesInvitation {
     /// quelle, et là il n'y en a pas.
     static let tropDEssais = "Trop d'essais : réessayez dans une minute."
 }
+
+/// Ce que l'iPhone et le Mac disent des accès reçus depuis la dernière fois
+/// — les mêmes mots des deux côtés, pour la même raison que
+/// ``TextesInvitation``.
+enum TextesNouveautes {
+    /// La marque d'une ligne jamais montrée, dans l'écran des accès.
+    static let marque = "nouveau"
+
+    /// La notification locale du Mac. **Générique, par principe** : la
+    /// nouvelle de l'annuaire ne dit ni qui ni quoi (`protocole.md` §2), et
+    /// une notification reste lisible sur un écran verrouillé — elle n'a pas
+    /// à dire ce que la fenêtre dira.
+    static let titre = "Du nouveau dans Service Locator"
+    static let corps = "Un accès vous a été accordé. Ouvrez « Accès » pour le voir."
+
+    /// Pourquoi demander la permission, dit avant que macOS la demande.
+    static let explication =
+        "Quand un compte vous accorde un accès, l'annuaire le signale à ce Mac tant que l'application est ouverte et connectée. Rien ne passe par Apple ni par un autre tiers, et la notification ne dit rien de plus que « du nouveau »."
+}

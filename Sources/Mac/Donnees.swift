@@ -27,6 +27,8 @@ final class Donnees {
     /// Quand la dernière relecture a conclu — l'écran le dit, pour qu'on
     /// sache de quand datent les états.
     private(set) var reluA: Date?
+    /// Les notifications locales : la permission, et l'annonce.
+    let notifications = NotificationsMac()
 
     /// Relit tout ce que la fenêtre montre. Une liste qui échoue n'efface
     /// pas les autres : ce qu'on savait reste, et l'erreur se dit.
@@ -44,10 +46,55 @@ final class Donnees {
         var fautes: [String] = []
         do { machines = try await session.annuaire.machines() } catch { fautes.append(error.messageAnnuaire) }
         do { appareils = try await session.annuaire.appareils() } catch { fautes.append(error.messageAnnuaire) }
-        do { autorisations = try await session.annuaire.autorisations() } catch { fautes.append(error.messageAnnuaire) }
+        do {
+            autorisations = try await session.annuaire.autorisations()
+            session.constater(autorisations)
+        } catch {
+            fautes.append(error.messageAnnuaire)
+        }
         erreur = fautes.isEmpty ? nil : fautes.joined(separator: " · ")
         reluA = .now
         if let erreur { Self.journal.notice("relecture partielle : \(erreur, privacy: .public)") }
+        await ecouter(session)
+    }
+
+    /// Écoute les nouvelles sur la connexion que la relecture vient de
+    /// prouver — si elle n'écoute pas déjà.
+    ///
+    /// # ELLE S'ARRÊTE AVEC LA CONNEXION, ET NE LA REFAIT PAS
+    ///
+    /// Reconnecter, c'est Touch ID : une écoute qui le demanderait d'elle-même
+    /// surprendrait l'utilisateur. Quand la connexion tombe, le flux se
+    /// termine ; la prochaine relecture — ouvrir la fenêtre, ⌘R — reprouve la
+    /// clé, et rouvre l'écoute ici. Entre les deux, rien n'est perdu :
+    /// l'annuaire ne garde pas les nouvelles, mais la relecture avec
+    /// différence retrouve ce qui a été accordé.
+    ///
+    /// Une seule écoute à la fois, et c'est l'annuaire qui le tient : il rend
+    /// `nil` quand une tourne déjà. Garder ici une trace de la tâche en
+    /// doublerait la règle — et la tâche d'une écoute tombée, pas encore
+    /// terminée, empêcherait la suivante de s'ouvrir.
+    func ecouter(_ session: Session) async {
+        guard let flux = await session.annuaire.nouvelles() else { return }
+        Self.journal.notice("écoute des nouvelles ouverte")
+        Task { [weak self] in
+            for await _ in flux {
+                await self?.relireLesAcces(session)
+            }
+            Self.journal.notice("écoute des nouvelles terminée")
+        }
+    }
+
+    /// Une nouvelle est arrivée : relire les accès — sur la connexion tenue,
+    /// sans geste —, et annoncer s'il y a vraiment du neuf. Une nouvelle
+    /// peut ne rien apporter à cet appareil : un accès révoqué, ou déjà
+    /// montré par une relecture plus rapide qu'elle.
+    private func relireLesAcces(_ session: Session) async {
+        guard let lues = try? await session.annuaire.autorisations() else { return }
+        autorisations = lues
+        if let lecture = session.constater(lues), !lecture.nouvelles.isEmpty {
+            await notifications.annoncer()
+        }
     }
 
     func machine(_ id: Identifiant) -> Machine? { machines.first { $0.id == id } }
