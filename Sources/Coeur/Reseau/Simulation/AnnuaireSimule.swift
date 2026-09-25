@@ -283,6 +283,35 @@ actor AnnuaireSimule: Annuaire {
     /// Le seul code que ce banc accepte, sous la posture `invitation`.
     static let invitationAttendue = "4K9M2P7R1T"
 
+    // MARK: - Les nouvelles
+
+    /// L'écoute en cours, s'il y en a une — une seule, comme sur le fil.
+    private var ecoute: AsyncStream<Void>.Continuation?
+
+    /// Le banc n'a pas de connexion à perdre : une écoute s'ouvre dès qu'il
+    /// y a un compte, et vit jusqu'à ``couperLesNouvelles()``.
+    func nouvelles() async -> AsyncStream<Void>? {
+        guard compteLocal != nil, ecoute == nil else { return nil }
+        let (flux, suite) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        ecoute = suite
+        return flux
+    }
+
+    func connexionTenue() async -> Bool { compteLocal != nil }
+
+    /// Ce que l'annuaire écrit sur `GET /v1/nouvelles` quand un accès change
+    /// pour ce compte : `{"quoi":"autorisation"}`, et rien d'autre.
+    func annoncerUneNouvelle() {
+        ecoute?.yield()
+    }
+
+    /// La connexion tombe : le flux se termine, et ne se rouvre qu'à la
+    /// demande — comme sur le fil, où reconnecter est un geste.
+    func couperLesNouvelles() {
+        ecoute?.finish()
+        ecoute = nil
+    }
+
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
         id == compteLocal?.identifiant || autresComptes[id] != nil
     }

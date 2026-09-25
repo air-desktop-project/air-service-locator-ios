@@ -47,6 +47,7 @@ struct CompteFenetreVue: View {
                     }
                 }
                 AppareilsSection()
+                NotificationsSection()
                 // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas,
                 // derrière une confirmation qui dit ce qui part. Sur le Mac,
                 // l'identité de machine part avec — sa clé est révoquée.
@@ -241,5 +242,38 @@ struct AppareilsSection: View {
         } catch {
             erreur = error.messageAnnuaire
         }
+    }
+}
+
+/// Les notifications de ce Mac : ce qu'elles sont, et le geste qui les
+/// active — le seul endroit où la permission se demande
+/// (``NotificationsMac``).
+struct NotificationsSection: View {
+    @Environment(Donnees.self) private var donnees
+
+    private var notifications: NotificationsMac { donnees.notifications }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Titre("Notifications")
+            Carte {
+                HStack(spacing: 12) {
+                    switch notifications.etat {
+                    case .inconnu:
+                        ProgressView().controlSize(.small)
+                    case .aDemander:
+                        Button("Activer") { Task { await notifications.activer() } }
+                        Text("Désactivées").foregroundStyle(.secondary)
+                    case .autorisees:
+                        Label("Activées", systemImage: "bell.badge").foregroundStyle(Couleurs.accent)
+                    case .refusees:
+                        Label("Refusées", systemImage: "bell.slash").foregroundStyle(.secondary)
+                        Text("— se réactivent dans Réglages Système › Notifications").foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Text(TextesNouveautes.explication).font(.caption).foregroundStyle(.secondary)
+        }
+        .task { await notifications.relireEtat() }
     }
 }

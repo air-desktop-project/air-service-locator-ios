@@ -17,6 +17,11 @@ struct AccesFenetreVue: View {
     @State private var aRevoquer: Autorisation?
     @State private var erreur: String?
     @State private var enCours = false
+    /// Les accès reçus jamais montrés avant cette visite : marqués
+    /// « nouveau » tant que la page reste ouverte — puis retenus comme vus,
+    /// parce qu'ils viennent de l'être. Une nouvelle qui arrive page ouverte
+    /// s'y ajoute.
+    @State private var nouvelles: Set<Identifiant> = []
 
     enum Choix: Hashable { case tout, machine }
 
@@ -46,6 +51,12 @@ struct AccesFenetreVue: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Accès")
+        .task(id: donnees.autorisations) {
+            if let lecture = session.constater(donnees.autorisations) {
+                nouvelles.formUnion(lecture.nouvelles.map(\.id))
+                session.montrees(lecture)
+            }
+        }
         .confirmationDialog("Révoquer cet accès ?", isPresented: Binding(get: { aRevoquer != nil }, set: { if !$0 { aRevoquer = nil } }), titleVisibility: .visible) {
             Button("Révoquer", role: .destructive) { if let aRevoquer { Task { await revoquer(aRevoquer) } } }
         } message: {
@@ -104,7 +115,8 @@ struct AccesFenetreVue: View {
                 if indice > 0 { Divider() }
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .top) {
-                        LigneAcces(autorisation: autorisation, machines: donnees.machines, sens: sens)
+                        LigneAcces(autorisation: autorisation, machines: donnees.machines, sens: sens,
+                                   nouvelle: nouvelles.contains(autorisation.id))
                         Spacer()
                         if sens == .accordee, !autorisation.estRevoquee {
                             Button("Révoquer", role: .destructive) { aRevoquer = autorisation }.controlSize(.small)
@@ -167,6 +179,7 @@ struct LigneAcces: View {
     let autorisation: Autorisation
     let machines: [Machine]
     let sens: Sens
+    var nouvelle = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -174,6 +187,12 @@ struct LigneAcces: View {
                 Text(titre).font(.body.weight(.medium))
                     .strikethrough(autorisation.estRevoquee)
                     .foregroundStyle(autorisation.estRevoquee ? .secondary : .primary)
+                if nouvelle {
+                    Text(TextesNouveautes.marque).font(.caption.weight(.semibold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Couleurs.accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
+                        .foregroundStyle(Couleurs.accent)
+                }
                 if autorisation.estRevoquee {
                     Text("révoqué").font(.caption.weight(.semibold))
                         .padding(.horizontal, 7).padding(.vertical, 2)

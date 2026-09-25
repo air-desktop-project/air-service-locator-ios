@@ -136,4 +136,23 @@ protocol Annuaire: Sendable {
     /// d'invitation — la seule ressource qu'il puisse lire avant d'avoir un
     /// compte.
     func version() async throws -> VersionAnnuaire?
+
+    /// `GET /v1/nouvelles` sur la connexion tenue — un élément chaque fois
+    /// que l'annuaire dit qu'un accès a changé pour ce compte
+    /// (`protocole.md` §2, « notifications sans tiers »).
+    ///
+    /// **La nouvelle ne dit rien d'autre** : ni qui, ni quoi. L'application
+    /// relit ``autorisations()`` et montre la différence (``Nouveautes``).
+    ///
+    /// **`nil` sans connexion tenue, et rien n'est tenté pour en avoir une** :
+    /// reconnecter, c'est reprouver la clé, donc un geste biométrique — c'est
+    /// à l'utilisateur de le faire, pas à une écoute. `nil` aussi quand une
+    /// écoute tourne déjà : il n'y en a qu'une. Le flux se termine quand la
+    /// connexion tombe ; la prochaine relecture voulue la rouvrira.
+    func nouvelles() async -> AsyncStream<Void>?
+
+    /// La connexion est-elle encore là, prouvée — de quoi lire sans geste ?
+    /// Une relecture de retour au premier plan ne se fait qu'à cette
+    /// condition : elle ne demande pas Face ID pour une pastille.
+    func connexionTenue() async -> Bool
 }

@@ -8,6 +8,10 @@ struct AccesVue: View {
     @State private var accorder = false
     @State private var aRevoquer: Autorisation?
     @State private var erreur: String?
+    /// Les accès reçus jamais montrés avant cette visite : marqués
+    /// « nouveau » tant que l'écran reste ouvert — puis retenus comme vus,
+    /// parce qu'ils viennent de l'être.
+    @State private var nouvelles: Set<Identifiant> = []
 
     private var moi: Identifiant? { session.compte?.identifiant }
     private var accordees: [Autorisation] { autorisations.filter { $0.accordeePar == moi } }
@@ -43,7 +47,8 @@ struct AccesVue: View {
                     NavigationLink {
                         MachinesVisiblesVue(de: autorisation.accordeePar, autorisation: autorisation)
                     } label: {
-                        LigneAutorisation(autorisation: autorisation, machines: machines, sens: .recue)
+                        LigneAutorisation(autorisation: autorisation, machines: machines, sens: .recue,
+                                          nouvelle: nouvelles.contains(autorisation.id))
                     }
                 }
             } header: {
@@ -78,6 +83,10 @@ struct AccesVue: View {
             autorisations = try await a
             machines = try await m
             erreur = nil
+            if let lecture = session.constater(autorisations) {
+                nouvelles.formUnion(lecture.nouvelles.map(\.id))
+                session.montrees(lecture)
+            }
         } catch {
             erreur = error.messageAnnuaire
         }
@@ -98,6 +107,7 @@ struct LigneAutorisation: View {
     let autorisation: Autorisation
     let machines: [Machine]
     let sens: Sens
+    var nouvelle = false
 
     /// L'annuaire ne connaît ni nom ni courriel : ce que l'on peut montrer de
     /// l'autre compte est son identifiant, et — pour ce que l'on a accordé —
@@ -111,6 +121,7 @@ struct LigneAutorisation: View {
 
     private var sousTitre: String {
         var morceaux: [String] = []
+        if nouvelle { morceaux.append(TextesNouveautes.marque) }
         if case .accordee = sens, !autorisation.etiquette.isEmpty { morceaux.append(autorisation.accordeeA.abrege) }
         morceaux.append(portee)
         if let le = autorisation.revoqueeLe { morceaux.append("révoquée \(le.relatif)") }
@@ -129,6 +140,7 @@ struct LigneAutorisation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(titre)
+                .fontWeight(nouvelle ? .semibold : nil)
                 .strikethrough(autorisation.estRevoquee)
                 .foregroundStyle(autorisation.estRevoquee ? .secondary : .primary)
             Text(sousTitre).font(.footnote).foregroundStyle(.secondary)

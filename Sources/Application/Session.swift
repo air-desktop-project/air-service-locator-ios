@@ -19,14 +19,60 @@ final class Session {
     /// logicielle dans un essai.
     private let signataire: @Sendable () throws -> any Signataire
 
+    /// Les accès reçus déjà montrés par cet appareil (``Nouveautes``).
+    let carnetNouveautes: CarnetNouveautes
+
     init(
         annuaire: any Annuaire,
         signataire: @escaping @Sendable () throws -> any Signataire = { try CleAppareil.ouOuvrir() },
+        carnetNouveautes: CarnetNouveautes = CarnetNouveautes(),
         ouverture: @escaping @Sendable (any Signataire, CodeInvitation?) async throws -> Compte
     ) {
         self.annuaire = annuaire
         self.signataire = signataire
+        self.carnetNouveautes = carnetNouveautes
         self.ouverture = ouverture
+    }
+
+    /// Combien d'accès reçus n'ont pas encore été montrés — la pastille de
+    /// l'onglet « Accès » sur iPhone, de la ligne « Accès » sur le Mac. Tenu
+    /// par ``constater(_:)``, remis à zéro par ``montrees(_:)``.
+    private(set) var nouveautes = 0
+
+    /// Ce que ces autorisations ont de neuf pour cet appareil — et la
+    /// pastille qui le dit. La première lecture d'un compte sur cet appareil
+    /// pose la référence tout de suite, sans rien signaler.
+    @discardableResult
+    func constater(_ autorisations: [Autorisation]) -> Nouveautes.Lecture? {
+        guard let moi = compte?.identifiant else { return nil }
+        let dejaVues = carnetNouveautes.dejaVues(moi)
+        let lecture = Nouveautes.lire(autorisations, moi: moi, dejaVues: dejaVues)
+        if dejaVues == nil { carnetNouveautes.retenirVues(moi, lecture.aRetenir) }
+        nouveautes = lecture.nouvelles.count
+        return lecture
+    }
+
+    /// L'écran des accès a montré cette lecture : ce qu'elle portait de neuf
+    /// ne l'est plus.
+    func montrees(_ lecture: Nouveautes.Lecture) {
+        guard let moi = compte?.identifiant else { return }
+        carnetNouveautes.retenirVues(moi, lecture.aRetenir)
+        nouveautes = 0
+    }
+
+    /// La relecture avec différence (`protocole.md` §2.2) :
+    /// `GET /v1/autorisations`, puis ``constater(_:)``. C'est elle, et non la
+    /// notification, qui dit ce qui a changé.
+    ///
+    /// `sansGeste` : seulement si la connexion tient encore. Un retour au
+    /// premier plan ne demande pas Face ID pour mettre une pastille à jour ;
+    /// la prochaine ouverture, qui en demande un de toute façon, relira.
+    /// Une relecture qui échoue ne dit rien : ce n'est qu'une pastille.
+    func relire(sansGeste: Bool = false) async {
+        guard compte != nil else { return }
+        if sansGeste, !(await annuaire.connexionTenue()) { return }
+        guard let autorisations = try? await annuaire.autorisations() else { return }
+        constater(autorisations)
     }
 
     /// Ce que la dernière relecture n'a pas pu faire, dit à l'écran : hors
@@ -115,5 +161,6 @@ final class Session {
         do { try apresLAnnuaire() } catch { Self.journal.error("ce qui suit l'effacement n'a pas pu se faire : \(error.localizedDescription, privacy: .public)") }
         compte = nil
         erreurDeRelecture = nil
+        nouveautes = 0
     }
 }
