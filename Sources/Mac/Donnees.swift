@@ -29,6 +29,9 @@ final class Donnees {
     private(set) var reluA: Date?
     /// Les notifications locales : la permission, et l'annonce.
     let notifications = NotificationsMac()
+    /// Ce qui tient l'application éveillée tant qu'une écoute tourne
+    /// (``ActiviteTenue``) — une seule, celle de l'écoute en cours.
+    private var eveil: ActiviteTenue?
 
     /// Relit tout ce que la fenêtre montre. Une liste qui échoue n'efface
     /// pas les autres : ce qu'on savait reste, et l'erreur se dit.
@@ -74,13 +77,27 @@ final class Donnees {
     /// `nil` quand une tourne déjà. Garder ici une trace de la tâche en
     /// doublerait la règle — et la tâche d'une écoute tombée, pas encore
     /// terminée, empêcherait la suivante de s'ouvrir.
+    ///
+    /// **Éveillée tant qu'elle écoute.** Sans quoi App Nap l'endort une
+    /// minute après le passage de la fenêtre à l'arrière-plan, et la
+    /// connexion meurt de silence (``ActiviteTenue`` dit la mesure). L'activité
+    /// naît avec l'écoute et finit avec elle, quelle qu'en soit la cause : le
+    /// flux se termine toujours — connexion tombée, écoute arrêtée avant une
+    /// reconnexion, handle libéré.
     func ecouter(_ session: Session) async {
         guard let flux = await session.annuaire.nouvelles() else { return }
         Self.journal.notice("écoute des nouvelles ouverte")
+        // Une seule activité : celle d'une écoute précédente qui n'aurait pas
+        // encore constaté sa fin est close ici, avant d'en ouvrir une autre.
+        eveil?.terminer()
+        let activite = ActiviteTenue(raison: "écoute des nouvelles")
+        eveil = activite
         Task { [weak self] in
             for await _ in flux {
                 await self?.relireLesAcces(session)
             }
+            activite.terminer()
+            if self?.eveil === activite { self?.eveil = nil }
             Self.journal.notice("écoute des nouvelles terminée")
         }
     }
