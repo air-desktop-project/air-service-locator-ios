@@ -155,9 +155,11 @@ enum TextesNouveautes {
     /// La notification locale du Mac. **Générique, par principe** : la
     /// nouvelle de l'annuaire ne dit ni qui ni quoi (`protocole.md` §2), et
     /// une notification reste lisible sur un écran verrouillé — elle n'a pas
-    /// à dire ce que la fenêtre dira.
+    /// à dire ce que la fenêtre dira. Ni « accès » ni « accordé » : les mots
+    /// d'Android, à la lettre, pour que les deux plates-formes n'en disent pas
+    /// plus l'une que l'autre.
     static let titre = "Du nouveau dans Service Locator"
-    static let corps = "Un accès vous a été accordé. Ouvrez « Accès » pour le voir."
+    static let corps = "Ouvrez l'application pour voir ce qui a changé."
 
     /// Pourquoi demander la permission, dit avant que macOS la demande.
     static let explication =
