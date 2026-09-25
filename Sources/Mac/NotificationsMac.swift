@@ -40,8 +40,12 @@ final class NotificationsMac {
     private var centre: UNUserNotificationCenter { .current() }
 
     func relireEtat() async {
-        let reglages = await centre.notificationSettings()
-        etat = switch reglages.authorizationStatus {
+        // Le statut seul, lu dans le rappel : les réglages entiers ne sont pas
+        // `Sendable`, et le SDK de la CI refuse de les faire traverser.
+        let statut = await withCheckedContinuation { suite in
+            centre.getNotificationSettings { suite.resume(returning: $0.authorizationStatus) }
+        }
+        etat = switch statut {
         case .notDetermined: .aDemander
         case .denied: .refusees
         default: .autorisees
