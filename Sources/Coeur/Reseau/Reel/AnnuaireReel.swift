@@ -211,12 +211,30 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public)…")
         let code = asl_appareil_connecter(handle)
         Self.journal.notice("asl_appareil_connecter → \(code)")
+        guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }
+    }
+
+    /// Ce qu'un code de l'ABI dit à l'écran, pour les chemins qui prouvent la
+    /// clé ou créent le compte : `asl_appareil_connecter`,
+    /// `asl_appareil_creer_compte`, et demain `asl_appareil_rejoindre_atteste`.
+    ///
+    /// **`ASL_REFUSE` raconte deux histoires.** L'ABI écrase les statuts
+    /// refusés en un seul code : sans invitation, le refus ne peut être que
+    /// celui de la preuve ; avec, c'est le code qui n'a pas été accepté — et
+    /// l'annuaire ne dit pas s'il était faux, expiré ou déjà consommé. On le
+    /// dit tel quel plutôt que de deviner.
+    ///
+    /// **`ASL_TROP_D_ESSAIS`, lui, n'en raconte qu'une** : la limite de débit
+    /// (`429`), qui se lève d'elle-même. Il n'est rendu aujourd'hui que par
+    /// l'ouverture sous invitation ; ailleurs, il dirait la même chose, et
+    /// l'on attend de même — sans reprise inventée ici.
+    static func refusNatif(_ code: Int32, _ quoi: String, invitation: Bool = false) -> any Error {
         switch code {
-        case ASL_OK: break
-        case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
-        case ASL_REFUSE: throw ErreurAnnuaire.preuveInvalide
-        case ASL_INJOIGNABLE: throw ErreurAnnuaire.reseau("aucun annuaire ne répond")
-        default: throw ErreurNative.code(code, "asl_appareil_connecter")
+        case ASL_SIGNATURE_REFUSEE: ErreurAnnuaire.nonConfirme
+        case ASL_REFUSE: invitation ? ErreurAnnuaire.invitationRefusee : .preuveInvalide
+        case ASL_TROP_D_ESSAIS: ErreurAnnuaire.tropDEssais
+        case ASL_INJOIGNABLE: ErreurAnnuaire.reseau("aucun annuaire ne répond")
+        default: ErreurNative.code(code, quoi)
         }
     }
 
@@ -297,17 +315,10 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             } else {
                 asl_appareil_creer_compte(handle, UInt8(ASL_PLATEFORME_AUCUNE), nil, 0, &compte, &appareil)
             }
-            switch code {
-            case ASL_OK: break
-            case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
-            // **LE MÊME `ASL_REFUSE` POUR DEUX HISTOIRES.** L'ABI écrase tous
-            // les statuts refusés en un seul code : sans invitation, le refus
-            // ne peut être que celui de la preuve ; avec, c'est le code qui
-            // n'a pas été accepté — et l'annuaire ne dit pas s'il était faux,
-            // expiré ou déjà consommé, ni si c'est la limite de débit qui a
-            // parlé. On le dit tel quel plutôt que de deviner.
-            case ASL_REFUSE: throw invitation == nil ? ErreurAnnuaire.preuveInvalide : .invitationRefusee
-            default: throw ErreurNative.code(code, "asl_appareil_creer_compte")
+            // Un code refusé (`403`) et la porte fermée un instant (`429`)
+            // sont deux erreurs distinctes : ``refusNatif`` dit pourquoi.
+            guard code == ASL_OK else {
+                throw Self.refusNatif(code, "asl_appareil_creer_compte", invitation: invitation != nil)
             }
             let cree = Compte(identifiant: try Identifiant.analyser(Self.texte(compte), genre: .utilisateur))
             Carnet.compte = cree
@@ -347,7 +358,9 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// appeler `asl_appareil_rejoindre_atteste(handle, appareil,
     /// ASL_PLATEFORME_APPLE, objet, taille)` à la place de
     /// `asl_appareil_connecter` — en traitant `ASL_CHAINE_REFUSEE` (−12), le
-    /// `403` d'une racine qui exige une chaîne qu'elle a refusée. Le reste de
+    /// `403` d'une racine qui exige une chaîne qu'elle a refusée ;
+    /// `ASL_TROP_D_ESSAIS` (−13), que ce verbe peut aussi rendre, passe déjà
+    /// par ``refusNatif`` et dit d'attendre. Le reste de
     /// la cérémonie — clé montrée, apportée, rendue — ne bouge pas.
     func rejoindre(compte: Identifiant, appareil: Identifiant, avec signataire: any Signataire) async throws -> Compte {
         // Le natif signe avec la clé qu'on lui a donnée à la création du
@@ -362,13 +375,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public) en tant que \(appareil.texte, privacy: .public)…")
             let code = asl_appareil_connecter(handle)
             Self.journal.notice("asl_appareil_connecter → \(code)")
-            switch code {
-            case ASL_OK: break
-            case ASL_SIGNATURE_REFUSEE: throw ErreurAnnuaire.nonConfirme
-            case ASL_REFUSE: throw ErreurAnnuaire.preuveInvalide
-            case ASL_INJOIGNABLE: throw ErreurAnnuaire.reseau("aucun annuaire ne répond")
-            default: throw ErreurNative.code(code, "asl_appareil_connecter")
-            }
+            guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }
             // **LE CARNET S'ÉCRIT ICI**, sous le même passage que la preuve,
             // comme `ouvrirCompte` le fait à quelques lignes d'ici. La preuve
             // tient : l'appareil A REJOINT, et c'est vrai là-bas, chez

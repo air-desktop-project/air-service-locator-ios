@@ -113,3 +113,72 @@ struct OuvertureSurInvitationEssais {
         #expect(try await AnnuaireSimule(posture: nil).version()?.exigeUneInvitation == false)
     }
 }
+
+/// « Trop d'essais » (`429`) n'est pas un refus : la porte se ferme un
+/// instant, et un bon code tapé pendant ce temps n'est même pas examiné.
+/// L'écran doit dire d'attendre, pas de douter du code.
+struct TropDEssaisEssais {
+    /// Une horloge qu'on avance à la main : la limite est une affaire de
+    /// minute, et un essai ne l'attend pas.
+    final class Pendule: @unchecked Sendable {
+        private let verrou = NSLock()
+        private var instant = Date(timeIntervalSince1970: 1_700_000_000)
+        func lire() -> Date { verrou.withLock { instant } }
+        func avancer(_ secondes: TimeInterval) { verrou.withLock { instant += secondes } }
+    }
+
+    /// Le code de l'ABI, à la lettre : `ASL_TROP_D_ESSAIS` vaut `-13` dans
+    /// `asl.h`, et c'est une erreur à part, avec ou sans invitation.
+    @Test func moinsTreizeDitDAttendre() {
+        #expect(AnnuaireReel.refusNatif(-13, "asl_appareil_creer_compte", invitation: true) as? ErreurAnnuaire == .tropDEssais)
+        #expect(AnnuaireReel.refusNatif(-13, "asl_appareil_connecter") as? ErreurAnnuaire == .tropDEssais)
+    }
+
+    /// Le `403` garde son sens : un code refusé sous invitation, une preuve
+    /// qui ne vérifie pas sans.
+    @Test func leRefusGardeSonSens() {
+        #expect(AnnuaireReel.refusNatif(-4, "asl_appareil_creer_compte", invitation: true) as? ErreurAnnuaire == .invitationRefusee)
+        #expect(AnnuaireReel.refusNatif(-4, "asl_appareil_creer_compte") as? ErreurAnnuaire == .preuveInvalide)
+    }
+
+    /// Deux phrases, plus une seule pour deux histoires : le refus ne parle
+    /// plus de patienter, et l'attente ne parle pas du code.
+    @Test func deuxMessagesDistincts() {
+        #expect(ErreurAnnuaire.tropDEssais.message == TextesInvitation.tropDEssais)
+        #expect(ErreurAnnuaire.tropDEssais.message != ErreurAnnuaire.invitationRefusee.message)
+        #expect(!ErreurAnnuaire.invitationRefusee.message.contains("patientez"))
+    }
+
+    /// La règle du serveur, tenue par le banc : cinq échecs dans la minute,
+    /// puis `429` — même pour le bon code, qui n'est pas regardé. La minute
+    /// passée, il ouvre le compte.
+    @Test func cinqEchecsFermentLaPorteUneMinute() async throws {
+        let pendule = Pendule()
+        let annuaire = AnnuaireSimule(horloge: { pendule.lire() }, posture: .invitation)
+        let mauvais = try CodeInvitation(saisie: "00000-00000")
+        let bon = try CodeInvitation(saisie: AnnuaireSimule.invitationAttendue)
+        for _ in 0..<5 {
+            await #expect(throws: ErreurAnnuaire.invitationRefusee) {
+                try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: mauvais)
+            }
+        }
+        await #expect(throws: ErreurAnnuaire.tropDEssais) {
+            try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: bon)
+        }
+        pendule.avancer(60)
+        let compte = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: bon)
+        #expect(compte.identifiant.genre == .utilisateur)
+    }
+
+    /// Sans code, la racine refuse sans compter : ce n'est pas un essai.
+    @Test func uneAbsenceDeCodeNeComptePas() async throws {
+        let annuaire = AnnuaireSimule(posture: .invitation)
+        for _ in 0..<6 {
+            await #expect(throws: ErreurAnnuaire.invitationRefusee) {
+                try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: nil)
+            }
+        }
+        let bon = try CodeInvitation(saisie: AnnuaireSimule.invitationAttendue)
+        _ = try await annuaire.ouvrirCompte(avec: CleLogicielle(), invitation: bon)
+    }
+}

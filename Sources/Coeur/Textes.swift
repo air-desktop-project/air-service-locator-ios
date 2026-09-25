@@ -101,7 +101,8 @@ extension ErreurAnnuaire {
         case .nonConfirme: "Identité non confirmée ; rien n'a été envoyé."
         case .preuveInvalide: "La preuve de possession de la clé ne vérifie pas."
         case .invitationRefusee:
-            "Ce code d'invitation n'a pas été accepté. Vérifiez-le auprès de qui vous l'a donné : il ne vaut qu'une fois, et il expire. Si vous venez d'essayer plusieurs fois, patientez une minute."
+            "Ce code d'invitation n'a pas été accepté. Vérifiez-le auprès de qui vous l'a donné : il ne vaut qu'une fois, et il expire."
+        case .tropDEssais: TextesInvitation.tropDEssais
         }
     }
 }
@@ -133,4 +134,13 @@ enum TextesInvitation {
     /// Ce que le code vaut, dit avant qu'on le tape plutôt qu'après qu'il a
     /// échoué : il ne sert qu'une fois, et il ne dure pas.
     static let duree = "Dix symboles, à usage unique. Il expire — demandez-en un autre s'il est trop vieux."
+
+    /// Ce que l'on dit quand l'annuaire a fermé la porte un instant (`429`).
+    ///
+    /// **Attendre, pas douter du code** : pendant la minute où la limite
+    /// tient, l'annuaire ne regarde même pas ce qu'on tape — un bon code y
+    /// échouerait aussi. Le dire autrement pousserait à jeter un code juste.
+    /// La phrase ne parle pas du code : rejoindre un compte la reprend telle
+    /// quelle, et là il n'y en a pas.
+    static let tropDEssais = "Trop d'essais : réessayez dans une minute."
 }
