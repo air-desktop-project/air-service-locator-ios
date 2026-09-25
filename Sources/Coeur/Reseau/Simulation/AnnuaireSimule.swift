@@ -56,12 +56,28 @@ actor AnnuaireSimule: Annuaire {
     /// qui n'existe pas. Par défaut, celle des racines d'aujourd'hui.
     private let posture: PostureAnnuaire?
 
+    /// Les codes d'invitation refusés, datés : la limite de débit du serveur
+    /// (`protocole.md` §2.2) — cinq échecs par minute, puis `429`. Le banc
+    /// n'a qu'une adresse, donc un seul compteur.
+    private var echecsDInvitation: [Date] = []
+    static let echecsParFenetre = 5
+    static let fenetreDesEchecs: TimeInterval = 60
+
     func ouvrirCompte(avec signataire: any Signataire, invitation: CodeInvitation?) async throws -> Compte {
         if let compteLocal { return compteLocal }
         // Le banc tient la règle du serveur : sous `invitation`, un code est
         // exigé, et sous toute autre posture il n'a rien à recevoir.
         if posture == .invitation {
-            guard let invitation, invitation.symboles == Self.invitationAttendue else {
+            // Sans code, la plate-forme n'est pas `3` : refusé, et pas compté.
+            guard let invitation else { throw ErreurAnnuaire.invitationRefusee }
+            // **LA LIMITE DE DÉBIT, AVANT DE REGARDER LE CODE**, comme le
+            // serveur : cinq échecs dans la minute, et le sixième essai rend
+            // `429` — même juste, il n'est pas examiné.
+            let maintenant = horloge()
+            echecsDInvitation.removeAll { maintenant.timeIntervalSince($0) >= Self.fenetreDesEchecs }
+            guard echecsDInvitation.count < Self.echecsParFenetre else { throw ErreurAnnuaire.tropDEssais }
+            guard invitation.symboles == Self.invitationAttendue else {
+                echecsDInvitation.append(maintenant)
                 throw ErreurAnnuaire.invitationRefusee
             }
         } else if invitation != nil {

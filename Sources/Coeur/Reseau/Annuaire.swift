@@ -26,10 +26,15 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
     /// **Et l'on ne sait pas lequel des trois** — faux, expiré, déjà
     /// consommé : l'annuaire rend le même `403` pour les trois, à dessein
     /// (`protocole.md` §2.1), parce que distinguer dirait à qui essaie des
-    /// codes lesquels ont existé. La voie native ne distingue pas non plus le
-    /// `429` d'une limite de débit ; le message couvre donc les deux sans
-    /// prétendre savoir.
+    /// codes lesquels ont existé.
     case invitationRefusee
+    /// `429` — trop d'essais depuis cette adresse : la limite de débit de la
+    /// posture `invitation`, cinq échecs par minute (`protocole.md` §2.2).
+    ///
+    /// **Ce n'est pas un refus.** La même demande, un peu plus tard, peut
+    /// aboutir — et un code juste tapé pendant que la porte est fermée n'est
+    /// pas même regardé. Dire « code refusé » ici ferait jeter un bon code.
+    case tropDEssais
 }
 
 /// La voie des applications mobiles (`docs/protocole.md` §2), telle que les
