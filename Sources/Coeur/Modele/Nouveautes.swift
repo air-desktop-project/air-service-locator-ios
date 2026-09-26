@@ -76,3 +76,32 @@ struct CarnetNouveautes: @unchecked Sendable {
         defauts.set(vues.map(\.texte).sorted(), forKey: "nouveautes.vues")
     }
 }
+
+/// Les lignes marquées « nouveau » dans l'écran des accès.
+///
+/// # « NOUVEAU » VEUT DIRE « PAS ENCORE MONTRÉ »
+///
+/// Une lecture qui apporte du neuf l'ajoute ici, et la session le retient
+/// aussitôt comme vu (``Session/montrees(_:)``) : il ne reviendra plus comme
+/// neuf. La marque reste **tant que l'écran est à l'écran** — il faut avoir
+/// le temps de la voir —, et tombe **quand on le quitte** : autre onglet,
+/// autre page, application à l'arrière-plan. Jusqu'au 2026-09-26, elle
+/// tenait tant que la vue vivait ; dans les onglets de l'iPhone, une vue
+/// quittée vit encore, et une ligne vue depuis longtemps disait toujours
+/// « nouveau » à côté d'une vraiment neuve.
+struct MarquesNouveau: Equatable {
+    private(set) var marquees: Set<Identifiant> = []
+
+    func contient(_ id: Identifiant) -> Bool { marquees.contains(id) }
+
+    /// Ce que cette lecture apporte de neuf s'ajoute — une nouvelle arrivée
+    /// pendant l'affichage est marquée à son tour, sans démarquer les autres.
+    mutating func ajouter(_ lecture: Nouveautes.Lecture) {
+        marquees.formUnion(lecture.nouvelles.map(\.id))
+    }
+
+    /// L'écran est quitté : ce qu'il a montré ne l'est plus pour personne.
+    mutating func quitter() {
+        marquees.removeAll()
+    }
+}

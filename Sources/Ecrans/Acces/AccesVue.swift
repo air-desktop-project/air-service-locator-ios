@@ -8,10 +8,10 @@ struct AccesVue: View {
     @State private var accorder = false
     @State private var aRevoquer: Autorisation?
     @State private var erreur: String?
-    /// Les accès reçus jamais montrés avant cette visite : marqués
-    /// « nouveau » tant que l'écran reste ouvert — puis retenus comme vus,
-    /// parce qu'ils viennent de l'être.
-    @State private var nouvelles: Set<Identifiant> = []
+    /// Les accès reçus jamais montrés : marqués « nouveau » tant que l'écran
+    /// est affiché, démarqués quand on le quitte (``MarquesNouveau``).
+    @State private var marques = MarquesNouveau()
+    @Environment(\.scenePhase) private var phase
 
     private var moi: Identifiant? { session.compte?.identifiant }
     private var accordees: [Autorisation] { autorisations.filter { $0.accordeePar == moi } }
@@ -48,7 +48,7 @@ struct AccesVue: View {
                         MachinesVisiblesVue(de: autorisation.accordeePar, autorisation: autorisation)
                     } label: {
                         LigneAutorisation(autorisation: autorisation, machines: machines, sens: .recue,
-                                          nouvelle: nouvelles.contains(autorisation.id))
+                                          nouvelle: marques.contient(autorisation.id))
                     }
                 }
             } header: {
@@ -74,6 +74,12 @@ struct AccesVue: View {
         }
         .task { await charger() }
         .refreshable { await charger() }
+        // Dans les onglets, une vue quittée vit encore : c'est ici, et non à
+        // sa destruction, que ce qu'elle a montré cesse d'être neuf.
+        .onDisappear { marques.quitter() }
+        .onChange(of: phase) { _, phase in
+            if phase == .background { marques.quitter() }
+        }
     }
 
     private func charger() async {
@@ -84,7 +90,7 @@ struct AccesVue: View {
             machines = try await m
             erreur = nil
             if let lecture = session.constater(autorisations) {
-                nouvelles.formUnion(lecture.nouvelles.map(\.id))
+                marques.ajouter(lecture)
                 session.montrees(lecture)
             }
         } catch {
