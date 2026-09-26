@@ -155,4 +155,9 @@ protocol Annuaire: Sendable {
     /// Une relecture de retour au premier plan ne se fait qu'à cette
     /// condition : elle ne demande pas Face ID pour une pastille.
     func connexionTenue() async -> Bool
+
+    /// Ferme la connexion, l'écoute des nouvelles d'abord — l'ABI veut qu'une
+    /// attente soit arrêtée avant qu'on libère ce qu'elle lit. Ce qu'on fait
+    /// d'un annuaire qu'on quitte pour une autre racine : il ne sert plus.
+    func fermer() async
 }

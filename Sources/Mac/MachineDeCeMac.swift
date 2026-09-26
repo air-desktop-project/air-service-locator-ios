@@ -57,7 +57,12 @@ final class MachineDeCeMac {
     }
 
     private nonisolated static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "machine")
-    private let reglages: AnnuaireReel.Reglages
+    /// La racine à qui présenter un code d'enrôlement — celle que
+    /// l'utilisateur a choisie (``Session/annuaireChoisi``), suivie quand il
+    /// en change. Elle ne sert qu'à l'enrôlement : l'identité de machine, une
+    /// fois rendue, vaut sur toutes les racines, qui se répliquent — et
+    /// l'utilitaire `asl` a ses propres annuaires.
+    var reglages: AnnuaireReel.Reglages
 
     /// La machine que ce Mac est, s'il en est une. `nil` tant qu'il n'a pas
     /// été enrôlé depuis ici.

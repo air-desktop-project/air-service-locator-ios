@@ -46,28 +46,13 @@ struct ServiceLocatorMacApp: App {
     @State private var etatFenetre = EtatFenetre()
 
     init() {
-        if let reglages = Self.reglagesDeLAnnuaire() {
-            let reel = AnnuaireReel(reglages: reglages) { try CleAppareil.ouOuvrir() }
-            _session = State(initialValue: Session(annuaire: reel) { signataire, invitation in try await reel.ouvrirCompte(avec: signataire, invitation: invitation) })
-            _machineDeCeMac = State(initialValue: MachineDeCeMac(reglages: reglages))
+        if let reelle = Session.reelle(annuaires: ChoixDAnnuaire.duPaquet()), let choisi = reelle.annuaireChoisi {
+            _session = State(initialValue: reelle)
+            _machineDeCeMac = State(initialValue: MachineDeCeMac(reglages: choisi))
         } else {
             let simule = AnnuaireSimule()
             _session = State(initialValue: Session(annuaire: simule) { signataire, invitation in try await simule.ouvrirCompteDeDemonstration(avec: signataire, invitation: invitation) })
         }
-    }
-
-    /// `{"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org"}`
-    /// et la racine en PEM — les mêmes deux fichiers non versionnés que sur
-    /// iOS, dans `Sources/Mac/Ressources/`.
-    private static func reglagesDeLAnnuaire() -> AnnuaireReel.Reglages? {
-        guard let json = Bundle.main.url(forResource: "annuaire", withExtension: "json"),
-              let pem = Bundle.main.url(forResource: "annuaire-racine", withExtension: "pem"),
-              let donnees = try? Data(contentsOf: json),
-              let objet = try? JSONSerialization.jsonObject(with: donnees) as? [String: String],
-              let adresse = objet["adresse"], let nom = objet["nom"],
-              let racines = try? Data(contentsOf: pem)
-        else { return nil }
-        return AnnuaireReel.Reglages(adresse: adresse, nom: nom, racinesPEM: racines)
     }
 
     var body: some Scene {

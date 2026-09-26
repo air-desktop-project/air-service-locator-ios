@@ -99,17 +99,31 @@ Le transport est le xcframework produit par le dépôt client, attendu à
 (`scripts/construire-mobile.sh` là-bas). Sans lui, l'édition de liens échoue :
 c'est voulu, la simulation n'est pas un mode de secours silencieux.
 
-L'annuaire se donne par deux fichiers **non versionnés** dans
+Les annuaires se donnent par deux fichiers **non versionnés** dans
 `Sources/Ressources/`, copiés dans le paquet à la construction :
 
 ```sh
-echo '{"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"}' > Sources/Ressources/annuaire.json
+cat > Sources/Ressources/annuaire.json <<'JSON'
+{"annuaires": [
+  {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org"},
+  {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"},
+  {"adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org", "libelle": "Automatique"}
+]}
+JSON
 cp /où/est/la/racine.pem Sources/Ressources/annuaire-racine.pem
 ```
 
-`nom` est le nom que porte le certificat du serveur ; `annuaire-racine.pem`,
-la racine qui l'a signé. Sans ces deux fichiers, l'application tourne sur le
-banc en mémoire, peuplé de démonstration.
+Chaque entrée : `adresse` (`hôte:port` ; un nom se résout sur l'appareil, et
+**toutes** ses adresses sont essayées, IPv6 d'abord), `nom` (celui qu'on
+exige du certificat), et `libelle`, facultatif, pour l'écran. Une seule racine
+PEM pour toutes : l'autorité qui a signé leurs certificats. S'il y en a
+plusieurs, l'utilisateur choisit dans Compte › Annuaire (iPhone) ou dans les
+Préférences (Mac) ; le choix est retenu, la première de la liste sert par
+défaut (`Coeur/Reseau/Reel/ChoixDAnnuaire.swift`). L'ancienne forme, un
+objet `{"adresse": …, "nom": …}` seul, reste lue : une liste d'un élément.
+
+Sans ces deux fichiers, l'application tourne sur le banc en mémoire, peuplé
+de démonstration.
 
 ## L'arborescence
 

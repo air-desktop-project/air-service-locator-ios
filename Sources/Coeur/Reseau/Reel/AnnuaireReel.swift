@@ -33,15 +33,22 @@ import OSLog
 /// `nil`, et l'écran le dit.
 final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// Où est l'annuaire, sous quel nom, et qui a signé son certificat.
-    struct Reglages: Sendable {
+    struct Reglages: Sendable, Equatable {
         /// `hôte:port` — l'hôte est une adresse littérale ou un nom. Un nom
         /// se résout ICI, par le résolveur du téléphone : la bibliothèque
         /// n'embarque pas de client DNS (`annuaires.md`), et ne prend que
-        /// des adresses littérales.
+        /// des adresses littérales. **Toutes** les adresses d'un nom sont
+        /// données au natif, qui en fait la tournée (IPv6 d'abord) : c'est ce
+        /// qui fait marcher un alias qui couvre plusieurs racines.
         let adresse: String
         /// Le nom exigé du certificat — jamais déduit de l'adresse.
         let nom: String
         let racinesPEM: Data
+        /// Ce que l'écran en dit, s'il faut mieux que le nom — « Automatique »
+        /// pour un alias qui couvre les deux racines.
+        var libelle: String? = nil
+
+        var affiche: String { libelle ?? nom }
     }
 
     /// Les adresses littérales de l'annuaire, IPv6 d'abord : celle donnée si
@@ -845,6 +852,12 @@ extension AnnuaireReel {
 
     func connexionTenue() async -> Bool {
         (try? await surLaFile { self.connecte() }) ?? false
+    }
+
+    /// `oublierLeHandle` arrête la veille avant de libérer : c'est l'ordre
+    /// que l'ABI exige.
+    func fermer() async {
+        try? await surLaFile { self.oublierLeHandle() }
     }
 
     /// Le fil qui attend les nouvelles, et ce qu'il faut pour l'arrêter.
