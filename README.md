@@ -105,9 +105,9 @@ Les annuaires se donnent par deux fichiers **non versionnés** dans
 ```sh
 cat > Sources/Ressources/annuaire.json <<'JSON'
 {"annuaires": [
+  {"adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org", "libelle": "Automatique"},
   {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org"},
-  {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"},
-  {"adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org", "libelle": "Automatique"}
+  {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"}
 ]}
 JSON
 cp /où/est/la/racine.pem Sources/Ressources/annuaire-racine.pem
@@ -119,7 +119,10 @@ exige du certificat), et `libelle`, facultatif, pour l'écran. Une seule racine
 PEM pour toutes : l'autorité qui a signé leurs certificats. S'il y en a
 plusieurs, l'utilisateur choisit dans Compte › Annuaire (iPhone) ou dans les
 Préférences (Mac) ; le choix est retenu, la première de la liste sert par
-défaut (`Coeur/Reseau/Reel/ChoixDAnnuaire.swift`). L'ancienne forme, un
+défaut (`Coeur/Reseau/Reel/ChoixDAnnuaire.swift`). « Automatique » vient en
+tête : l'alias `asl-root` couvre les deux racines, et la première qui répond
+sert — l'écran dit laquelle (« Connecté à … »). Un appareil qui a déjà
+choisi garde son choix. L'ancienne forme, un
 objet `{"adresse": …, "nom": …}` seul, reste lue : une liste d'un élément.
 
 Sans ces deux fichiers, l'application tourne sur le banc en mémoire, peuplé
