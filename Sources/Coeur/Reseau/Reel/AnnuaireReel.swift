@@ -111,9 +111,29 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// L'écoute de `GET /v1/nouvelles`, sur un fil à elle (``nouvelles()``).
     private let veille = Veille()
 
-    init(reglages: Reglages, signataire: @escaping @Sendable () throws -> any Signataire) {
+    /// Toutes les racines que l'application connaît — pour nommer celle qui a
+    /// répondu (``RacineJointe``), même sous un alias qui les couvre toutes.
+    private let racines: [Reglages]
+
+    init(reglages: Reglages, racines: [Reglages] = [], signataire: @escaping @Sendable () throws -> any Signataire) {
         self.reglages = reglages
+        self.racines = racines.isEmpty ? [reglages] : racines
         self.signataire = signataire
+    }
+
+    /// Dit au journal quelle racine la connexion tenue a jointe. Sous
+    /// « Automatique », la tournée garde la première qui répond sans le dire :
+    /// c'est la seule trace de laquelle ce fut. Rien ne dépend de ce nom — une
+    /// racine qu'on ne sait pas nommer se dit par son adresse.
+    private func direLaRacineJointe(_ handle: OpaquePointer) {
+        var tampon = [CChar](repeating: 0, count: Int(ASL_ADRESSE_OCTETS))
+        guard asl_appareil_distante(handle, &tampon) == ASL_OK else { return }
+        let adresse = Self.texte(tampon)
+        let connues = racines.map { racine in
+            (nom: racine.nom, adresses: (try? Self.adressesLitterales(racine.adresse)) ?? [])
+        }
+        let nom = RacineJointe.nommer(adresse, parmi: connues)
+        Self.journal.notice("racine jointe : \(adresse, privacy: .public)\(nom.map { " (\($0))" } ?? "", privacy: .public)")
     }
 
     deinit {
@@ -226,6 +246,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         let code = asl_appareil_connecter(handle)
         Self.journal.notice("asl_appareil_connecter → \(code)")
         guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }
+        direLaRacineJointe(handle)
     }
 
     /// Ce qu'un code de l'ABI dit à l'écran, pour les chemins qui prouvent la
@@ -392,6 +413,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             let code = asl_appareil_connecter(handle)
             Self.journal.notice("asl_appareil_connecter → \(code)")
             guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }
+            self.direLaRacineJointe(handle)
             // **LE CARNET S'ÉCRIT ICI**, sous le même passage que la preuve,
             // comme `ouvrirCompte` le fait à quelques lignes d'ici. La preuve
             // tient : l'appareil A REJOINT, et c'est vrai là-bas, chez
