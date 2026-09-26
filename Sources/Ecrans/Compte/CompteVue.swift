@@ -65,10 +65,22 @@ struct CompteVue: View {
                 Text("L'annuaire ne connaît de chaque appareil que son identifiant : c'est lui qui dit si un appareil est bien l'un des vôtres — comparez-le à celui que l'autre appareil affiche pour lui-même. Un appareil que vous ne reconnaissez pas se révoque. Un appareil ne peut pas se révoquer lui-même ; révoqué, il reste dans l'annuaire, marqué, et « Voir les appareils révoqués » le montre. Un compte sur un seul appareil est un compte qu'un téléphone perdu efface, à trente jours.")
             }
 
-            Section("Annuaire") {
+            Section {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Annuaire")
+                    Text(session.annuaireChoisi?.nom ?? session.annuaire.nom)
                     Text("racines air-desktop-project").font(.footnote).foregroundStyle(.secondary)
+                }
+                // Un seul annuaire : rien à choisir, rien d'affiché.
+                if session.annuaires.count > 1 {
+                    Picker(TextesRacine.titre, selection: Binding(
+                        get: { session.annuaireChoisi?.adresse ?? "" },
+                        set: { adresse in
+                            guard let choisi = session.annuaires.first(where: { $0.adresse == adresse }) else { return }
+                            Task { await basculer(vers: choisi) }
+                        }
+                    )) {
+                        ForEach(session.annuaires, id: \.adresse) { Text($0.affiche).tag($0.adresse) }
+                    }
                 }
                 // Les deux versions, l'application et l'annuaire, lisibles ici
                 // parce que c'est l'écran où l'on va quand quelque chose ne va
@@ -92,6 +104,10 @@ struct CompteVue: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
+            } header: {
+                Text("Annuaire")
+            } footer: {
+                if session.annuaires.count > 1 { Text(TextesRacine.explication) }
             }
 
             // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas, en
@@ -133,6 +149,14 @@ struct CompteVue: View {
         } catch {
             erreur = error.messageAnnuaire
         }
+    }
+
+    /// La racine change : l'ancienne est fermée, puis tout se relit — et la
+    /// relecture reprouve la clé, sous Face ID.
+    private func basculer(vers choisi: AnnuaireReel.Reglages) async {
+        await session.choisirAnnuaire(choisi)
+        versionAnnuaire = nil
+        await charger()
     }
 
     private func charger() async {

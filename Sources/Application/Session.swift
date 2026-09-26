@@ -7,14 +7,16 @@ import SwiftUI
 @MainActor
 @Observable
 final class Session {
-    let annuaire: any Annuaire
+    /// À qui parler. **Change** quand l'utilisateur choisit une autre racine
+    /// (``choisirAnnuaire(_:)``) : les écrans le relisent à chaque appel.
+    private(set) var annuaire: any Annuaire
     private(set) var compte: Compte?
     let identite = IdentiteLocale()
     private static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "session")
 
     /// Comment on ouvre un compte — séparé de l'annuaire parce qu'en
     /// démonstration, l'ouverture peuple aussi l'annuaire.
-    private let ouverture: @Sendable (any Signataire, CodeInvitation?) async throws -> Compte
+    private var ouverture: @Sendable (any Signataire, CodeInvitation?) async throws -> Compte
     /// D'où vient la clé : la Secure Enclave sur un appareil, une clé
     /// logicielle dans un essai.
     private let signataire: @Sendable () throws -> any Signataire
@@ -32,6 +34,58 @@ final class Session {
         self.signataire = signataire
         self.carnetNouveautes = carnetNouveautes
         self.ouverture = ouverture
+    }
+
+    // MARK: - La racine
+
+    /// Les annuaires entre lesquels choisir (``ChoixDAnnuaire``) — vide sur
+    /// le banc ; un seul, et il n'y a rien à choisir.
+    private(set) var annuaires: [AnnuaireReel.Reglages] = []
+    /// Celui auquel on parle, parmi ``annuaires``.
+    private(set) var annuaireChoisi: AnnuaireReel.Reglages?
+    private var preference = PreferenceDAnnuaire()
+    /// Ce qui fabrique l'annuaire d'une racine — le transport réel dans
+    /// l'application, un banc dans les essais.
+    private var fabrique: (@Sendable (AnnuaireReel.Reglages) -> any Annuaire)?
+
+    /// La session d'une application qui parle à un vrai annuaire : la
+    /// racine retenue par ``PreferenceDAnnuaire``, ou la première.
+    static func reelle(
+        annuaires: [AnnuaireReel.Reglages],
+        preference: PreferenceDAnnuaire = PreferenceDAnnuaire(),
+        fabrique: @escaping @Sendable (AnnuaireReel.Reglages) -> any Annuaire = { AnnuaireReel(reglages: $0) { try CleAppareil.ouOuvrir() } },
+        signataire: @escaping @Sendable () throws -> any Signataire = { try CleAppareil.ouOuvrir() },
+        carnetNouveautes: CarnetNouveautes = CarnetNouveautes()
+    ) -> Session? {
+        guard let choisi = preference.choisi(parmi: annuaires) else { return nil }
+        let annuaire = fabrique(choisi)
+        let session = Session(annuaire: annuaire, signataire: signataire, carnetNouveautes: carnetNouveautes) { signataire, invitation in
+            try await annuaire.ouvrirCompte(avec: signataire, invitation: invitation)
+        }
+        session.annuaires = annuaires
+        session.annuaireChoisi = choisi
+        session.preference = preference
+        session.fabrique = fabrique
+        return session
+    }
+
+    /// Passe à une autre racine.
+    ///
+    /// **L'ancienne est fermée d'abord** — son écoute des nouvelles arrêtée,
+    /// sa connexion libérée —, puis la nouvelle est fabriquée, **sans se
+    /// connecter** : c'est la relecture qui suit, lancée par l'écran, qui
+    /// reprouve la clé, et c'est un geste — Touch ID, Face ID. Jamais de
+    /// reconnexion silencieuse. Le compte, lui, ne bouge pas : il est le même
+    /// sur toutes les racines, et le carnet local reste.
+    func choisirAnnuaire(_ reglages: AnnuaireReel.Reglages) async {
+        guard reglages != annuaireChoisi, let fabrique else { return }
+        await annuaire.fermer()
+        let nouvel = fabrique(reglages)
+        annuaire = nouvel
+        ouverture = { signataire, invitation in try await nouvel.ouvrirCompte(avec: signataire, invitation: invitation) }
+        annuaireChoisi = reglages
+        preference.retenir(reglages)
+        Self.journal.notice("annuaire choisi : \(reglages.adresse, privacy: .public)")
     }
 
     /// Combien d'accès reçus n'ont pas encore été montrés — la pastille de

@@ -312,6 +312,14 @@ actor AnnuaireSimule: Annuaire {
         ecoute = nil
     }
 
+    /// Combien de fois on l'a fermé — ce que les essais de bascule regardent.
+    private(set) var fermetures = 0
+
+    func fermer() {
+        couperLesNouvelles()
+        fermetures += 1
+    }
+
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool {
         id == compteLocal?.identifiant || autresComptes[id] != nil
     }

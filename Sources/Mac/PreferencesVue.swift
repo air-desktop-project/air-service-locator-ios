@@ -18,12 +18,25 @@ struct PreferencesVue: View {
             annuaire.tabItem { Label("Annuaire", systemImage: "network") }
             ceMac.tabItem { Label("Ce Mac", systemImage: "laptopcomputer") }
         }
-        .frame(width: 560, height: 320)
+        .frame(width: 560, height: 420)
     }
 
     private var annuaire: some View {
         Form {
-            LabeledContent("Annuaire", value: session.annuaire.nom)
+            LabeledContent("Annuaire", value: session.annuaireChoisi?.nom ?? session.annuaire.nom)
+            // Un seul annuaire dans le fichier : rien à choisir, rien d'affiché.
+            if session.annuaires.count > 1 {
+                Picker(TextesRacine.titre, selection: Binding(
+                    get: { session.annuaireChoisi?.adresse ?? "" },
+                    set: { adresse in
+                        guard let choisi = session.annuaires.first(where: { $0.adresse == adresse }) else { return }
+                        Task { await basculer(vers: choisi) }
+                    }
+                )) {
+                    ForEach(session.annuaires, id: \.adresse) { Text($0.affiche).tag($0.adresse) }
+                }
+                Text(TextesRacine.explication).font(.caption).foregroundStyle(.secondary)
+            }
             LabeledContent("Version de l'annuaire") {
                 switch donnees.versionAnnuaire {
                 case .some(.some(let annuaire)): Text(annuaire.version)
@@ -32,11 +45,20 @@ struct PreferencesVue: View {
                 }
             }
             LabeledContent("Racines", value: "air-desktop-project")
-            Text("L'annuaire et sa racine sont fixés à la construction de l'application, par `annuaire.json` et `annuaire-racine.pem` dans ses ressources. Les changer, c'est reconstruire — un annuaire ne se change pas d'un clic, parce que le compte de ce Mac vit sur l'un d'eux.")
+            Text("Les racines proposées sont fixées à la construction de l'application, par `annuaire.json` et `annuaire-racine.pem` dans ses ressources ; le choix parmi elles se fait ici, et il est retenu.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
         .padding()
+    }
+
+    /// La racine change : l'ancienne est fermée — écoute des nouvelles
+    /// comprise —, l'enrôlement d'une machine suivra la nouvelle, et la
+    /// relecture reprouve la clé de ce Mac sous Touch ID.
+    private func basculer(vers choisi: AnnuaireReel.Reglages) async {
+        await session.choisirAnnuaire(choisi)
+        machineDeCeMac?.reglages = choisi
+        await donnees.recharger(session)
     }
 
     private var ceMac: some View {

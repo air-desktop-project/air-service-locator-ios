@@ -70,8 +70,13 @@ Une seule clé de machine sur ce Mac, donc : celle que l'app a enrôlée.
   prouve, c'est la chaîne clé-preuve-transport sur du vrai matériel Apple
   (`docs/attestation/enrolement-macos.md` du serveur).
 - **L'annuaire** : `Sources/Mac/Ressources/annuaire.json` et
-  `annuaire-racine.pem`, non versionnés, comme sur iOS — `nitrogen` par
-  défaut dans les consignes du serveur.
+  `annuaire-racine.pem`, non versionnés, comme sur iOS — une liste de racines
+  (forme décrite dans le `README.md` du dépôt), choisie dans les
+  Préférences. Changer de racine ferme la connexion et l'écoute des
+  nouvelles, puis la relecture reprouve la clé sous Touch ID. Seuls les accès
+  écrits sur la racine tenue sont annoncés en direct (décision 9) ; les
+  autres se voient à la relecture. L'enrôlement de ce Mac comme machine suit
+  le choix ; l'identité de machine, elle, vaut sur toutes les racines.
 
 ## Construire et lancer
 

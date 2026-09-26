@@ -145,6 +145,16 @@ enum TextesInvitation {
     static let tropDEssais = "Trop d'essais : réessayez dans une minute."
 }
 
+/// Ce que l'iPhone et le Mac disent du choix de la racine — les mêmes mots
+/// des deux côtés, pour la même raison que ``TextesInvitation``.
+enum TextesRacine {
+    static let titre = "Racine"
+
+    /// Ce que change le choix, en une phrase — et ce qu'il ne change pas.
+    static let explication =
+        "Votre compte, vos appareils et vos accès sont les mêmes sur chaque racine : elles se répliquent. Changer ne change que la connexion — et, sur le Mac, les accès annoncés en direct : seuls ceux accordés sur la racine choisie le sont ; les autres apparaissent à la relecture. La reconnexion demande votre confirmation biométrique."
+}
+
 /// Ce que l'iPhone et le Mac disent des accès reçus depuis la dernière fois
 /// — les mêmes mots des deux côtés, pour la même raison que
 /// ``TextesInvitation``.
