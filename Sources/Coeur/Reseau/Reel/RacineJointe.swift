@@ -16,3 +16,13 @@ enum RacineJointe {
             .nom
     }
 }
+
+/// La racine que tient la connexion — ce que l'écran dit sous « Connecté
+/// à … ». Le nom quand on sait le donner (``RacineJointe/nommer(_:parmi:)``),
+/// l'adresse toujours.
+struct RacineTenue: Equatable, Sendable {
+    let adresse: String
+    let nom: String?
+
+    var affiche: String { nom ?? adresse }
+}

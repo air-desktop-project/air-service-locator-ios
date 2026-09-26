@@ -99,6 +99,9 @@ final class Donnees {
             activite.terminer()
             if self?.eveil === activite { self?.eveil = nil }
             Self.journal.notice("écoute des nouvelles terminée")
+            // L'écoute sort quand la connexion tombe : « Non connecté » doit
+            // se voir tout de suite, pas à la prochaine relecture.
+            await session.relireRacineTenue()
         }
     }
 

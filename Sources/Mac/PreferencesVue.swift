@@ -24,6 +24,20 @@ struct PreferencesVue: View {
     private var annuaire: some View {
         Form {
             LabeledContent("Annuaire", value: session.annuaireChoisi?.nom ?? session.annuaire.nom)
+            // Ce que tient la connexion — relu à l'ouverture de l'onglet,
+            // sans geste, et suivi par la session à chaque bascule ou perte.
+            LabeledContent("Connexion") {
+                if let racine = session.racineTenue {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(TextesRacine.connecteA(racine.affiche))
+                        if racine.nom != nil {
+                            Text(racine.adresse).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    Text(TextesRacine.nonConnecte).foregroundStyle(.secondary)
+                }
+            }
             // Un seul annuaire dans le fichier : rien à choisir, rien d'affiché.
             if session.annuaires.count > 1 {
                 Picker(TextesRacine.titre, selection: Binding(
@@ -50,6 +64,7 @@ struct PreferencesVue: View {
         }
         .formStyle(.grouped)
         .padding()
+        .task { await session.relireRacineTenue() }
     }
 
     /// La racine change : l'ancienne est fermée — écoute des nouvelles

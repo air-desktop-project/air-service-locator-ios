@@ -83,6 +83,9 @@ final class Session {
     func choisirAnnuaire(_ reglages: AnnuaireReel.Reglages) async {
         guard reglages != annuaireChoisi, let fabrique else { return }
         await annuaire.fermer()
+        // Plus rien n'est tenu : la nouvelle racine ne l'est qu'après la
+        // relecture, et son geste.
+        racineTenue = nil
         let nouvel = fabrique(reglages)
         annuaire = nouvel
         ouverture = { signataire, invitation in try await nouvel.ouvrirCompte(avec: signataire, invitation: invitation) }
@@ -154,6 +157,19 @@ final class Session {
             // Le compte qu'on connaît reste ; l'annuaire n'a juste pas répondu.
             erreurDeRelecture = error.messageAnnuaire
         }
+        await relireRacineTenue()
+    }
+
+    /// La racine que tient la connexion, pour « Connecté à … » ; `nil`, et
+    /// l'écran dit « Non connecté ».
+    private(set) var racineTenue: RacineTenue?
+
+    /// Relit ce que tient la connexion — sans se connecter, sans geste.
+    /// Après chaque relecture, au retour au premier plan, et quand l'écoute
+    /// des nouvelles se termine : c'est là que se voit une connexion perdue
+    /// (App Nap, une racine qui redémarre).
+    func relireRacineTenue() async {
+        racineTenue = await annuaire.racineTenue()
     }
 
     /// Ouvre le compte : la clé de l'appareil prouve qu'elle est détenue, sur
@@ -219,5 +235,6 @@ final class Session {
         compte = nil
         erreurDeRelecture = nil
         nouveautes = 0
+        racineTenue = nil
     }
 }
