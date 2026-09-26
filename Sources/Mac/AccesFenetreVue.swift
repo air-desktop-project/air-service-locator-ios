@@ -17,11 +17,12 @@ struct AccesFenetreVue: View {
     @State private var aRevoquer: Autorisation?
     @State private var erreur: String?
     @State private var enCours = false
-    /// Les accès reçus jamais montrés avant cette visite : marqués
-    /// « nouveau » tant que la page reste ouverte — puis retenus comme vus,
-    /// parce qu'ils viennent de l'être. Une nouvelle qui arrive page ouverte
-    /// s'y ajoute.
-    @State private var nouvelles: Set<Identifiant> = []
+    /// Les accès reçus jamais montrés : marqués « nouveau » tant que la page
+    /// est affichée — une nouvelle qui arrive page ouverte s'y ajoute —, et
+    /// démarqués quand on la quitte (``MarquesNouveau``). Une autre page de
+    /// la barre latérale recrée celle-ci ; la règle est dite quand même, pour
+    /// ne pas dépendre de ce détail.
+    @State private var marques = MarquesNouveau()
 
     enum Choix: Hashable { case tout, machine }
 
@@ -51,9 +52,10 @@ struct AccesFenetreVue: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Accès")
+        .onDisappear { marques.quitter() }
         .task(id: donnees.autorisations) {
             if let lecture = session.constater(donnees.autorisations) {
-                nouvelles.formUnion(lecture.nouvelles.map(\.id))
+                marques.ajouter(lecture)
                 session.montrees(lecture)
             }
         }
@@ -116,7 +118,7 @@ struct AccesFenetreVue: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .top) {
                         LigneAcces(autorisation: autorisation, machines: donnees.machines, sens: sens,
-                                   nouvelle: nouvelles.contains(autorisation.id))
+                                   nouvelle: marques.contient(autorisation.id))
                         Spacer()
                         if sens == .accordee, !autorisation.estRevoquee {
                             Button("Révoquer", role: .destructive) { aRevoquer = autorisation }.controlSize(.small)
