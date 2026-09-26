@@ -60,7 +60,12 @@ struct RacineVue: View {
         // De retour au premier plan, la même relecture — mais seulement si la
         // connexion tient encore : pas de Face ID pour une pastille.
         .onChange(of: phase) { _, phase in
-            if phase == .active { Task { await session.relire(sansGeste: true) } }
+            if phase == .active {
+                Task {
+                    await session.relireRacineTenue()
+                    await session.relire(sansGeste: true)
+                }
+            }
         }
     }
 }

@@ -160,4 +160,9 @@ protocol Annuaire: Sendable {
     /// attente soit arrêtée avant qu'on libère ce qu'elle lit. Ce qu'on fait
     /// d'un annuaire qu'on quitte pour une autre racine : il ne sert plus.
     func fermer() async
+
+    /// La racine que la connexion tenue a jointe, ou `nil` sans connexion
+    /// vivante. **Ne se connecte pas** et ne demande aucun geste : elle lit
+    /// ce qui est, pour que l'écran le dise.
+    func racineTenue() async -> RacineTenue?
 }

@@ -292,6 +292,8 @@ actor AnnuaireSimule: Annuaire {
     /// y a un compte, et vit jusqu'à ``couperLesNouvelles()``.
     func nouvelles() async -> AsyncStream<Void>? {
         guard compteLocal != nil, ecoute == nil else { return nil }
+        // Rouvrir l'écoute suit une relecture, qui a reconnecté.
+        tenue = true
         let (flux, suite) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         ecoute = suite
         return flux
@@ -310,6 +312,15 @@ actor AnnuaireSimule: Annuaire {
     func couperLesNouvelles() {
         ecoute?.finish()
         ecoute = nil
+        tenue = false
+    }
+
+    /// La connexion du banc : là tant qu'on ne l'a pas coupée ni fermé.
+    private var tenue = true
+
+    func racineTenue() async -> RacineTenue? {
+        guard compteLocal != nil, tenue else { return nil }
+        return RacineTenue(adresse: "banc", nom: "banc en mémoire")
     }
 
     /// Combien de fois on l'a fermé — ce que les essais de bascule regardent.

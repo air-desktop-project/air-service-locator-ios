@@ -151,6 +151,11 @@ enum TextesRacine {
     static let titre = "Racine"
 
     /// Ce que change le choix, en une phrase — et ce qu'il ne change pas.
+    /// Ce que tient la connexion — le nom de la racine qui a répondu, même
+    /// sous « Automatique ». Les mêmes mots sur Android.
+    static func connecteA(_ racine: String) -> String { "Connecté à \(racine)" }
+    static let nonConnecte = "Non connecté"
+
     static let explication =
         "Votre compte, vos appareils et vos accès sont les mêmes sur chaque racine : elles se répliquent. Changer ne change que la connexion — et, sur le Mac, les accès annoncés en direct : seuls ceux accordés sur la racine choisie le sont ; les autres apparaissent à la relecture. La reconnexion demande votre confirmation biométrique."
 }

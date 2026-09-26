@@ -82,6 +82,7 @@ struct CompteVue: View {
                         ForEach(session.annuaires, id: \.adresse) { Text($0.affiche).tag($0.adresse) }
                     }
                 }
+                LigneRacineTenue(racine: session.racineTenue)
                 // Les deux versions, l'application et l'annuaire, lisibles ici
                 // parce que c'est l'écran où l'on va quand quelque chose ne va
                 // pas — et qu'un écart entre les deux est souvent la réponse.
@@ -163,6 +164,7 @@ struct CompteVue: View {
         do {
             appareils = try await session.annuaire.appareils()
             await session.rafraichirCompte()
+            await session.relireRacineTenue()
             // La version de l'annuaire ne conditionne rien : si elle manque,
             // l'écran le dit, sans en faire une erreur de la page.
             versionAnnuaire = .some(try? await session.annuaire.version())
@@ -301,5 +303,25 @@ struct ExpositionsVue: View {
         )
         .navigationTitle("Expositions")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// « Connecté à nitrogen.air-desktop.org », l'adresse dessous — ou « Non
+/// connecté ». Sous « Automatique », c'est la seule façon de savoir laquelle
+/// des racines a répondu.
+struct LigneRacineTenue: View {
+    let racine: RacineTenue?
+
+    var body: some View {
+        if let racine {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(TextesRacine.connecteA(racine.affiche))
+                if racine.nom != nil {
+                    Text(racine.adresse).font(.footnote.monospaced()).foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            Text(TextesRacine.nonConnecte).foregroundStyle(.secondary)
+        }
     }
 }

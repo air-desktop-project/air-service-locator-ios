@@ -126,14 +126,20 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// c'est la seule trace de laquelle ce fut. Rien ne dépend de ce nom — une
     /// racine qu'on ne sait pas nommer se dit par son adresse.
     private func direLaRacineJointe(_ handle: OpaquePointer) {
+        guard let jointe = racineJointe(handle) else { return }
+        Self.journal.notice("racine jointe : \(jointe.adresse, privacy: .public)\(jointe.nom.map { " (\($0))" } ?? "", privacy: .public)")
+    }
+
+    /// L'adresse que la connexion a jointe (`asl_appareil_distante` —
+    /// `ASL_NON_CONNECTE` sans connexion vivante), nommée d'après la liste.
+    private func racineJointe(_ handle: OpaquePointer) -> RacineTenue? {
         var tampon = [CChar](repeating: 0, count: Int(ASL_ADRESSE_OCTETS))
-        guard asl_appareil_distante(handle, &tampon) == ASL_OK else { return }
+        guard asl_appareil_distante(handle, &tampon) == ASL_OK else { return nil }
         let adresse = Self.texte(tampon)
         let connues = racines.map { racine in
             (nom: racine.nom, adresses: (try? Self.adressesLitterales(racine.adresse)) ?? [])
         }
-        let nom = RacineJointe.nommer(adresse, parmi: connues)
-        Self.journal.notice("racine jointe : \(adresse, privacy: .public)\(nom.map { " (\($0))" } ?? "", privacy: .public)")
+        return RacineTenue(adresse: adresse, nom: RacineJointe.nommer(adresse, parmi: connues))
     }
 
     deinit {
@@ -880,6 +886,14 @@ extension AnnuaireReel {
     /// que l'ABI exige.
     func fermer() async {
         try? await surLaFile { self.oublierLeHandle() }
+    }
+
+    func racineTenue() async -> RacineTenue? {
+        let tenue = try? await surLaFile { () -> RacineTenue? in
+            guard let handle = self.handle else { return nil }
+            return self.racineJointe(handle)
+        }
+        return tenue ?? nil
     }
 
     /// Le fil qui attend les nouvelles, et ce qu'il faut pour l'arrêter.
