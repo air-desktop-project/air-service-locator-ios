@@ -53,11 +53,14 @@ final class Session {
     static func reelle(
         annuaires: [AnnuaireReel.Reglages],
         preference: PreferenceDAnnuaire = PreferenceDAnnuaire(),
-        fabrique: @escaping @Sendable (AnnuaireReel.Reglages) -> any Annuaire = { AnnuaireReel(reglages: $0) { try CleAppareil.ouOuvrir() } },
+        fabrique: (@Sendable (AnnuaireReel.Reglages) -> any Annuaire)? = nil,
         signataire: @escaping @Sendable () throws -> any Signataire = { try CleAppareil.ouOuvrir() },
         carnetNouveautes: CarnetNouveautes = CarnetNouveautes()
     ) -> Session? {
         guard let choisi = preference.choisi(parmi: annuaires) else { return nil }
+        // Le transport réel reçoit toutes les racines : c'est ce qui lui
+        // permet de nommer celle qui a répondu, même sous « Automatique ».
+        let fabrique = fabrique ?? { AnnuaireReel(reglages: $0, racines: annuaires) { try CleAppareil.ouOuvrir() } }
         let annuaire = fabrique(choisi)
         let session = Session(annuaire: annuaire, signataire: signataire, carnetNouveautes: carnetNouveautes) { signataire, invitation in
             try await annuaire.ouvrirCompte(avec: signataire, invitation: invitation)
