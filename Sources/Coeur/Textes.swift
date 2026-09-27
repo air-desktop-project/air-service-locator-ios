@@ -193,6 +193,9 @@ enum TextesDomaines {
     static let creer = "Créer un domaine"
     static let aliasFacultatif = "Alias (facultatif)"
     static let hebergeRacines = "Hébergé par : les racines"
+    static let pasDAlias = "pas d'alias"
+    static let proprietaire = "Propriétaire"
+    static let vous = "vous"
     static func hebergeAnnuaire(_ n: String) -> String { "Hébergé par : l'annuaire \(n)" }
     static let supprimer = "Supprimer le domaine"
     static let confirmerSuppression = "Les machines qui y sont rangées n'y seront plus. Rien d'autre ne part."
