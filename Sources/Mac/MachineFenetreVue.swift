@@ -56,6 +56,9 @@ struct MachineFenetreVue: View {
                             Text(machine.nom)
                         }
                     }
+                    if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesDomaines {
+                        Champ(TextesDomaines.domaineDeLaMachine) { RangementDeMachine(machine: machine.id, avecEtiquette: false).frame(maxWidth: 420, alignment: .leading) }
+                    }
                     // L'alias ne s'offre qu'à un annuaire qui sait le ranger
                     // (0.26.0) ; ailleurs, le champ n'existe pas.
                     if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesAliasDeMachine {

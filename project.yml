@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.14.0"
-    CURRENT_PROJECT_VERSION: 25
+    MARKETING_VERSION: "0.15.0"
+    CURRENT_PROJECT_VERSION: 26
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -148,6 +148,9 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     sources:
       - path: Sources/Coeur
+      # Les écrans des domaines et de l'annuaire local : du SwiftUI sans UIKit,
+      # le même sur l'iPhone et sur le Mac.
+      - path: Sources/Partage
       - path: Sources/Application/Session.swift
       - path: Sources/Ecrans/Composants/Couleurs.swift
       - path: Sources/Mac

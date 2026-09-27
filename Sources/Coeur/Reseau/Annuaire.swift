@@ -35,6 +35,18 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
     /// aboutir — et un code juste tapé pendant que la porte est fermée n'est
     /// pas même regardé. Dire « code refusé » ici ferait jeter un bon code.
     case tropDEssais
+    /// `409` à `DELETE /v1/domaines/{d}` : c'est le dernier domaine du
+    /// compte, et un compte en garde toujours un.
+    case dernierDomaine
+    /// `403` à `PUT /v1/machines/{m}/domaine` : le domaine existe, mais ce
+    /// compte n'a pas le droit d'y ranger.
+    case rattachementInterdit
+    /// `409` à `POST /v1/annuaires/{n}/membres` : un second membre est déjà
+    /// déclaré — en attente ou accepté.
+    case secondMembreDejaDeclare
+    /// `409` à une décision d'acceptation : l'inscription est déjà refusée ou
+    /// retirée.
+    case inscriptionClose
 }
 
 /// La voie des applications mobiles (`docs/protocole.md` §2), telle que les
@@ -164,6 +176,41 @@ protocol Annuaire: Sendable {
     /// attente soit arrêtée avant qu'on libère ce qu'elle lit. Ce qu'on fait
     /// d'un annuaire qu'on quitte pour une autre racine : il ne sert plus.
     func fermer() async
+
+    // MARK: Domaines (annuaire ≥ 0.23.0)
+
+    /// `GET /v1/domaines` — ceux que je possède, et ceux où je tiens un droit.
+    func domaines() async throws -> [Domaine]
+    /// `GET /v1/domaines/{d}` — avec les machines qui y sont rangées.
+    func domaine(_ id: Identifiant) async throws -> Domaine
+    /// `POST /v1/domaines` — l'alias est facultatif.
+    func creerDomaine(alias: String?) async throws -> Identifiant
+    /// `PUT` / `DELETE /v1/domaines/{d}/alias`.
+    func definirAliasDeDomaine(_ id: Identifiant, alias: String?) async throws
+    /// `DELETE /v1/domaines/{d}` — ``ErreurAnnuaire/dernierDomaine`` pour le dernier.
+    func supprimerDomaine(_ id: Identifiant) async throws
+    /// `PUT /v1/machines/{m}/domaine`, ou `DELETE` avec `nil`.
+    func ranger(machine: Identifiant, dans domaine: Identifiant?) async throws
+    /// `PUT /v1/domaines/{d}/hebergeur` vers un annuaire local accepté, ou
+    /// `DELETE` avec `nil` : rendu aux racines.
+    func confier(domaine: Identifiant, a annuaire: Identifiant?) async throws
+
+    // MARK: Annuaires locaux (annuaire ≥ 0.27.0)
+
+    /// `GET /v1/annuaires`.
+    func annuairesLocaux() async throws -> [AnnuaireLocal]
+    /// `POST /v1/annuaires` — le code à présenter sur la machine.
+    func declarerAnnuaire(adresse: String) async throws -> CodeInscription
+    /// `POST /v1/annuaires/{n}/membres` — le second membre de la paire.
+    func declarerSecondMembre(de annuaire: Identifiant, adresse: String) async throws -> CodeInscription
+    /// `DELETE /v1/annuaires/{n}` — la paire entière ; ses domaines
+    /// reviennent aux racines.
+    func retirerAnnuaire(_ annuaire: Identifiant) async throws
+    /// `GET /v1/inscriptions` — `nil` si ce compte n'administre pas les
+    /// racines (l'annuaire rend `404`, comme pour ce qui n'existe pas).
+    func inscriptions() async throws -> [Inscription]?
+    /// `POST /v1/inscriptions/{n}/decision`.
+    func decider(inscription membre: Identifiant, accepte: Bool) async throws
 
     /// La racine que la connexion tenue a jointe, ou `nil` sans connexion
     /// vivante. **Ne se connecte pas** et ne demande aucun geste : elle lit

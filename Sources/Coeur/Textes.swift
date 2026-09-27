@@ -103,6 +103,10 @@ extension ErreurAnnuaire {
         case .invitationRefusee:
             "Ce code d'invitation n'a pas été accepté. Vérifiez-le auprès de qui vous l'a donné : il ne vaut qu'une fois, et il expire."
         case .tropDEssais: TextesInvitation.tropDEssais
+        case .dernierDomaine: TextesDomaines.dernierDomaine
+        case .rattachementInterdit: TextesDomaines.rattachementInterdit
+        case .secondMembreDejaDeclare: TextesDomaines.secondDejaDeclare
+        case .inscriptionClose: TextesDomaines.inscriptionClose
         }
     }
 }
@@ -179,4 +183,62 @@ enum TextesNouveautes {
     /// Pourquoi demander la permission, dit avant que macOS la demande.
     static let explication =
         "Quand un compte vous accorde un accès, l'annuaire le signale à ce Mac tant que l'application est ouverte et connectée. Rien ne passe par Apple ni par un autre tiers, et la notification ne dit rien de plus que « du nouveau »."
+}
+
+/// Ce que l'iPhone, le Mac et Android disent des domaines et des annuaires
+/// locaux — les mêmes mots partout.
+enum TextesDomaines {
+    static let domaines = "Domaines"
+    static let aucunDomaine = "Aucun domaine."
+    static let creer = "Créer un domaine"
+    static let aliasFacultatif = "Alias (facultatif)"
+    static let hebergeRacines = "Hébergé par : les racines"
+    static func hebergeAnnuaire(_ n: String) -> String { "Hébergé par : l'annuaire \(n)" }
+    static let supprimer = "Supprimer le domaine"
+    static let confirmerSuppression = "Les machines qui y sont rangées n'y seront plus. Rien d'autre ne part."
+    static let dernierDomaine = "C'est votre dernier domaine : un compte en garde toujours un."
+    static let machinesRangees = "Machines rangées ici"
+    static let aucuneMachine = "Aucune machine rangée dans ce domaine."
+    static let domaineDeLaMachine = "Domaine"
+    static let aucun = "aucun"
+    static let ranger = "Ranger dans un domaine"
+    static let retirerDuDomaine = "Retirer du domaine"
+    static let rattachementInterdit = "Vous n'avez pas le droit de ranger une machine dans ce domaine."
+    static let confier = "Confier à mon annuaire local"
+    static let rendreAuxRacines = "Rendre aux racines"
+
+    static let annuaireLocal = "Mon annuaire local"
+    static let aucunAnnuaire = "Aucun annuaire local déclaré."
+    static let declarer = "Déclarer un annuaire local"
+    static let adresse = "Adresse (hôte:port)"
+    static let adresseAide = "L'adresse où la machine qui l'héberge écoute."
+    static let codeTitre = "Code d'inscription"
+    static let codeAide = "À présenter sur la machine dans les 24 heures :"
+    static func commande(code: String, racine: String) -> String {
+        "asl-server --register \(code) --directory \(racine) --ca <racine.pem> --identity-key <clé>"
+    }
+    static let secondMembre = "Déclarer le second membre de la paire"
+    static let secondDejaDeclare = "Un second membre est déjà déclaré, en attente ou accepté."
+    static let retirer = "Retirer l'annuaire"
+    static let confirmerRetrait = "La paire entière est retirée ; les domaines qu'elle héberge reviennent aux racines."
+    static func etat(_ etat: AnnuaireLocal.Etat) -> String {
+        switch etat {
+        case .attendue: "code pas encore présenté"
+        case .enAttente: "en attente de la décision des racines"
+        case .acceptee: "acceptée"
+        case .refusee: "refusée"
+        case .retiree: "retirée"
+        case let .inconnu(texte): texte
+        }
+    }
+
+    static let administration = "Administration des racines"
+    static let aucuneInscription = "Aucune inscription en attente."
+    static let accepter = "Accepter"
+    static let refuser = "Refuser"
+    static func confirmerAcceptation(membre: String, adresse: String, proprietaire: String) -> String {
+        "L'annuaire \(membre) (\(adresse)), du compte \(proprietaire), servira les domaines qu'on lui confiera."
+    }
+    static let confirmerRefus = "L'annuaire ne pourra pas servir de domaine. Un refus l'emporte même sur une acceptation passée."
+    static let inscriptionClose = "Cette inscription est déjà refusée ou retirée : elle ne peut plus être acceptée."
 }

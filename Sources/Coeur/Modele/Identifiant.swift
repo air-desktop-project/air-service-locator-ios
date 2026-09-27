@@ -10,6 +10,7 @@ enum Genre: Character, CaseIterable, Sendable {
     case service = "s"
     case autorisation = "g"
     case annuaire = "n"
+    case domaine = "d"
 }
 
 /// Un identifiant public d'air-service-locator : `u-` + 26 symboles.

@@ -7,6 +7,8 @@ struct CompteVue: View {
     /// Ce que `GET /v1/version` a rendu : `nil` tant qu'on n'a pas demandé,
     /// `.some(nil)` si l'annuaire ne sait pas le dire.
     @State private var versionAnnuaire: VersionAnnuaire??
+    /// Ce compte administre-t-il les racines ? `GET /v1/inscriptions` en `200`.
+    @State private var administreLesRacines = false
     @State private var aRevoquer: Appareil?
     @State private var erreur: String?
     @State private var confirmeEffacement = false
@@ -111,6 +113,21 @@ struct CompteVue: View {
                 if session.annuaires.count > 1 { Text(TextesRacine.explication) }
             }
 
+            // Selon ce que la racine sert : les domaines depuis 0.23.0, les
+            // annuaires locaux et leur administration depuis 0.27.0. Une
+            // racine plus ancienne, ou une version illisible : rien ne s'offre.
+            if case .some(.some(let version)) = versionAnnuaire, version.porteLesDomaines {
+                Section {
+                    NavigationLink(TextesDomaines.domaines) { DomainesVue() }
+                    if version.porteLesAnnuairesLocaux {
+                        NavigationLink(TextesDomaines.annuaireLocal) { AnnuaireLocalVue() }
+                        if administreLesRacines {
+                            NavigationLink(TextesDomaines.administration) { AdministrationVue() }
+                        }
+                    }
+                }
+            }
+
             // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas, en
             // rouge, derrière une confirmation qui dit ce qui part.
             Section {
@@ -168,6 +185,9 @@ struct CompteVue: View {
             // La version de l'annuaire ne conditionne rien : si elle manque,
             // l'écran le dit, sans en faire une erreur de la page.
             versionAnnuaire = .some(try? await session.annuaire.version())
+            if case .some(.some(let version)) = versionAnnuaire, version.porteLesAnnuairesLocaux {
+                administreLesRacines = ((try? await session.annuaire.inscriptions()) ?? nil) != nil
+            }
             erreur = nil
         } catch {
             erreur = error.messageAnnuaire

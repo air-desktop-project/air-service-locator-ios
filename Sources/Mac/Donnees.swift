@@ -27,6 +27,8 @@ final class Donnees {
     /// Quand la dernière relecture a conclu — l'écran le dit, pour qu'on
     /// sache de quand datent les états.
     private(set) var reluA: Date?
+    /// Ce compte administre-t-il les racines ? `GET /v1/inscriptions` en `200`.
+    private(set) var administreLesRacines = false
     /// Les notifications locales : la permission, et l'annonce.
     let notifications = NotificationsMac()
     /// Ce qui tient l'application éveillée tant qu'une écoute tourne
@@ -46,6 +48,11 @@ final class Donnees {
             return
         }
         versionAnnuaire = .some(try? await session.annuaire.version())
+        if case .some(.some(let version)) = versionAnnuaire, version.porteLesAnnuairesLocaux {
+            administreLesRacines = ((try? await session.annuaire.inscriptions()) ?? nil) != nil
+        } else {
+            administreLesRacines = false
+        }
         var fautes: [String] = []
         do { machines = try await session.annuaire.machines() } catch { fautes.append(error.messageAnnuaire) }
         do { appareils = try await session.annuaire.appareils() } catch { fautes.append(error.messageAnnuaire) }
@@ -134,6 +141,9 @@ final class EtatFenetre {
         case machine(Identifiant)
         case appareils
         case acces
+        case domaines
+        case annuaireLocal
+        case administration
     }
 
     var page: Page? = .compte

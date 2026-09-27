@@ -291,6 +291,135 @@ actor AnnuaireSimule: Annuaire {
     /// Le seul code que ce banc accepte, sous la posture `invitation`.
     static let invitationAttendue = "4K9M2P7R1T"
 
+    // MARK: - Domaines et annuaires locaux
+
+    /// Les domaines du compte ; le premier naît avec le compte, comme sur
+    /// l'annuaire, et le dernier ne se supprime pas.
+    private var domainesDuBanc: [Domaine] = []
+    /// Où chaque machine est rangée.
+    private var rangements: [Identifiant: Identifiant] = [:]
+    private var annuairesDuBanc: [AnnuaireLocal] = []
+
+    private func assurerUnDomaine() throws {
+        guard let compteLocal else { throw ErreurAnnuaire.introuvable }
+        if domainesDuBanc.isEmpty {
+            domainesDuBanc = [Domaine(id: Self.neuf(.domaine), proprietaire: compteLocal.identifiant, alias: nil,
+                                      hebergePar: .racines, droits: ["administrer", "rattacher", "voir", "localiser"])]
+        }
+    }
+
+    func domaines() async throws -> [Domaine] {
+        try assurerUnDomaine()
+        return domainesDuBanc
+    }
+
+    func domaine(_ id: Identifiant) async throws -> Domaine {
+        try assurerUnDomaine()
+        guard var domaine = domainesDuBanc.first(where: { $0.id == id }), let compteLocal else { throw ErreurAnnuaire.introuvable }
+        domaine.machines = parcMachines.filter { rangements[$0.id] == id }.map {
+            Domaine.MachineRangee(id: $0.id, proprietaire: compteLocal.identifiant, nom: $0.nom, alias: $0.alias)
+        }
+        return domaine
+    }
+
+    func creerDomaine(alias: String?) async throws -> Identifiant {
+        try assurerUnDomaine()
+        if let alias { guard NomsEtAlias.aliasDeDomaineValide(alias) else { throw ErreurAnnuaire.requeteInvalide("alias") } }
+        let modele = domainesDuBanc[0]
+        let neuf = Domaine(id: Self.neuf(.domaine), proprietaire: modele.proprietaire, alias: alias.map(NomsEtAlias.nfc),
+                           hebergePar: .racines, droits: modele.droits)
+        domainesDuBanc.append(neuf)
+        return neuf.id
+    }
+
+    func definirAliasDeDomaine(_ id: Identifiant, alias: String?) async throws {
+        guard let indice = domainesDuBanc.firstIndex(where: { $0.id == id }) else { throw ErreurAnnuaire.introuvable }
+        if let alias { guard NomsEtAlias.aliasDeDomaineValide(alias) else { throw ErreurAnnuaire.requeteInvalide("alias") } }
+        let d = domainesDuBanc[indice]
+        domainesDuBanc[indice] = Domaine(id: d.id, proprietaire: d.proprietaire, alias: alias.map(NomsEtAlias.nfc),
+                                         hebergePar: d.hebergePar, droits: d.droits)
+    }
+
+    func supprimerDomaine(_ id: Identifiant) async throws {
+        guard domainesDuBanc.contains(where: { $0.id == id }) else { throw ErreurAnnuaire.introuvable }
+        guard domainesDuBanc.count > 1 else { throw ErreurAnnuaire.dernierDomaine }
+        domainesDuBanc.removeAll { $0.id == id }
+        rangements = rangements.filter { $0.value != id }
+    }
+
+    func ranger(machine: Identifiant, dans domaine: Identifiant?) async throws {
+        guard parcMachines.contains(where: { $0.id == machine }) else { throw ErreurAnnuaire.introuvable }
+        if let domaine {
+            guard domainesDuBanc.contains(where: { $0.id == domaine }) else { throw ErreurAnnuaire.introuvable }
+        }
+        rangements[machine] = domaine
+    }
+
+    func confier(domaine: Identifiant, a annuaire: Identifiant?) async throws {
+        guard let indice = domainesDuBanc.firstIndex(where: { $0.id == domaine }) else { throw ErreurAnnuaire.introuvable }
+        if let annuaire {
+            guard annuairesDuBanc.contains(where: { $0.estTitulaire && $0.annuaire == annuaire && $0.etat == .acceptee }) else {
+                throw ErreurAnnuaire.introuvable
+            }
+        }
+        let d = domainesDuBanc[indice]
+        domainesDuBanc[indice] = Domaine(id: d.id, proprietaire: d.proprietaire, alias: d.alias,
+                                         hebergePar: annuaire.map(Domaine.Hebergeur.annuaire) ?? .racines, droits: d.droits)
+    }
+
+    func annuairesLocaux() async throws -> [AnnuaireLocal] { annuairesDuBanc }
+
+    func declarerAnnuaire(adresse: String) async throws -> CodeInscription {
+        guard compteLocal != nil else { throw ErreurAnnuaire.introuvable }
+        guard NomsEtAlias.adresseValide(adresse) else { throw ErreurAnnuaire.requeteInvalide("adresse") }
+        let expire = horloge().addingTimeInterval(86_400)
+        annuairesDuBanc.append(AnnuaireLocal(membre: nil, annuaire: nil, etat: .attendue, adresse: adresse, expireLe: expire))
+        return CodeInscription(code: "4K9M2-P7R1T", expireLe: expire)
+    }
+
+    func declarerSecondMembre(de annuaire: Identifiant, adresse: String) async throws -> CodeInscription {
+        guard annuairesDuBanc.contains(where: { $0.estTitulaire && $0.annuaire == annuaire && $0.etat == .acceptee }) else {
+            throw ErreurAnnuaire.introuvable
+        }
+        let secondEffectif = annuairesDuBanc.contains {
+            $0.annuaire == annuaire && !$0.estTitulaire && [.attendue, .enAttente, .acceptee].contains($0.etat)
+        }
+        guard !secondEffectif else { throw ErreurAnnuaire.secondMembreDejaDeclare }
+        guard NomsEtAlias.adresseValide(adresse) else { throw ErreurAnnuaire.requeteInvalide("adresse") }
+        let expire = horloge().addingTimeInterval(86_400)
+        annuairesDuBanc.append(AnnuaireLocal(membre: nil, annuaire: annuaire, etat: .attendue, adresse: adresse, expireLe: expire))
+        return CodeInscription(code: "8H3JW-2Q9TX", expireLe: expire)
+    }
+
+    func retirerAnnuaire(_ annuaire: Identifiant) async throws {
+        guard annuairesDuBanc.contains(where: { $0.annuaire == annuaire }) else { throw ErreurAnnuaire.introuvable }
+        annuairesDuBanc = annuairesDuBanc.map { a in
+            guard a.annuaire == annuaire else { return a }
+            return AnnuaireLocal(membre: a.membre, annuaire: a.annuaire, etat: .retiree, adresse: a.adresse, expireLe: a.expireLe)
+        }
+        for indice in domainesDuBanc.indices where domainesDuBanc[indice].hebergePar == .annuaire(annuaire) {
+            let d = domainesDuBanc[indice]
+            domainesDuBanc[indice] = Domaine(id: d.id, proprietaire: d.proprietaire, alias: d.alias, hebergePar: .racines, droits: d.droits)
+        }
+    }
+
+    /// Le banc n'administre pas les racines.
+    func inscriptions() async throws -> [Inscription]? { nil }
+
+    func decider(inscription membre: Identifiant, accepte: Bool) async throws {
+        throw ErreurAnnuaire.introuvable
+    }
+
+    /// Pour les essais : ce que ferait la machine en présentant le code, puis
+    /// les racines en l'acceptant.
+    func accepterAnnuaire(adresse: String) -> Identifiant? {
+        guard let indice = annuairesDuBanc.firstIndex(where: { $0.adresse == adresse && $0.etat == .attendue }) else { return nil }
+        let membre = Self.neuf(.annuaire)
+        let titulaire = annuairesDuBanc[indice].annuaire ?? membre
+        annuairesDuBanc[indice] = AnnuaireLocal(membre: membre, annuaire: titulaire, etat: .acceptee, adresse: adresse, expireLe: nil)
+        return membre
+    }
+
     // MARK: - Les nouvelles
 
     /// L'écoute en cours, s'il y en a une — une seule, comme sur le fil.
