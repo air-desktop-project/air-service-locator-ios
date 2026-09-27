@@ -114,8 +114,20 @@ final class MachineDeCeMac {
         try exiger(asl_client_neuf(&client), "asl_client_neuf")
         guard let client else { throw Erreur.natif(ASL_INTERNE, "asl_client_neuf") }
         defer { asl_client_libere(client) }
-        for adresse in try AnnuaireReel.adressesLitterales(reglages.adresse) {
-            try exiger(asl_client_annuaire(client, adresse, reglages.nom), "asl_client_annuaire")
+        // Le handle de machine n'a pas de forme identité (`asl_client_*`
+        // n'a que l'annuaire par nom) : l'enrôlement reste sous la forme
+        // d'hier, par l'adresse et le nom de l'entrée. Une entrée qui n'a
+        // que des identités donne ses locateurs, le certificat jugé sur
+        // l'adresse elle-même — ce que portent les chaînes d'hier.
+        if reglages.adresse.isEmpty {
+            for locateur in reglages.identites.flatMap(\.locateurs) {
+                let hote = String(locateur[..<locateur.lastIndex(of: ":")!]).trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+                try exiger(asl_client_annuaire(client, locateur, hote), "asl_client_annuaire")
+            }
+        } else {
+            for adresse in try AnnuaireReel.adressesLitterales(reglages.adresse) {
+                try exiger(asl_client_annuaire(client, adresse, reglages.nom), "asl_client_annuaire")
+            }
         }
         try reglages.racinesPEM.withUnsafeBytes { pem in
             try exiger(asl_client_racines(client, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_client_racines")

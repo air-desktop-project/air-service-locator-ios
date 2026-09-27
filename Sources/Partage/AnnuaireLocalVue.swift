@@ -26,7 +26,7 @@ struct AnnuaireLocalVue: View {
             if let code {
                 Section {
                     Text(code.code).font(.title2.monospaced()).textSelection(.enabled)
-                    Text(TextesDomaines.commande(code: code.code, racine: session.annuaireChoisi?.adresse ?? session.annuaire.nom))
+                    Text(TextesDomaines.commande(code: code.code, racine: session.annuaireChoisi?.pourLaLigneDeCommande ?? session.annuaire.nom))
                         .font(.footnote.monospaced()).textSelection(.enabled)
                     Text("Expire \(code.expireLe.relatif).").font(.footnote).foregroundStyle(.secondary)
                 } header: {

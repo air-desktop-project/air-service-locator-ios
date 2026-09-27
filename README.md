@@ -100,32 +100,56 @@ Le transport est le xcframework produit par le dépôt client, attendu à
 c'est voulu, la simulation n'est pas un mode de secours silencieux.
 
 Les annuaires se donnent par deux fichiers **non versionnés** dans
-`Sources/Ressources/`, copiés dans le paquet à la construction :
+`Sources/Ressources/` (et `Sources/Mac/Ressources/` pour le Mac), copiés dans
+le paquet à la construction :
 
 ```sh
 cat > Sources/Ressources/annuaire.json <<'JSON'
 {"annuaires": [
-  {"adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org", "libelle": "Automatique"},
-  {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org"},
-  {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org"}
+  {"libelle": "Automatique",
+   "adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org",
+   "racines": [
+     {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
+     {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}]},
+  {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org",
+   "annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
+  {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org",
+   "annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}
 ]}
 JSON
 cp /où/est/la/racine.pem Sources/Ressources/annuaire-racine.pem
 ```
 
-Chaque entrée : `adresse` (`hôte:port` ; un nom se résout sur l'appareil, et
-**toutes** ses adresses sont essayées, IPv6 d'abord), `nom` (celui qu'on
-exige du certificat), et `libelle`, facultatif, pour l'écran. Une seule racine
-PEM pour toutes : l'autorité qui a signé leurs certificats. S'il y en a
-plusieurs, l'utilisateur choisit dans Compte › Annuaire (iPhone) ou dans les
+**L'identité par la clé** (décision 58) : une entrée porte `annuaire`, le
+`n-…` qu'on doit trouver au bout, et `locateurs`, des adresses **littérales**
+(`[IPv6]:port`, `IPv4:port`) — aucun nom DNS n'est résolu. Une entrée qui
+couvre plusieurs racines, « Automatique », les liste dans `racines`. La
+racine jointe se nomme d'après son identité (`RacinesConnues`), pas d'après
+le DNS.
+
+**La forme d'hier** : `adresse` (`hôte:port` ; un nom se résout sur
+l'appareil, et **toutes** ses adresses sont essayées, IPv6 d'abord) et `nom`
+(celui qu'on exige du certificat). Une entrée identifiée ne s'en sert pas
+pour se connecter ; on les garde le temps de la bascule, parce que les
+versions ≤ 0.15 de l'application ne lisent qu'elles et qu'un choix déjà
+retenu l'est par l'adresse. L'ancien objet `{"adresse": …, "nom": …}` seul
+reste lu : une liste d'un élément.
+
+**La bascule** : tant que `annuaire-racine.pem` est dans le paquet,
+l'autorité d'hier est posée AUSSI sur la même connexion. Une racine ≤ 0.28
+présente sa chaîne, dont les certificats portent ses adresses ; une racine
+≥ 0.29 présente son identité, crue par la clé. Retirer le PEM, une fois
+toutes les racines passées, ne laisse que l'identité — et les entrées sans
+identité disparaissent de la liste.
+
+`libelle`, facultatif, est ce que l'écran en dit. S'il y a plusieurs
+entrées, l'utilisateur choisit dans Compte › Annuaire (iPhone) ou dans les
 Préférences (Mac) ; le choix est retenu, la première de la liste sert par
 défaut (`Coeur/Reseau/Reel/ChoixDAnnuaire.swift`). « Automatique » vient en
-tête : l'alias `asl-root` couvre les deux racines, et la première qui répond
-sert — l'écran dit laquelle (« Connecté à … »). Un appareil qui a déjà
-choisi garde son choix. L'ancienne forme, un
-objet `{"adresse": …, "nom": …}` seul, reste lue : une liste d'un élément.
+tête : la première racine qui répond sert — l'écran dit laquelle
+(« Connecté à … »).
 
-Sans ces deux fichiers, l'application tourne sur le banc en mémoire, peuplé
+Sans liste lisible, l'application tourne sur le banc en mémoire, peuplé
 de démonstration.
 
 ## L'arborescence
