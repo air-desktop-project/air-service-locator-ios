@@ -17,6 +17,14 @@ struct DomainesLisiblesEssais {
         #expect(Self.domaine(alias: "Maison").titreComplet == "Maison")
     }
 
+    /// Le menu « Domaine » d'une machine et le titre du détail : jamais
+    /// l'abrégé, qui ne se recopie pas.
+    @Test func leTitreEstLAliasOuLIdentifiantEntier() {
+        #expect(Self.domaine(alias: nil).titre == Self.id.texte)
+        #expect(!Self.domaine(alias: nil).titre.contains("…"))
+        #expect(Self.domaine(alias: "Maison").titre == "Maison")
+    }
+
     private static let racines = ChoixDAnnuaire.lire(json: Data("""
     {"annuaires": [
       {"libelle": "Automatique", "racines": [

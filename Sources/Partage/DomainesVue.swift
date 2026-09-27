@@ -226,7 +226,7 @@ struct DomaineVue: View {
                 }
             }
         }
-        .navigationTitle(domaine.map { $0.alias ?? $0.id.texte } ?? "")
+        .navigationTitle(domaine?.titre ?? "")
         .confirmationDialog(TextesDomaines.supprimer, isPresented: $confirmeSuppression, titleVisibility: .visible) {
             Button(TextesDomaines.supprimer, role: .destructive) { Task { await supprimer() } }
         } message: {

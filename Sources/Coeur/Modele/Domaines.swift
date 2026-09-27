@@ -33,7 +33,10 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// liste, et vide sans le droit de voir.
     var machines: [MachineRangee] = []
 
-    var titre: String { alias ?? id.abrege }
+    /// L'alias, ou l'identifiant ENTIER : ce qu'un menu ou un titre en dit.
+    /// L'abrégé (`d-4M7F…DEVD`) ne distingue pas à coup sûr deux domaines
+    /// sans alias, et ne se recopie pas.
+    var titre: String { alias ?? id.texte }
     /// Ce qu'une ligne de la liste en dit : l'alias, ou l'identifiant entier
     /// — l'abrégé ne distingue pas deux domaines sans alias.
     var titreComplet: String { alias ?? "\(id.texte) - \(TextesDomaines.pasDAlias)" }
