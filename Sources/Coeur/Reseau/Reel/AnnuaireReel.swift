@@ -529,7 +529,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         case "revoquee": cle = .revoquee(le: millis(objet["revoquee_a"]) ?? .now, code: code(depuis: objet))
         default: cle = .attendue(code: code(depuis: objet))
         }
-        return Machine(id: id, nom: nom, capacites: capacites, cle: cle, services: [])
+        return Machine(id: id, nom: nom, capacites: capacites, cle: cle, services: [], alias: objet["alias"] as? String)
     }
 
     /// Ce que le serveur rend, complété de ce que cet appareil sait : le code
@@ -566,7 +566,8 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         guard statut == 201, let objet = try Self.json(rendu) as? [String: Any],
               let texte = objet["machine"] as? String, let code = Self.code(depuis: objet)
         else { throw Self.refus(statut) }
-        let machine = Machine(id: try Identifiant.analyser(texte, genre: .machine), nom: nom, capacites: capacites,
+        // L'annuaire range le nom en minuscules : le carnet garde la même forme.
+        let machine = Machine(id: try Identifiant.analyser(texte, genre: .machine), nom: NomsEtAlias.nomDHote(nom) ?? nom, capacites: capacites,
                               cle: .attendue(code: code), services: [])
         Carnet.machines.append(Carnet.Fiche(machine: machine))
         return machine
@@ -581,10 +582,30 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         let (statut, _) = try await surLaFile { try self.requete("PATCH", "/v1/machines/\(id.texte)", corps) }
         guard statut == 204 else { throw Self.refus(statut) }
         guard var fiche = Carnet.machines.first(where: { $0.machine.id == id }) else { throw ErreurAnnuaire.introuvable }
-        if let nom { fiche.machine.nom = nom }
+        if let nom { fiche.machine.nom = NomsEtAlias.nomDHote(nom) ?? nom }
         if let capacites { fiche.machine.capacites = capacites }
         Carnet.remplacer(fiche)
         return fiche.machine
+    }
+
+    /// `404` ou `405` d'un annuaire d'avant 0.26.0, qui ne connaît pas le
+    /// verbe : dit comme tel, pas comme une machine introuvable.
+    func definirAliasDeMachine(_ id: Identifiant, alias: String?) async throws {
+        let (statut, _) = try await surLaFile {
+            if let alias {
+                try self.requete("PUT", "/v1/machines/\(id.texte)/alias", try Self.encoder(["alias": NomsEtAlias.nfc(alias)]))
+            } else {
+                try self.requete("DELETE", "/v1/machines/\(id.texte)/alias")
+            }
+        }
+        switch statut {
+        case 200, 204: return
+        case 404, 405:
+            // La machine existe — l'écran l'a sous les yeux : c'est le verbe
+            // que l'annuaire ne connaît pas.
+            throw ErreurAnnuaire.nonImplemente
+        default: throw Self.refus(statut)
+        }
     }
 
     func emettreCode(pour machine: Identifiant) async throws -> CodeEnrolement {
@@ -773,7 +794,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         return liste.compactMap { objet in
             guard let texte = objet["machine"] as? String, let id = try? Identifiant.analyser(texte, genre: .machine),
                   let nom = objet["nom"] as? String else { return nil }
-            return MachineVisible(id: id, nom: nom)
+            return MachineVisible(id: id, nom: nom, alias: objet["alias"] as? String)
         }
     }
 
@@ -827,7 +848,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     }
 
     func identifiant(pourAlias alias: String) async throws -> Identifiant? {
-        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/alias/\(alias)") }
+        let (statut, corps) = try await surLaFile { try self.requete("GET", NomsEtAlias.cheminDeResolution(alias)) }
         guard statut == 200, let objet = try Self.json(corps) as? [String: Any], let texte = objet["identifiant"] as? String else { return nil }
         return try Identifiant.analyser(texte, genre: .utilisateur)
     }

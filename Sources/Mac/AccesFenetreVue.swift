@@ -79,7 +79,7 @@ struct AccesFenetreVue: View {
                 if portee == .machine {
                     Picker("Machine", selection: $machineChoisie) {
                         Text("Choisir…").tag(Identifiant?.none)
-                        ForEach(donnees.machines) { Text($0.nom).tag(Identifiant?.some($0.id)) }
+                        ForEach(donnees.machines) { Text($0.titre).tag(Identifiant?.some($0.id)) }
                     }
                     .frame(maxWidth: 320)
                 }
@@ -252,7 +252,7 @@ struct MachinesVisiblesMac: View {
                 ForEach(machines) { machine in
                     HStack(spacing: 8) {
                         Image(systemName: "desktopcomputer").font(.caption).foregroundStyle(.secondary)
-                        Text(machine.nom).font(.callout)
+                        Text(machine.titre).font(.callout)
                         Copiable(machine.id.texte)
                     }
                 }

@@ -9,6 +9,8 @@ struct AccorderVue: View {
     @State private var saisie = ""
     @State private var beneficiaire: Identifiant?
     @State private var verdict: Verdict = .vide
+    /// Le bénéficiaire a été trouvé par un alias, pas par son identifiant.
+    @State private var parAlias = false
     @State private var portee: ChoixPortee = .tout
     @State private var machine: Identifiant?
     @State private var service: Identifiant?
@@ -40,7 +42,7 @@ struct AccorderVue: View {
                         .font(.system(.body, design: .monospaced))
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                    LigneVerdict(verdict: verdict)
+                    LigneVerdict(verdict: verdict, identifiant: parAlias ? beneficiaire : nil)
                 } header: {
                     Text("Bénéficiaire")
                 } footer: {
@@ -58,7 +60,7 @@ struct AccorderVue: View {
                     if portee == .machine {
                         Picker("Machine", selection: $machine) {
                             Text("Choisir…").tag(Identifiant?.none)
-                            ForEach(machines) { Text($0.nom).tag(Identifiant?.some($0.id)) }
+                            ForEach(machines) { Text($0.titre).tag(Identifiant?.some($0.id)) }
                         }
                     }
                     if portee == .service {
@@ -66,7 +68,7 @@ struct AccorderVue: View {
                             Text("Choisir…").tag(Identifiant?.none)
                             ForEach(machines) { m in
                                 ForEach(m.services) { s in
-                                    Text("\(m.nom) · \(s.nom)").tag(Identifiant?.some(s.id))
+                                    Text("\(m.titre) · \(s.nom)").tag(Identifiant?.some(s.id))
                                 }
                             }
                         }
@@ -116,6 +118,7 @@ struct AccorderVue: View {
     /// frappe produit une autorisation muette accordée à personne.
     private func verifier() async {
         let texte = saisie.trimmingCharacters(in: .whitespaces)
+        parAlias = false
         guard !texte.isEmpty else { verdict = .vide; beneficiaire = nil; return }
         verdict = .recherche
         try? await Task.sleep(for: .milliseconds(300))
@@ -128,6 +131,7 @@ struct AccorderVue: View {
                 verdict = existe ? .existe : .inconnu
             } else if let id = try await session.annuaire.identifiant(pourAlias: texte) {
                 beneficiaire = id
+                parAlias = true
                 verdict = .existe
             } else {
                 beneficiaire = nil
@@ -156,8 +160,23 @@ struct AccorderVue: View {
 
 private struct LigneVerdict: View {
     let verdict: AccorderVue.Verdict
+    /// Trouvé par un alias : l'identifiant se montre, c'est lui qui fait foi —
+    /// un alias ressemblant (« thierry » à côté de « Thierry », une lettre
+    /// cyrillique) peut appartenir à un autre compte.
+    let identifiant: Identifiant?
 
     var body: some View {
+        if case .existe = verdict, let identifiant {
+            VStack(alignment: .leading, spacing: 2) {
+                Label("Ce compte existe.", systemImage: "checkmark").foregroundStyle(Couleurs.joignable)
+                Text(identifiant.texte).font(.footnote.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+        } else {
+            ligne
+        }
+    }
+
+    @ViewBuilder private var ligne: some View {
         switch verdict {
         case .vide:
             EmptyView()

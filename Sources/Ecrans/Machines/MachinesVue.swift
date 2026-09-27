@@ -42,7 +42,7 @@ struct MachinesVue: View {
                         HStack(spacing: 12) {
                             Pastille(couleur: machine.couleur, taille: 10)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(machine.nom)
+                                Text(machine.titre)
                                 Text(machine.resumeListe).font(.footnote).foregroundStyle(.secondary)
                             }
                         }
@@ -88,7 +88,7 @@ private struct LigneMachineEnAttente: View {
         HStack(spacing: 12) {
             Image(systemName: "clock").foregroundStyle(Couleurs.attention)
             VStack(alignment: .leading, spacing: 2) {
-                Text(machine.nom)
+                Text(machine.titre)
                 TimelineView(.periodic(from: .now, by: 1)) { contexte in
                     Text(sousTitre(a: contexte.date)).font(.footnote).foregroundStyle(.secondary)
                 }

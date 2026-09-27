@@ -15,7 +15,8 @@ struct DeclarerVueMac: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Nom, pour vous", text: $nom).textFieldStyle(.roundedBorder)
+            TextField("Nom d'hôte", text: $nom).textFieldStyle(.roundedBorder)
+            RegleDuNom(nom: nom)
             Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce).font(.caption)
             Toggle("Lecture — elle peut demander où joindre un service", isOn: $lecture).font(.caption)
             if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
@@ -58,7 +59,10 @@ struct CeMacMachineVueMac: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Ce Mac administre déjà le compte. Il peut aussi héberger des daemons : c'est une seconde identité, une clé qui signe sans vous — celle d'une machine.")
                 .font(.caption).foregroundStyle(.secondary)
-            TextField("Nom, pour vous", text: $gestes.nomDeCeMac).textFieldStyle(.roundedBorder)
+            // « Mac » par défaut, jamais le nom que l'utilisateur a donné à ce
+            // Mac (« MacBook de Thierry ») : C13, aucune donnée personnelle.
+            TextField("Nom d'hôte", text: $gestes.nomDeCeMac).textFieldStyle(.roundedBorder)
+            RegleDuNom(nom: gestes.nomDeCeMac)
             Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce).font(.caption)
             Toggle("Lecture — il peut demander où joindre un service", isOn: $lecture).font(.caption)
             if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
@@ -189,5 +193,21 @@ struct EnrolerAppareilVueMac: View {
         } catch {
             erreur = error.messageAnnuaire
         }
+    }
+}
+
+/// La règle du nom d'hôte, sous le champ, et la forme que l'annuaire rangera.
+struct RegleDuNom: View {
+    let nom: String
+
+    var body: some View {
+        Group {
+            if let forme = NomsEtAlias.nomDHote(nom), forme != nom {
+                Text("\(TextesNoms.regleDuNom) \(TextesNoms.rangeSous(forme))")
+            } else {
+                Text(TextesNoms.regleDuNom)
+            }
+        }
+        .font(.caption).foregroundStyle(.secondary)
     }
 }

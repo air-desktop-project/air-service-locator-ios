@@ -145,17 +145,25 @@ actor AnnuaireSimule: Annuaire {
         guard compteLocal != nil else { throw ErreurAnnuaire.introuvable }
         if let alias {
             guard Self.aliasValide(alias) else { throw ErreurAnnuaire.requeteInvalide("alias") }
-            if autresComptes.values.contains(where: { $0?.lowercased() == alias.lowercased() }) {
+            // Unique, sensible à la casse, après NFC — comme l'annuaire 0.26.0.
+            if autresComptes.values.contains(where: { $0.map(NomsEtAlias.nfc) == NomsEtAlias.nfc(alias) }) {
                 throw ErreurAnnuaire.aliasPris
             }
         }
-        compteLocal?.alias = alias
+        compteLocal?.alias = alias.map(NomsEtAlias.nfc)
     }
 
-    /// Un alias se compare : ASCII, minuscules, chiffres, tiret, 3 à 32.
+    /// La règle de l'annuaire (``NomsEtAlias/aliasDeCompteValide(_:)``).
     static func aliasValide(_ alias: String) -> Bool {
-        (3...32).contains(alias.count)
-            && alias.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
+        NomsEtAlias.aliasDeCompteValide(alias)
+    }
+
+    func definirAliasDeMachine(_ id: Identifiant, alias: String?) async throws {
+        guard let indice = parcMachines.firstIndex(where: { $0.id == id }) else { throw ErreurAnnuaire.introuvable }
+        if let alias {
+            guard NomsEtAlias.aliasDeMachineValide(alias) else { throw ErreurAnnuaire.requeteInvalide("alias") }
+        }
+        parcMachines[indice].alias = alias.map(NomsEtAlias.nfc)
     }
 
     // MARK: - Machines
@@ -166,7 +174,7 @@ actor AnnuaireSimule: Annuaire {
         guard compteLocal != nil else { throw ErreurAnnuaire.introuvable }
         guard Machine.nomValide(nom) else { throw ErreurAnnuaire.requeteInvalide("nom") }
         let machine = Machine(
-            id: Self.neuf(.machine), nom: nom, capacites: capacites,
+            id: Self.neuf(.machine), nom: NomsEtAlias.nomDHote(nom) ?? nom, capacites: capacites,
             cle: .attendue(code: Self.code(horloge())), services: []
         )
         parcMachines.append(machine)
@@ -178,7 +186,7 @@ actor AnnuaireSimule: Annuaire {
         let indice = try indiceMachine(id)
         if let nom {
             guard Machine.nomValide(nom) else { throw ErreurAnnuaire.requeteInvalide("nom") }
-            parcMachines[indice].nom = nom
+            parcMachines[indice].nom = NomsEtAlias.nomDHote(nom) ?? nom
         }
         if let capacites {
             // Retirer la capacité d'annonce ferme les connexions, donc fait
@@ -349,8 +357,10 @@ actor AnnuaireSimule: Annuaire {
     }
 
     func identifiant(pourAlias alias: String) async throws -> Identifiant? {
-        if let compteLocal, compteLocal.alias?.lowercased() == alias.lowercased() { return compteLocal.identifiant }
-        return autresComptes.first { $0.value?.lowercased() == alias.lowercased() }?.key
+        // Exact après NFC, sensible à la casse — comme l'annuaire 0.26.0.
+        let cherche = NomsEtAlias.nfc(alias)
+        if let compteLocal, compteLocal.alias.map(NomsEtAlias.nfc) == cherche { return compteLocal.identifiant }
+        return autresComptes.first { $0.value.map(NomsEtAlias.nfc) == cherche }?.key
     }
 
     func accorder(a beneficiaire: Identifiant, portee: Autorisation.Portee, etiquette: String) async throws -> Autorisation {

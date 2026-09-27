@@ -100,7 +100,7 @@ struct FenetreVue: View {
                 ForEach(donnees.machines) { machine in
                     HStack(spacing: 8) {
                         PastilleMac(couleur: machine.couleur)
-                        Text(machine.nom)
+                        Text(machine.titre)
                     }
                     .tag(EtatFenetre.Page.machine(machine.id))
                 }

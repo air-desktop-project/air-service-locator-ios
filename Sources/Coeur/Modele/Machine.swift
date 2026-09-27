@@ -44,26 +44,29 @@ struct Machine: Identifiable, Hashable, Sendable {
     }
 
     let id: Identifiant
-    /// Libre, pour l'humain. 1 à 64 octets, tout l'UTF-8 sauf `"`, `\` et les
-    /// contrôles.
+    /// **Un nom d'hôte** depuis l'annuaire 0.26.0 (décision 47) : lettres
+    /// ASCII, chiffres et tiret, rangé en minuscules. Un nom rangé avant, en
+    /// texte libre, reste tel quel et s'affiche tel quel.
     var nom: String
     var capacites: Set<Capacite>
     var cle: Cle
     var services: [Service]
+    /// Texte choisi, libre — un nom complet, des accents, des espaces —,
+    /// non unique, indépendant du nom (``NomsEtAlias/aliasDeMachineValide(_:)``).
+    /// `nil` tant qu'on n'en a pas posé.
+    var alias: String? = nil
 
-    /// Le nom respecte-t-il les règles de `docs/modele.md` §2.3 ?
+    /// Un nouveau nom, ou un renommage, peut-il partir ? Un nom d'hôte
+    /// (``NomsEtAlias/nomDHote(_:)``) ; l'annuaire rend `400` pour tout autre.
     static func nomValide(_ nom: String) -> Bool {
-        let octets = nom.utf8.count
-        guard octets >= 1, octets <= 64 else { return false }
-        return !nom.unicodeScalars.contains { scalaire in
-            scalaire == "\"" || scalaire == "\\"
-                || scalaire.value < 0x20 || scalaire.value == 0x7F      // C0 et DEL
-                || (0x80...0x9F).contains(scalaire.value)               // C1
-                || scalaire.value == 0xFEFF                             // marque d'ordre
-                || (0x202A...0x202E).contains(scalaire.value)           // forceurs de sens
-                || (0x2066...0x2069).contains(scalaire.value)
-        }
+        NomsEtAlias.nomDHote(nom) != nil
     }
+
+    /// Ce que l'écran met en titre : l'alias s'il y en a un — c'est le texte
+    /// que son propriétaire a choisi pour la reconnaître —, sinon le nom.
+    var titre: String { alias ?? nom }
+    /// Le nom d'hôte sous le titre, quand l'alias a pris sa place.
+    var sousTitre: String? { alias == nil ? nil : nom }
 
     var capacitesTexte: String {
         Capacite.allCases.filter { capacites.contains($0) }.map(\.libelle).joined(separator: ", ")
@@ -81,4 +84,7 @@ struct Machine: Identifiable, Hashable, Sendable {
 struct MachineVisible: Identifiable, Hashable, Sendable {
     let id: Identifiant
     let nom: String
+    var alias: String? = nil
+
+    var titre: String { alias ?? nom }
 }

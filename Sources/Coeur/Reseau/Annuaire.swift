@@ -84,6 +84,9 @@ protocol Annuaire: Sendable {
     func declarerMachine(nom: String, capacites: Set<Capacite>) async throws -> Machine
     /// `PATCH /v1/machines/{m}` — ce qui est `nil` ne change pas.
     func modifierMachine(_ id: Identifiant, nom: String?, capacites: Set<Capacite>?) async throws -> Machine
+    /// `PUT /v1/machines/{m}/alias`, `DELETE` avec `nil` — le propriétaire
+    /// seul. Depuis l'annuaire 0.26.0 ; avant, ``ErreurAnnuaire/nonImplemente``.
+    func definirAliasDeMachine(_ id: Identifiant, alias: String?) async throws
     /// `POST /v1/machines/{m}/enrolement` — le code précédent meurt à l'émission.
     func emettreCode(pour machine: Identifiant) async throws -> CodeEnrolement
     /// `DELETE /v1/machines/{m}/cle` — effet immédiat : connexions fermées,
@@ -107,7 +110,8 @@ protocol Annuaire: Sendable {
     /// `GET /v1/utilisateurs/{u}` — confirme qu'un identifiant existe, et rien
     /// d'autre.
     func utilisateurExiste(_ id: Identifiant) async throws -> Bool
-    /// `GET /v1/alias/{alias}` — rend l'identifiant, et rien d'autre.
+    /// `GET /v1/alias/{alias}` (ASCII) ou `GET /v1/alias?alias=` (UTF-8,
+    /// depuis 0.26.0) — rend l'identifiant, et rien d'autre.
     func identifiant(pourAlias alias: String) async throws -> Identifiant?
     /// `POST /v1/autorisations` — accorde, et notifie le bénéficiaire.
     func accorder(a beneficiaire: Identifiant, portee: Autorisation.Portee, etiquette: String) async throws -> Autorisation

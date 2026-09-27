@@ -91,7 +91,11 @@ struct AnnuaireSimuleEssais {
     @Test func unAliasPrisRendConflit() async throws {
         let (annuaire, _) = try await annuaireAvecCompte()
         await annuaire.inscrireAutreCompte(Identifiant(genre: .utilisateur, octets: [UInt8](repeating: 9, count: 16)), alias: "vero")
-        await #expect(throws: ErreurAnnuaire.aliasPris) { try await annuaire.definirAlias("VERO") }
+        await #expect(throws: ErreurAnnuaire.aliasPris) { try await annuaire.definirAlias("vero") }
+        // Sensible à la casse depuis l'annuaire 0.26.0 (décision 46) : « VERO »
+        // est un autre alias, qu'un autre compte peut tenir.
+        try await annuaire.definirAlias("VERO")
+        #expect(try await annuaire.compte()?.alias == "VERO")
         try await annuaire.definirAlias("thierry")
         #expect(try await annuaire.compte()?.alias == "thierry")
         try await annuaire.definirAlias(nil)

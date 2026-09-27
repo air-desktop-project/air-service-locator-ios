@@ -95,7 +95,7 @@ struct WidgetVue: View {
                 } label: {
                     HStack(spacing: 10) {
                         PastilleMac(couleur: machine.couleur)
-                        Text(machine.nom).font(.callout.weight(.medium))
+                        Text(machine.titre).font(.callout.weight(.medium))
                         if machine.id == machineDeCeMac?.identifiant {
                             Text("ce Mac").font(.caption).foregroundStyle(.secondary)
                         }
