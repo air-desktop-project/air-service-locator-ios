@@ -54,6 +54,16 @@ struct Diagnostic: Hashable, Sendable {
     var inactiviteSecondes: Int?
 }
 
+/// Qui a sondé un service fédéré (décision 60) : l'annuaire local qui sert
+/// son domaine, et s'il l'a fait depuis la machine même — auquel cas
+/// « joignable » ne dit rien de ce qu'on verrait de l'extérieur.
+struct Sonde: Hashable, Sendable {
+    /// `sonde_par` : l'annuaire qui a rapporté le verdict.
+    let par: Identifiant
+    /// `sonde_locale` : la sonde est partie de la machine elle-même.
+    let locale: Bool
+}
+
 /// Ce qu'un daemon annonce. Identifié par le couple (machine, nom).
 struct Service: Identifiable, Hashable, Sendable {
     /// La connexion EST le bail : elle est tenue, ou elle est fermée.
@@ -76,6 +86,9 @@ struct Service: Identifiable, Hashable, Sendable {
     var oscille: Bool = false
     /// Ce que l'annuaire a répondu à l'annonce ; absent pour un service parti.
     var diagnostic: Diagnostic?
+    /// Absente pour un service que les racines ont sondé elles-mêmes : rien
+    /// ne change alors de ce qu'on disait.
+    var sonde: Sonde?
 
     var pointsTexte: String { points.map(\.texte).joined(separator: " · ") }
 

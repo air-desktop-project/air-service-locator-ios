@@ -695,14 +695,21 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// Aucune date : le serveur n'en range pas.
     private func services(de machine: Identifiant) async throws -> [Service] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/machines/\(machine.texte)/services") }
-        guard statut == 200, let liste = try Self.json(corps) as? [[String: Any]] else { return [] }
+        guard statut == 200 else { return [] }
+        return Self.lireServices(corps)
+    }
+
+    /// Le corps de `GET /v1/machines/{m}/services`, lu. Un service fédéré
+    /// porte en plus `sonde_par` et `sonde_locale` (décision 60).
+    static func lireServices(_ corps: Data) -> [Service] {
+        guard let liste = (try? JSONSerialization.jsonObject(with: corps)) as? [[String: Any]] else { return [] }
         return liste.compactMap { enveloppe in
             guard let texte = enveloppe["service"] as? String, let id = try? Identifiant.analyser(texte, genre: .service) else { return nil }
             let nom = enveloppe["nom"] as? String ?? id.abrege
             guard enveloppe["etat"] as? String == "annonce", let objet = enveloppe["annonce"] as? [String: Any] else {
                 // Parti — et le serveur ne sait plus toujours si c'était voulu.
                 return Service(id: id, nom: nom, points: [], etat: .parti(volontaire: enveloppe["volontaire"] as? Bool, le: Self.millis(enveloppe["parti_a"])),
-                               joignabilite: [:], candidats: [])
+                               joignabilite: [:], candidats: [], sonde: Self.sonde(enveloppe))
             }
             var points: [PointEcoute] = []
             var joignabilite: [PointEcoute: Joignabilite] = [:]
@@ -733,8 +740,17 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             diagnostic.keepaliveSecondes = objet["keepalive_secondes"] as? Int
             diagnostic.inactiviteSecondes = objet["inactivite_secondes"] as? Int
             return Service(id: id, nom: nom, points: points, etat: .annonce(depuis: Self.millis(enveloppe["annonce_a"]) ?? .now),
-                           joignabilite: joignabilite, candidats: candidats, diagnostic: diagnostic)
+                           joignabilite: joignabilite, candidats: candidats, diagnostic: diagnostic, sonde: Self.sonde(enveloppe))
         }
+    }
+
+    /// `sonde_par` et `sonde_locale` ; absents, ou un `n-…` illisible : nil.
+    /// Une sonde locale non dite est prise pour une sonde du dehors — c'est
+    /// ce que le serveur d'avant la décision 60 aurait voulu dire.
+    private static func sonde(_ enveloppe: [String: Any]) -> Sonde? {
+        guard let texte = enveloppe["sonde_par"] as? String,
+              let par = try? Identifiant.analyser(texte, genre: .annuaire) else { return nil }
+        return Sonde(par: par, locale: enveloppe["sonde_locale"] as? Bool ?? false)
     }
 
     /// `[2001:db8::1]:49152` ou `203.0.113.4:49152`.

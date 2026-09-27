@@ -197,7 +197,12 @@ struct MachineFenetreVue: View {
                                 }
                                 Text(service.pointsTexte).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                                 Text(service.libelleEtat)
-                                Text(service.detailEtat).font(.caption).foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(service.detailEtat).font(.caption).foregroundStyle(.secondary)
+                                    if service.joignableDeLInterieurSeulement {
+                                        Text(TextesSonde.pasDeLExterieur).font(.caption).foregroundStyle(Couleurs.attention)
+                                    }
+                                }
                             }
                             .padding(.horizontal, 12).padding(.vertical, 8)
                         }
