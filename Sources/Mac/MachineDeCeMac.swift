@@ -114,23 +114,26 @@ final class MachineDeCeMac {
         try exiger(asl_client_neuf(&client), "asl_client_neuf")
         guard let client else { throw Erreur.natif(ASL_INTERNE, "asl_client_neuf") }
         defer { asl_client_libere(client) }
-        // Le handle de machine n'a pas de forme identité (`asl_client_*`
-        // n'a que l'annuaire par nom) : l'enrôlement reste sous la forme
-        // d'hier, par l'adresse et le nom de l'entrée. Une entrée qui n'a
-        // que des identités donne ses locateurs, le certificat jugé sur
-        // l'adresse elle-même — ce que portent les chaînes d'hier.
-        if reglages.adresse.isEmpty {
-            for locateur in reglages.identites.flatMap(\.locateurs) {
-                let hote = String(locateur[..<locateur.lastIndex(of: ":")!]).trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-                try exiger(asl_client_annuaire(client, locateur, hote), "asl_client_annuaire")
+        // Par identité quand l'entrée en porte (décision 59) : chaque
+        // locateur avec le `n-…` qu'on doit y trouver, aucun nom résolu —
+        // la même règle que la connexion de l'appareil (``AnnuaireReel``).
+        if reglages.parIdentite {
+            for racine in reglages.identites {
+                for locateur in racine.locateurs {
+                    try exiger(asl_client_annuaire_identifie(client, locateur, racine.annuaire), "asl_client_annuaire_identifie")
+                }
             }
         } else {
             for adresse in try AnnuaireReel.adressesLitterales(reglages.adresse) {
                 try exiger(asl_client_annuaire(client, adresse, reglages.nom), "asl_client_annuaire")
             }
         }
-        try reglages.racinesPEM.withUnsafeBytes { pem in
-            try exiger(asl_client_racines(client, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_client_racines")
+        // LA BASCULE, comme pour l'appareil : l'autorité d'hier reste posée
+        // tant que le paquet en porte une.
+        if !reglages.racinesPEM.isEmpty {
+            try reglages.racinesPEM.withUnsafeBytes { pem in
+                try exiger(asl_client_racines(client, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_client_racines")
+            }
         }
         var machine = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
         var graine = [UInt8](repeating: 0, count: Int(ASL_GRAINE_OCTETS))
