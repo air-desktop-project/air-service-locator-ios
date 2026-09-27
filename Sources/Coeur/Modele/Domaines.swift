@@ -34,6 +34,9 @@ struct Domaine: Identifiable, Hashable, Sendable {
     var machines: [MachineRangee] = []
 
     var titre: String { alias ?? id.abrege }
+    /// Ce qu'une ligne de la liste en dit : l'alias, ou l'identifiant entier
+    /// — l'abrégé ne distingue pas deux domaines sans alias.
+    var titreComplet: String { alias ?? "\(id.texte) - \(TextesDomaines.pasDAlias)" }
     func peut(_ droit: String) -> Bool { droits.contains(droit) }
 }
 

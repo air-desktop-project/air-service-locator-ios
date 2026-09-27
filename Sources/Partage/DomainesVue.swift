@@ -7,6 +7,7 @@ import SwiftUI
 struct DomainesVue: View {
     @Environment(Session.self) private var session
     @State private var domaines: [Domaine] = []
+    @State private var annuairesLocaux: [AnnuaireLocal] = []
     @State private var nouvelAlias = ""
     @State private var erreur: String?
     @State private var enCours = false
@@ -24,7 +25,7 @@ struct DomainesVue: View {
                     NavigationLink {
                         DomaineVue(id: domaine.id)
                     } label: {
-                        LigneDomaine(domaine: domaine)
+                        LigneDomaine(domaine: domaine, hebergement: Hebergement(domaine.hebergePar, racines: session.annuaires, locaux: annuairesLocaux))
                     }
                 }
             }
@@ -42,6 +43,11 @@ struct DomainesVue: View {
     private func charger() async {
         do {
             domaines = try await session.annuaire.domaines()
+            // Qui sert un domaine confié à un annuaire local, c'est l'adresse
+            // déclarée de ses membres — demandée seulement s'il y en a un.
+            if domaines.contains(where: { $0.hebergePar != .racines }) {
+                annuairesLocaux = (try? await session.annuaire.annuairesLocaux()) ?? []
+            }
             erreur = nil
         } catch {
             erreur = error.messageAnnuaire
@@ -61,14 +67,72 @@ struct DomainesVue: View {
     }
 }
 
+/// Une ligne de la liste : l'alias — ou l'identifiant ENTIER, dit sans
+/// alias —, puis qui le sert et où. Le chevron dit qu'elle s'ouvre : l'iPhone
+/// le dessine de lui-même, le Mac non.
 struct LigneDomaine: View {
     let domaine: Domaine
+    let hebergement: Hebergement
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(domaine.titre)
-            Text("\(domaine.id.texte) · \(TextesDomaines.heberge(domaine.hebergePar))")
-                .font(.footnote).foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(domaine.titreComplet)
+                Text(domaine.alias == nil ? hebergement.titre : "\(domaine.id.texte) · \(hebergement.titre)")
+                    .font(.footnote).foregroundStyle(.secondary)
+                LocateursVue(hebergement: hebergement)
+            }
+            #if os(macOS)
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+            #endif
+        }
+    }
+}
+
+/// Qui sert un domaine, et à quelles adresses le joindre.
+///
+/// Les racines, ce sont celles que l'application connaît (``ChoixDAnnuaire``)
+/// par leur identité, chacune avec ses locateurs ; un annuaire local, ce sont
+/// les adresses déclarées de ses membres. Ce qu'on ne sait pas, on ne
+/// l'invente pas : pas d'adresse, pas de ligne.
+struct Hebergement: Equatable {
+    struct Serveur: Equatable, Identifiable {
+        let nom: String
+        let adresses: [String]
+        var id: String { nom }
+    }
+
+    let titre: String
+    let serveurs: [Serveur]
+
+    init(_ hebergeur: Domaine.Hebergeur, racines: [AnnuaireReel.Reglages], locaux: [AnnuaireLocal]) {
+        titre = TextesDomaines.heberge(hebergeur)
+        switch hebergeur {
+        case .racines:
+            // Une même racine figure sous plusieurs entrées (« Automatique »
+            // et la sienne) : on la dit une fois, dans l'ordre du fichier.
+            var vues = Set<String>()
+            serveurs = racines.flatMap(\.identites).filter { vues.insert($0.annuaire).inserted }.map {
+                Serveur(nom: RacinesConnues.nom(de: $0.annuaire), adresses: $0.locateurs)
+            }
+        case let .annuaire(n):
+            serveurs = locaux.filter { $0.annuaire == n }.map {
+                Serveur(nom: $0.membre?.abrege ?? n.abrege, adresses: [$0.adresse])
+            }
+        }
+    }
+}
+
+/// Les serveurs d'un domaine, un par ligne : le nom, puis ses adresses.
+struct LocateursVue: View {
+    let hebergement: Hebergement
+
+    var body: some View {
+        ForEach(hebergement.serveurs) { serveur in
+            Text("\(serveur.nom) — \(serveur.adresses.joined(separator: " · "))")
+                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
     }
 }
@@ -90,6 +154,7 @@ struct DomaineVue: View {
     let id: Identifiant
 
     @State private var domaine: Domaine?
+    @State private var annuairesLocaux: [AnnuaireLocal] = []
     @State private var alias = ""
     /// Les annuaires locaux acceptés à qui confier ce domaine (≥ 0.27.0).
     @State private var titulaires: [Identifiant] = []
@@ -107,7 +172,12 @@ struct DomaineVue: View {
             if let domaine {
                 Section {
                     LabeledContent("Identifiant", value: domaine.id.texte)
-                    Text(TextesDomaines.heberge(domaine.hebergePar)).foregroundStyle(.secondary)
+                    LabeledContent(TextesDomaines.proprietaire, value: estAMoi ? "\(domaine.proprietaire.texte) (\(TextesDomaines.vous))" : domaine.proprietaire.texte)
+                    let hebergement = Hebergement(domaine.hebergePar, racines: session.annuaires, locaux: annuairesLocaux)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(hebergement.titre).foregroundStyle(.secondary)
+                        LocateursVue(hebergement: hebergement)
+                    }
                     if domaine.peut("administrer") {
                         TextField(TextesNoms.alias, text: $alias)
                         HStack {
@@ -156,7 +226,7 @@ struct DomaineVue: View {
                 }
             }
         }
-        .navigationTitle(domaine?.titre ?? "")
+        .navigationTitle(domaine.map { $0.alias ?? $0.id.texte } ?? "")
         .confirmationDialog(TextesDomaines.supprimer, isPresented: $confirmeSuppression, titleVisibility: .visible) {
             Button(TextesDomaines.supprimer, role: .destructive) { Task { await supprimer() } }
         } message: {
@@ -172,8 +242,8 @@ struct DomaineVue: View {
             alias = lu.alias ?? ""
             annuairesPossibles = (try? await session.annuaire.version())??.porteLesAnnuairesLocaux ?? false
             if annuairesPossibles {
-                titulaires = ((try? await session.annuaire.annuairesLocaux()) ?? [])
-                    .filter { $0.estTitulaire && $0.etat == .acceptee }.compactMap(\.annuaire)
+                annuairesLocaux = (try? await session.annuaire.annuairesLocaux()) ?? []
+                titulaires = annuairesLocaux.filter { $0.estTitulaire && $0.etat == .acceptee }.compactMap(\.annuaire)
             }
             erreur = nil
         } catch {
