@@ -9,7 +9,7 @@ import Testing
 struct RacineTenueEssais {
     private static let deux = ChoixDAnnuaire.lire(json: Data("""
     {"annuaires": [{"adresse": "n:6630", "nom": "n"}, {"adresse": "a:6630", "nom": "a"}]}
-    """.utf8), racinesPEM: Data())
+    """.utf8), racinesPEM: Data("-----BEGIN CERTIFICATE-----".utf8))
 
     final class Fabrique: @unchecked Sendable {
         private let verrou = NSLock()

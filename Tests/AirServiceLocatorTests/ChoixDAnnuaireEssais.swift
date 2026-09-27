@@ -45,6 +45,80 @@ struct ChoixDAnnuaireEssais {
         #expect(ChoixDAnnuaire.lire(json: double, racinesPEM: Self.pem).map(\.nom) == ["a"])
     }
 
+    // MARK: - L'identité par la clé
+
+    private static let nitrogen = "n-0PWT8HZD80QMSPPDZ5CQXXYHQC"
+    private static let argon = "n-3K3P6H252W8K9370QG1YYTWBWB"
+
+    private static let identifie = Data("""
+    {"annuaires": [
+      {"libelle": "Automatique",
+       "adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org",
+       "racines": [
+         {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
+         {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}]},
+      {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org",
+       "annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
+      {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}
+    ]}
+    """.utf8)
+
+    @Test func laFormeIdentifieeSeLitSousSesDeuxEcritures() {
+        let annuaires = ChoixDAnnuaire.lire(json: Self.identifie, racinesPEM: Self.pem)
+        #expect(annuaires.map(\.affiche) == ["Automatique", "nitrogen.air-desktop.org", "argon.air-desktop.org"])
+        #expect(annuaires[0].identites.map(\.annuaire) == [Self.nitrogen, Self.argon])
+        let attendue = AnnuaireReel.RacineIdentifiee(annuaire: Self.nitrogen, locateurs: ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"])
+        #expect(annuaires[1].identites == [attendue])
+        #expect(annuaires.allSatisfy { $0.parIdentite })
+    }
+
+    /// Une préférence retenue hier par l'adresse désigne la même entrée ; une
+    /// entrée sans adresse se désigne par ses identités.
+    @Test func laCleEstLAdresseDHierSinonLesIdentites() {
+        let annuaires = ChoixDAnnuaire.lire(json: Self.identifie, racinesPEM: Self.pem)
+        #expect(annuaires.map(\.cle) == ["asl-root.air-desktop.org:6630", "nitrogen.air-desktop.org:6630", Self.argon])
+        let preference = Self.preferenceVierge()
+        preference.retenir(annuaires[2])
+        #expect(preference.choisi(parmi: annuaires)?.nom == "argon.air-desktop.org")
+    }
+
+    /// Aucun nom ne se résout : un locateur qui n'est pas littéral se laisse
+    /// de côté, et une racine qui n'en garde aucun aussi — comme un `n-…` de
+    /// travers.
+    @Test func unLocateurQuiNEstPasLitteralSeLaisseDeCote() {
+        let json = Data("""
+        {"annuaires": [
+          {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["nitrogen.air-desktop.org:6630", "178.32.16.250:6630", "[::1]", "[2001:db8::1]:6630"]},
+          {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["argon.air-desktop.org:6630"]},
+          {"annuaire": "u-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["178.32.16.249:6630"]}
+        ]}
+        """.utf8)
+        let annuaires = ChoixDAnnuaire.lire(json: json, racinesPEM: Self.pem)
+        #expect(annuaires.count == 1)
+        #expect(annuaires.first?.identites.first?.locateurs == ["178.32.16.250:6630", "[2001:db8::1]:6630"])
+    }
+
+    /// Le PEM n'est plus exigé : sans lui, les entrées d'hier n'ont rien à
+    /// croire et s'en vont ; les identifiées restent.
+    @Test func sansAutoriteSeulesLesEntreesIdentifieesRestent() {
+        let json = Data("""
+        {"annuaires": [
+          {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org"},
+          {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["178.32.16.249:6630"]}
+        ]}
+        """.utf8)
+        #expect(ChoixDAnnuaire.lire(json: json, racinesPEM: Data()).map(\.nom) == ["argon.air-desktop.org"])
+        #expect(ChoixDAnnuaire.lire(json: json, racinesPEM: Self.pem).map(\.parIdentite) == [false, true])
+    }
+
+    /// Ce que la ligne de commande reçoit : l'adresse d'hier, sinon
+    /// `locateur=n-…`.
+    @Test func laLigneDeCommandeVisePartOuLOnSaitJoindre() {
+        let annuaires = ChoixDAnnuaire.lire(json: Self.identifie, racinesPEM: Self.pem)
+        #expect(annuaires[1].pourLaLigneDeCommande == "nitrogen.air-desktop.org:6630")
+        #expect(annuaires[2].pourLaLigneDeCommande == "[2001:41d0:20a:900::1d32]:6630=\(Self.argon)")
+    }
+
     // MARK: - Le choix retenu
 
     private static let trois = ChoixDAnnuaire.lire(json: Data("""

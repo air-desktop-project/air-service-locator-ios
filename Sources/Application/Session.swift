@@ -91,7 +91,7 @@ final class Session {
         ouverture = { signataire, invitation in try await nouvel.ouvrirCompte(avec: signataire, invitation: invitation) }
         annuaireChoisi = reglages
         preference.retenir(reglages)
-        Self.journal.notice("annuaire choisi : \(reglages.adresse, privacy: .public)")
+        Self.journal.notice("annuaire choisi : \(reglages.cle, privacy: .public)")
     }
 
     /// Combien d'accès reçus n'ont pas encore été montrés — la pastille de

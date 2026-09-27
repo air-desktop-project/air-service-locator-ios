@@ -32,23 +32,54 @@ import OSLog
 /// une clé ou enrôlé un appareil. Ce que ni l'un ni l'autre ne sait reste
 /// `nil`, et l'écran le dit.
 final class AnnuaireReel: Annuaire, @unchecked Sendable {
-    /// Où est l'annuaire, sous quel nom, et qui a signé son certificat.
+    /// Une racine par son identité (décision 58) : le `n-…` que sa clé
+    /// d'identité donne, et les adresses littérales où la joindre.
+    struct RacineIdentifiee: Sendable, Equatable {
+        let annuaire: String
+        let locateurs: [String]
+    }
+
+    /// Où est l'annuaire, qui l'on doit y trouver, et — le temps de la
+    /// bascule — qui a signé son certificat d'hier.
     struct Reglages: Sendable, Equatable {
-        /// `hôte:port` — l'hôte est une adresse littérale ou un nom. Un nom
+        /// La forme d'hier, `hôte:port` — vide pour une entrée qui n'est que
+        /// par identités. L'hôte est une adresse littérale ou un nom. Un nom
         /// se résout ICI, par le résolveur du téléphone : la bibliothèque
         /// n'embarque pas de client DNS (`annuaires.md`), et ne prend que
         /// des adresses littérales. **Toutes** les adresses d'un nom sont
         /// données au natif, qui en fait la tournée (IPv6 d'abord) : c'est ce
         /// qui fait marcher un alias qui couvre plusieurs racines.
         let adresse: String
-        /// Le nom exigé du certificat — jamais déduit de l'adresse.
+        /// Le nom exigé du certificat d'hier — jamais déduit de l'adresse ;
+        /// pour une entrée identifiée, ce que l'écran en dit.
         let nom: String
+        /// L'autorité d'hier, en PEM — vide : aucune.
         let racinesPEM: Data
         /// Ce que l'écran en dit, s'il faut mieux que le nom — « Automatique »
         /// pour un alias qui couvre les deux racines.
         var libelle: String? = nil
+        /// Les racines par leur identité. Non vide, elles seules servent à
+        /// se connecter, et aucun nom n'est résolu.
+        var identites: [RacineIdentifiee] = []
 
         var affiche: String { libelle ?? nom }
+
+        /// Ce qui désigne l'entrée dans la liste et dans la préférence :
+        /// l'adresse d'hier quand elle est là — une préférence déjà retenue
+        /// garde son sens —, les identités sinon.
+        var cle: String { adresse.isEmpty ? identites.map(\.annuaire).joined(separator: ",") : adresse }
+
+        /// La forme de confiance que la connexion pose : l'identité si
+        /// l'entrée en porte, et l'autorité d'hier AUSSI tant qu'un PEM est
+        /// là (``ChoixDAnnuaire``, « la bascule »).
+        var parIdentite: Bool { !identites.isEmpty }
+
+        /// Ce qu'on donne à une ligne de commande qui vise cette racine :
+        /// l'adresse d'hier, ou `locateur=n-…` (la syntaxe d'`asl --directory`).
+        var pourLaLigneDeCommande: String {
+            if !adresse.isEmpty { return adresse }
+            return identites.first.flatMap { racine in racine.locateurs.first.map { "\($0)=\(racine.annuaire)" } } ?? nom
+        }
     }
 
     /// Les adresses littérales de l'annuaire, IPv6 d'abord : celle donnée si
@@ -136,7 +167,13 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         var tampon = [CChar](repeating: 0, count: Int(ASL_ADRESSE_OCTETS))
         guard asl_appareil_distante(handle, &tampon) == ASL_OK else { return nil }
         let adresse = Self.texte(tampon)
-        let connues = racines.map { racine in
+        let identites = racines.flatMap(\.identites)
+        if let nom = RacineJointe.nommer(adresse, identites: identites) {
+            return RacineTenue(adresse: adresse, nom: nom)
+        }
+        // La forme d'hier seulement : on résout les entrées qui n'ont pas
+        // d'identité — jamais les autres, qui ne se connectent pas par leur nom.
+        let connues = racines.filter { !$0.parIdentite }.map { racine in
             (nom: racine.nom, adresses: (try? Self.adressesLitterales(racine.adresse)) ?? [])
         }
         return RacineTenue(adresse: adresse, nom: RacineJointe.nommer(adresse, parmi: connues))
@@ -173,12 +210,31 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         var neuf: OpaquePointer?
         try exiger(asl_appareil_neuf(&neuf), "asl_appareil_neuf")
         guard let neuf else { throw ErreurNative.code(ASL_INTERNE, "handle nul") }
-        for adresse in try Self.adressesLitterales(reglages.adresse) {
-            Self.journal.notice("annuaire \(adresse, privacy: .public) (nom exigé \(self.reglages.nom, privacy: .public))")
-            try exiger(asl_appareil_annuaire(neuf, adresse, reglages.nom), "asl_appareil_annuaire")
+        if reglages.parIdentite {
+            // Chaque locateur de chaque racine, avec l'identité qu'on doit y
+            // trouver : aucun nom à résoudre, aucun nom envoyé.
+            for racine in reglages.identites {
+                for locateur in racine.locateurs {
+                    Self.journal.notice("annuaire \(locateur, privacy: .public) (identité \(racine.annuaire, privacy: .public))")
+                    try exiger(asl_appareil_annuaire_identifie(neuf, locateur, racine.annuaire), "asl_appareil_annuaire_identifie")
+                }
+            }
+        } else {
+            for adresse in try Self.adressesLitterales(reglages.adresse) {
+                Self.journal.notice("annuaire \(adresse, privacy: .public) (nom exigé \(self.reglages.nom, privacy: .public))")
+                try exiger(asl_appareil_annuaire(neuf, adresse, reglages.nom), "asl_appareil_annuaire")
+            }
         }
-        try reglages.racinesPEM.withUnsafeBytes { pem in
-            try exiger(asl_appareil_racines(neuf, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_appareil_racines")
+        // LA BASCULE : l'autorité d'hier reste posée tant que le paquet en
+        // porte une. Une racine d'aujourd'hui (≤ 0.28) ne présente que sa
+        // chaîne, dont les certificats portent ses adresses ; une racine qui
+        // présente son identité est crue par la clé. La même connexion
+        // sert donc les deux, sans sonder la version d'abord — la poignée de
+        // main précède tout `GET /v1/version`.
+        if !reglages.racinesPEM.isEmpty {
+            try reglages.racinesPEM.withUnsafeBytes { pem in
+                try exiger(asl_appareil_racines(neuf, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_appareil_racines")
+            }
         }
         let cle = try signataire()
         cleCourante = cle
@@ -248,7 +304,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         // La connexion va être remplacée : l'écoute, qui la lit, s'arrête
         // d'abord — l'ABI l'exige, et son échéance la borne.
         veille.arreter()
-        Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public)…")
+        Self.journal.notice("connexion à \(self.reglages.affiche, privacy: .public)…")
         let code = asl_appareil_connecter(handle)
         Self.journal.notice("asl_appareil_connecter → \(code)")
         guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }
@@ -415,7 +471,7 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
             try self.exiger(asl_appareil_identite(handle, appareil.texte), "asl_appareil_identite")
             // Se connecter sous cette identité, c'est la prouver : le natif
             // ferme la connexion nue s'il y en a une, et rappelle la clé.
-            Self.journal.notice("connexion à \(self.reglages.adresse, privacy: .public) en tant que \(appareil.texte, privacy: .public)…")
+            Self.journal.notice("connexion à \(self.reglages.affiche, privacy: .public) en tant que \(appareil.texte, privacy: .public)…")
             let code = asl_appareil_connecter(handle)
             Self.journal.notice("asl_appareil_connecter → \(code)")
             guard code == ASL_OK else { throw Self.refusNatif(code, "asl_appareil_connecter") }

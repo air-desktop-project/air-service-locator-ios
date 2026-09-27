@@ -75,13 +75,13 @@ struct CompteVue: View {
                 // Un seul annuaire : rien à choisir, rien d'affiché.
                 if session.annuaires.count > 1 {
                     Picker(TextesRacine.titre, selection: Binding(
-                        get: { session.annuaireChoisi?.adresse ?? "" },
-                        set: { adresse in
-                            guard let choisi = session.annuaires.first(where: { $0.adresse == adresse }) else { return }
+                        get: { session.annuaireChoisi?.cle ?? "" },
+                        set: { cle in
+                            guard let choisi = session.annuaires.first(where: { $0.cle == cle }) else { return }
                             Task { await basculer(vers: choisi) }
                         }
                     )) {
-                        ForEach(session.annuaires, id: \.adresse) { Text($0.affiche).tag($0.adresse) }
+                        ForEach(session.annuaires, id: \.cle) { Text($0.affiche).tag($0.cle) }
                     }
                 }
                 LigneRacineTenue(racine: session.racineTenue)
