@@ -21,38 +21,60 @@ extension Date {
 
 extension Joignabilite {
     /// Le mot, exactement — et jamais « en ligne ».
-    var libelle: String {
+    var libelle: String { libelle(sonde: nil) }
+    var detail: String { detail(sonde: nil) }
+
+    /// Une sonde partie de la machine elle-même ne prouve pas qu'on la
+    /// joigne du dehors : le mot le dit.
+    func libelle(sonde: Sonde?) -> String {
         switch self {
         case .enCours: "Annoncé"
-        case .joignable: "Joignable"
+        case .joignable: sonde?.locale == true ? TextesSonde.joignableLocal : "Joignable"
         case .injoignable: "Annoncé, injoignable"
         case .nonSonde: "Annoncé"
         }
     }
 
     /// « joignable » porte toujours sa date : un « joignable » sans date décrit
-    /// le passé au présent.
-    var detail: String {
+    /// le passé au présent. Et qui l'a constaté : les racines, ou l'annuaire
+    /// local qui sert le domaine.
+    func detail(sonde: Sonde?) -> String {
         switch self {
         case .enCours: "sonde en cours"
-        case let .joignable(depuis, _): "depuis l'annuaire, \(depuis.relatif)"
-        case let .injoignable(depuis): "depuis l'annuaire, \(depuis.relatif)"
+        case let .joignable(depuis, _), let .injoignable(depuis):
+            sonde.map { TextesSonde.rapportePar($0.par, depuis) } ?? "depuis l'annuaire, \(depuis.relatif)"
         case .nonSonde: "UDP — non sondé"
         }
     }
 }
 
+/// L'origine de la sonde d'un service fédéré (décision 60) — à la lettre :
+/// Android dit les mêmes.
+enum TextesSonde {
+    static let joignableLocal = "Joignable depuis la machine"
+    static func rapportePar(_ annuaire: Identifiant, _ depuis: Date) -> String {
+        "rapporté par l'annuaire \(annuaire.abrege), \(depuis.relatif)"
+    }
+    static let pasDeLExterieur = "Sondé depuis la machine elle-même : pas vérifié de l'extérieur."
+}
+
 extension Service {
+    /// « Joignable », mais constaté depuis la machine elle-même : à dire.
+    var joignableDeLInterieurSeulement: Bool {
+        guard sonde?.locale == true, case .joignable = resume else { return false }
+        return true
+    }
+
     var libelleEtat: String {
         switch etat {
-        case .annonce: resume?.libelle ?? "Annoncé"
+        case .annonce: resume?.libelle(sonde: sonde) ?? "Annoncé"
         case .parti: "Parti"
         }
     }
 
     var detailEtat: String {
         switch etat {
-        case .annonce: resume?.detail ?? ""
+        case .annonce: resume?.detail(sonde: sonde) ?? ""
         case let .parti(volontaire, le):
             [volontaire.map { $0 ? "arrêt volontaire" : "inactivité" } ?? "motif inconnu", le?.relatif].compactMap { $0 }.joined(separator: ", ")
         }

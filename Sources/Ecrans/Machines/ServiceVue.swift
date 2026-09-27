@@ -31,7 +31,7 @@ struct ServiceVue: View {
 
             Section {
                 ForEach(service.points, id: \.self) { point in
-                    LignePoint(point: point, verdict: service.joignabilite[point])
+                    LignePoint(point: point, verdict: service.joignabilite[point], sonde: service.sonde)
                 }
             } header: {
                 Text("Points d'écoute")
@@ -102,6 +102,7 @@ struct ServiceVue: View {
 private struct LignePoint: View {
     let point: PointEcoute
     let verdict: Joignabilite?
+    let sonde: Sonde?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -109,8 +110,11 @@ private struct LignePoint: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(point.texte).font(.system(.subheadline, design: .monospaced))
                 if let verdict {
-                    Text(verdict.libelle).font(.footnote.weight(.semibold))
-                    Text(verdict.detail).font(.footnote).foregroundStyle(.secondary)
+                    Text(verdict.libelle(sonde: sonde)).font(.footnote.weight(.semibold))
+                    Text(verdict.detail(sonde: sonde)).font(.footnote).foregroundStyle(.secondary)
+                    if case .joignable = verdict, sonde?.locale == true {
+                        Text(TextesSonde.pasDeLExterieur).font(.footnote).foregroundStyle(Couleurs.attention)
+                    }
                     if case let .joignable(_, candidat) = verdict, !candidat.isEmpty {
                         Text("vers \(candidat)").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                     }
