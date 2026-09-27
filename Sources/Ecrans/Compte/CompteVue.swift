@@ -261,7 +261,7 @@ struct AliasVue: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
             } footer: {
-                Text("Lettres, chiffres et tirets, de 3 à 32. Il est public par construction : quiconque peut essayer un alias et découvrir qu'il existe. Il ne rend rien d'autre que votre identifiant.")
+                Text("\(TextesNoms.regleAliasDeCompte) Il est public par construction : quiconque peut essayer un alias et découvrir qu'il existe. Il ne rend rien d'autre que votre identifiant — et c'est l'identifiant qui fait foi : un autre compte peut prendre un alias qui ressemble au vôtre.")
             }
             if let erreur {
                 Section { Text(erreur).foregroundStyle(.red) }
@@ -276,7 +276,7 @@ struct AliasVue: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             Button("Enregistrer") { Task { await definir(alias) } }
-                .disabled(!AnnuaireSimule.aliasValide(alias) || alias == session.compte?.alias)
+                .disabled(!NomsEtAlias.aliasDeCompteValide(alias) || NomsEtAlias.nfc(alias) == session.compte?.alias)
         }
         .onAppear { alias = session.compte?.alias ?? "" }
     }

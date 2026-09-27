@@ -23,10 +23,14 @@ struct CompteFenetreVue: View {
                         Champ("Identifiant public") { Copiable(compte.identifiant.texte) }
                         Champ("Alias public") {
                             if editeAlias {
-                                HStack {
-                                    TextField("alias", text: $alias).textFieldStyle(.roundedBorder).frame(maxWidth: 240)
-                                    Button("Enregistrer") { Task { await definirAlias(alias.isEmpty ? nil : alias) } }.disabled(enCours)
-                                    Button("Annuler") { editeAlias = false }
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        TextField("alias", text: $alias).textFieldStyle(.roundedBorder).frame(maxWidth: 240)
+                                        Button("Enregistrer") { Task { await definirAlias(alias.isEmpty ? nil : alias) } }
+                                            .disabled(enCours || (!alias.isEmpty && !NomsEtAlias.aliasDeCompteValide(alias)))
+                                        Button("Annuler") { editeAlias = false }
+                                    }
+                                    Text(TextesNoms.regleAliasDeCompte).font(.caption).foregroundStyle(.secondary)
                                 }
                             } else {
                                 HStack(spacing: 8) {
@@ -229,7 +233,7 @@ struct AppareilsSection: View {
         if let attestation = appareil.attestation { morceaux.append(attestation.libelle) }
         if let plateforme = appareil.description?.plateforme { morceaux.append(plateforme.libelle) }
         if appareil.estCeluiCi, let machine = donnees.machine(machineDeCeMac?.identifiant ?? appareil.id) {
-            morceaux.append("aussi la machine « \(machine.nom) »")
+            morceaux.append("aussi la machine « \(machine.titre) »")
         }
         return morceaux.joined(separator: " · ")
     }

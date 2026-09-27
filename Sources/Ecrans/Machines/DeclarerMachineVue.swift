@@ -18,9 +18,17 @@ struct DeclarerMachineVue: View {
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                 } header: {
-                    Text("Nom")
+                    Text("Nom d'hôte")
                 } footer: {
-                    Text("Pour vous, jamais pour la machine. Accents et émoji acceptés, 64 octets au plus.")
+                    // La règle, dite avant d'envoyer ; et la forme que
+                    // l'annuaire rangera, dès qu'elle est bonne. Le texte libre
+                    // — un nom complet, des accents — va dans l'alias, posé
+                    // ensuite sur l'écran de la machine.
+                    if let forme = NomsEtAlias.nomDHote(nom), forme != nom {
+                        Text("\(TextesNoms.regleDuNom) \(TextesNoms.rangeSous(forme))")
+                    } else {
+                        Text(TextesNoms.regleDuNom)
+                    }
                 }
                 Section {
                     ChoixCapacites(capacites: $capacites)

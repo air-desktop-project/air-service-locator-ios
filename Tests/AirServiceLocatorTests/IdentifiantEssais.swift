@@ -72,15 +72,28 @@ struct CodeEnrolementEssais {
 }
 
 struct NomDeMachineEssais {
-    @Test func toutLutf8SaufCeQuiRetourneSesVoisins() {
+    /// Depuis l'annuaire 0.26.0 (décision 47), un nom de machine est un nom
+    /// d'hôte : les exemples du bout en bout du serveur, et les bords.
+    @Test func unNomDeMachineEstUnNomDHote() {
         #expect(Machine.nomValide("grenier"))
-        #expect(Machine.nomValide("serveur été 🏠"))
+        #expect(Machine.nomValide("Grenier"))
+        #expect(Machine.nomValide("mac-oxygen"))
+        #expect(Machine.nomValide("a"))
+        #expect(Machine.nomValide(String(repeating: "a", count: 63)))
+        #expect(!Machine.nomValide(String(repeating: "a", count: 64)))
         #expect(!Machine.nomValide(""))
-        #expect(!Machine.nomValide(String(repeating: "é", count: 33)))  // 66 octets
-        #expect(!Machine.nomValide("a\"b"))
-        #expect(!Machine.nomValide("a\\b"))
-        #expect(!Machine.nomValide("a\tb"))
-        #expect(!Machine.nomValide("a\u{202E}b"))
-        #expect(!Machine.nomValide("\u{FEFF}a"))
+        #expect(!Machine.nomValide("Salle à manger"))
+        #expect(!Machine.nomValide("serveur été 🏠"))
+        #expect(!Machine.nomValide("-grenier"))
+        #expect(!Machine.nomValide("grenier-"))
+        #expect(!Machine.nomValide("grenier.maison"))
+        #expect(!Machine.nomValide("gre nier"))
+    }
+
+    /// Rangé en minuscules, comme l'annuaire le fait.
+    @Test func leNomEstRangeEnMinuscules() {
+        #expect(NomsEtAlias.nomDHote("Grenier") == "grenier")
+        #expect(NomsEtAlias.nomDHote("Mac") == "mac")
+        #expect(NomsEtAlias.nomDHote("Salle à manger") == nil)
     }
 }

@@ -32,7 +32,7 @@ struct MachinesVisiblesVue: View {
                     }
                     ForEach(machines) { machine in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(machine.nom)
+                            Text(machine.titre)
                             Text(machine.id.texte).font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary).textSelection(.enabled)
                         }
                     }

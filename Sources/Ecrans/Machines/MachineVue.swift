@@ -11,6 +11,9 @@ struct MachineVue: View {
     @State private var renommer = false
     @State private var nouveauNom = ""
     @State private var confirmerRevocation = false
+    /// L'alias saisi, et l'annuaire sait-il en ranger un (0.26.0) ?
+    @State private var alias = ""
+    @State private var aliasPossible = false
 
     var body: some View {
         List {
@@ -39,12 +42,35 @@ struct MachineVue: View {
 
                 Section("Machine") {
                     LigneIdentifiant(titre: "Identifiant public", identifiant: machine.id)
+                    // L'alias a pris le titre : le nom d'hôte se dit ici.
+                    if machine.alias != nil {
+                        LabeledContent("Nom d'hôte", value: machine.nom)
+                    }
                     NavigationLink {
                         CapacitesVue(machine: machine) { await charger() }
                     } label: {
                         LabeledContent("Capacités", value: machine.capacitesTexte.isEmpty ? "aucune" : machine.capacitesTexte)
                     }
                     LigneCle(machine: machine)
+                }
+
+                if aliasPossible {
+                    Section {
+                        TextField(TextesNoms.alias, text: $alias)
+                        HStack {
+                            Button("Enregistrer") { Task { await poserAlias(alias) } }
+                                .disabled(!NomsEtAlias.aliasDeMachineValide(alias) || NomsEtAlias.nfc(alias) == machine.alias)
+                            Spacer()
+                            if machine.alias != nil {
+                                Button("Retirer", role: .destructive) { Task { await poserAlias(nil) } }
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                    } header: {
+                        Text(TextesNoms.alias)
+                    } footer: {
+                        Text(TextesNoms.explicationAlias)
+                    }
                 }
 
                 switch machine.cle {
@@ -69,7 +95,7 @@ struct MachineVue: View {
                 }
             }
         }
-        .navigationTitle(machine?.nom ?? "")
+        .navigationTitle(machine?.titre ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             Button("Renommer") {
@@ -83,9 +109,13 @@ struct MachineVue: View {
             Button("Renommer") { Task { await modifier(nom: nouveauNom) } }
                 .disabled(!Machine.nomValide(nouveauNom))
         } message: {
-            Text("Pour vous, jamais pour la machine. Un nom ne retire aucun droit.")
+            if let forme = NomsEtAlias.nomDHote(nouveauNom) {
+                Text("\(TextesNoms.regleDuNom) \(TextesNoms.rangeSous(forme))")
+            } else {
+                Text(TextesNoms.regleDuNom)
+            }
         }
-        .confirmationDialog("Révoquer la clé de \(machine?.nom ?? "") ?", isPresented: $confirmerRevocation, titleVisibility: .visible) {
+        .confirmationDialog("Révoquer la clé de \(machine?.titre ?? "") ?", isPresented: $confirmerRevocation, titleVisibility: .visible) {
             Button("Révoquer la clé", role: .destructive) { Task { await revoquer() } }
         } message: {
             Text("Les connexions de la machine sont fermées à la seconde et ses annonces tombent. Elle garde son nom, ses capacités et ses services ; il faudra saisir un nouveau code sur place.")
@@ -100,6 +130,9 @@ struct MachineVue: View {
                 throw ErreurAnnuaire.introuvable
             }
             machine = trouvee
+            alias = trouvee.alias ?? ""
+            // Le champ d'alias ne s'offre qu'à un annuaire qui sait le ranger.
+            aliasPossible = (try? await session.annuaire.version())??.porteLesAliasDeMachine ?? false
             erreur = nil
         } catch {
             erreur = error.messageAnnuaire
@@ -109,6 +142,17 @@ struct MachineVue: View {
     private func modifier(nom: String) async {
         do {
             machine = try await session.annuaire.modifierMachine(id, nom: nom, capacites: nil)
+        } catch {
+            erreur = error.messageAnnuaire
+        }
+    }
+
+    private func poserAlias(_ texte: String?) async {
+        do {
+            try await session.annuaire.definirAliasDeMachine(id, alias: texte)
+            await charger()
+        } catch ErreurAnnuaire.nonImplemente {
+            erreur = TextesNoms.aliasIndisponible
         } catch {
             erreur = error.messageAnnuaire
         }

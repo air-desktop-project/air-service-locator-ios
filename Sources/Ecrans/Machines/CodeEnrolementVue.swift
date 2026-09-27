@@ -86,7 +86,7 @@ struct CodeEnrolementVue: View {
         .padding(.top, 24)
         .padding(.bottom, 16)
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Enrôler \(machine.nom)")
+        .navigationTitle("Enrôler \(machine.titre)")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(terminer != nil)
         .task {

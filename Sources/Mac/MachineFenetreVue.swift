@@ -22,6 +22,8 @@ struct MachineFenetreVue: View {
     @State private var confirmeRevocation = false
     @State private var erreur: String?
     @State private var enCours = false
+    @State private var editeAlias = false
+    @State private var alias = ""
 
     private var estCeMac: Bool { machine.id == machineDeCeMac?.identifiant }
 
@@ -32,16 +34,52 @@ struct MachineFenetreVue: View {
                 if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
                 Carte {
                     Champ("Identifiant") { Copiable(machine.id.texte) }
-                    Champ("Nom, pour vous") {
+                    Champ("Nom d'hôte") {
                         if renomme {
-                            HStack {
-                                TextField("Nom", text: $nouveauNom).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
-                                Button("Enregistrer") { Task { await modifier(nom: nouveauNom, capacites: nil) } }
-                                    .disabled(!Machine.nomValide(nouveauNom) || enCours)
-                                Button("Annuler") { renomme = false }
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    TextField("Nom", text: $nouveauNom).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
+                                    Button("Enregistrer") { Task { await modifier(nom: nouveauNom, capacites: nil) } }
+                                        .disabled(!Machine.nomValide(nouveauNom) || enCours)
+                                    Button("Annuler") { renomme = false }
+                                }
+                                Group {
+                                    if let forme = NomsEtAlias.nomDHote(nouveauNom), forme != nouveauNom {
+                                        Text("\(TextesNoms.regleDuNom) \(TextesNoms.rangeSous(forme))")
+                                    } else {
+                                        Text(TextesNoms.regleDuNom)
+                                    }
+                                }
+                                .font(.caption).foregroundStyle(.secondary)
                             }
                         } else {
                             Text(machine.nom)
+                        }
+                    }
+                    // L'alias ne s'offre qu'à un annuaire qui sait le ranger
+                    // (0.26.0) ; ailleurs, le champ n'existe pas.
+                    if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesAliasDeMachine {
+                        Champ(TextesNoms.alias) {
+                            if editeAlias {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        TextField(TextesNoms.alias, text: $alias).textFieldStyle(.roundedBorder).frame(maxWidth: 420)
+                                        Button("Enregistrer") { Task { await poserAlias(alias) } }
+                                            .disabled(!NomsEtAlias.aliasDeMachineValide(alias) || NomsEtAlias.nfc(alias) == machine.alias || enCours)
+                                        Button("Annuler") { editeAlias = false }
+                                    }
+                                    Text(TextesNoms.explicationAlias).font(.caption).foregroundStyle(.secondary)
+                                }
+                            } else {
+                                HStack(spacing: 8) {
+                                    if let actuel = machine.alias { Text(actuel) } else { Text("aucun").foregroundStyle(.secondary) }
+                                    Button(machine.alias == nil ? "Choisir" : "Changer") { alias = machine.alias ?? ""; editeAlias = true }
+                                        .buttonStyle(.link).font(.callout)
+                                    if machine.alias != nil {
+                                        Button("Retirer") { Task { await poserAlias(nil) } }.buttonStyle(.link).font(.callout)
+                                    }
+                                }
+                            }
                         }
                     }
                     Champ("Capacités") {
@@ -105,8 +143,8 @@ struct MachineFenetreVue: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .navigationTitle(machine.nom)
-        .confirmationDialog("Révoquer la clé de « \(machine.nom) » ?", isPresented: $confirmeRevocation, titleVisibility: .visible) {
+        .navigationTitle(machine.titre)
+        .confirmationDialog("Révoquer la clé de « \(machine.titre) » ?", isPresented: $confirmeRevocation, titleVisibility: .visible) {
             Button("Révoquer la clé", role: .destructive) { Task { await revoquerCle() } }
         } message: {
             Text("Effet immédiat : ses connexions sont fermées, ses baux tombent. La machine reste — son nom, ses capacités, ses services — et un nouveau code la ré-enrôle.")
@@ -116,7 +154,7 @@ struct MachineFenetreVue: View {
     private var entete: some View {
         HStack(spacing: 12) {
             PastilleMac(couleur: machine.couleur, taille: 10)
-            Text(machine.nom).font(.title.weight(.bold))
+            Text(machine.titre).font(.title.weight(.bold))
             if estCeMac {
                 Text("ce Mac").font(.caption.weight(.semibold))
                     .padding(.horizontal, 7).padding(.vertical, 2)
@@ -234,6 +272,21 @@ struct MachineFenetreVue: View {
     }
 
     // MARK: - Les gestes
+
+    private func poserAlias(_ texte: String?) async {
+        enCours = true
+        defer { enCours = false }
+        do {
+            try await session.annuaire.definirAliasDeMachine(machine.id, alias: texte)
+            editeAlias = false
+            erreur = nil
+            await donnees.recharger(session)
+        } catch ErreurAnnuaire.nonImplemente {
+            erreur = TextesNoms.aliasIndisponible
+        } catch {
+            erreur = error.messageAnnuaire
+        }
+    }
 
     private func modifier(nom: String?, capacites: Set<Capacite>?) async {
         enCours = true

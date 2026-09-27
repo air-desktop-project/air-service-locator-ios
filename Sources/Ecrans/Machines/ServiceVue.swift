@@ -78,7 +78,7 @@ struct ServiceVue: View {
 
             Section("Service") {
                 LigneIdentifiant(titre: "Identifiant public", identifiant: service.id, partageable: true)
-                LabeledContent("Machine", value: machine.nom)
+                LabeledContent("Machine", value: machine.titre)
             }
         }
         .navigationTitle(service.nom)

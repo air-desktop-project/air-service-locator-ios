@@ -51,6 +51,19 @@ struct VersionAnnuaire: Hashable, Sendable {
 
     /// Faut-il demander un code d'invitation pour ouvrir un compte ici ?
     var exigeUneInvitation: Bool { posture == .invitation }
+
+    /// L'alias d'une machine se pose-t-il ici ? Depuis 0.26.0. Une version
+    /// illisible ou plus ancienne : non — le champ ne s'affiche pas, plutôt
+    /// qu'un geste qui rendrait `404`.
+    var porteLesAliasDeMachine: Bool { Self.auMoins(version, 0, 26, 0) }
+
+    /// `MAJEURE.MINEURE.CORRECTIF` comparé à un minimum ; ce qui ne se lit pas
+    /// ne passe pas.
+    static func auMoins(_ version: String, _ majeure: Int, _ mineure: Int, _ correctif: Int) -> Bool {
+        let parties = version.split(separator: ".").map { Int($0.prefix { $0.isNumber }) }
+        guard parties.count >= 3, let a = parties[0], let b = parties[1], let c = parties[2] else { return false }
+        return (a, b, c) >= (majeure, mineure, correctif)
+    }
 }
 
 /// Un téléphone enrôlé. **C'est l'appareil qui signe**, jamais l'utilisateur.
