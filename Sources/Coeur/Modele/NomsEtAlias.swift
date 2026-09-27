@@ -74,6 +74,24 @@ enum NomsEtAlias {
         return (1...253).contains(forme.utf8.count) && !forme.unicodeScalars.contains(where: refuse)
     }
 
+    /// Un alias de domaine : 1 à 64 octets après NFC, non unique. Au plus
+    /// 255 octets saisis avant NFC.
+    static func aliasDeDomaineValide(_ alias: String) -> Bool {
+        guard alias.utf8.count <= 255 else { return false }
+        let forme = nfc(alias)
+        return (1...64).contains(forme.utf8.count) && !forme.unicodeScalars.contains(where: refuse)
+    }
+
+    /// Une adresse d'annuaire local : `hôte:port`, ASCII imprimable sans `"`
+    /// ni `\\`, port de 1 à 65535.
+    static func adresseValide(_ adresse: String) -> Bool {
+        guard let deuxPoints = adresse.lastIndex(of: ":"),
+              let port = Int(adresse[adresse.index(after: deuxPoints)...]), (1...65535).contains(port),
+              deuxPoints != adresse.startIndex
+        else { return false }
+        return adresse.unicodeScalars.allSatisfy { (0x21...0x7E).contains($0.value) && $0 != "\"" && $0 != "\\" }
+    }
+
     // MARK: - Résoudre un alias de compte
 
     /// Le chemin de `GET` qui résout cet alias. Un alias ASCII garde la forme

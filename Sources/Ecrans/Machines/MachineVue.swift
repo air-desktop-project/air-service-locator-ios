@@ -14,6 +14,8 @@ struct MachineVue: View {
     /// L'alias saisi, et l'annuaire sait-il en ranger un (0.26.0) ?
     @State private var alias = ""
     @State private var aliasPossible = false
+    /// La racine sert-elle les domaines (0.23.0) ?
+    @State private var domainesPossibles = false
 
     var body: some View {
         List {
@@ -45,6 +47,9 @@ struct MachineVue: View {
                     // L'alias a pris le titre : le nom d'hôte se dit ici.
                     if machine.alias != nil {
                         LabeledContent("Nom d'hôte", value: machine.nom)
+                    }
+                    if domainesPossibles {
+                        RangementDeMachine(machine: machine.id)
                     }
                     NavigationLink {
                         CapacitesVue(machine: machine) { await charger() }
@@ -132,7 +137,9 @@ struct MachineVue: View {
             machine = trouvee
             alias = trouvee.alias ?? ""
             // Le champ d'alias ne s'offre qu'à un annuaire qui sait le ranger.
-            aliasPossible = (try? await session.annuaire.version())??.porteLesAliasDeMachine ?? false
+            let version = (try? await session.annuaire.version()) ?? nil
+            aliasPossible = version?.porteLesAliasDeMachine ?? false
+            domainesPossibles = version?.porteLesDomaines ?? false
             erreur = nil
         } catch {
             erreur = error.messageAnnuaire

@@ -137,6 +137,19 @@ struct FenetreVue: View {
                 }
                 .tag(EtatFenetre.Page.acces)
             }
+            // Selon ce que la racine sert : domaines depuis 0.23.0, annuaire
+            // local et administration depuis 0.27.0.
+            if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesDomaines {
+                Section {
+                    Label(TextesDomaines.domaines, systemImage: "square.stack.3d.up").tag(EtatFenetre.Page.domaines)
+                    if version.porteLesAnnuairesLocaux {
+                        Label(TextesDomaines.annuaireLocal, systemImage: "server.rack").tag(EtatFenetre.Page.annuaireLocal)
+                        if donnees.administreLesRacines {
+                            Label(TextesDomaines.administration, systemImage: "checkmark.shield").tag(EtatFenetre.Page.administration)
+                        }
+                    }
+                }
+            }
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -176,6 +189,14 @@ struct FenetreVue: View {
             AppareilsFenetreVue()
         case .acces:
             AccesFenetreVue()
+        // Les écrans partagés avec l'iPhone vont dans leur propre pile : le
+        // détail d'un domaine s'y empile.
+        case .domaines:
+            NavigationStack { DomainesVue() }
+        case .annuaireLocal:
+            NavigationStack { AnnuaireLocalVue() }
+        case .administration:
+            NavigationStack { AdministrationVue() }
         }
     }
 }

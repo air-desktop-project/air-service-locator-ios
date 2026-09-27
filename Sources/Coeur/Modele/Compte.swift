@@ -56,6 +56,11 @@ struct VersionAnnuaire: Hashable, Sendable {
     /// illisible ou plus ancienne : non — le champ ne s'affiche pas, plutôt
     /// qu'un geste qui rendrait `404`.
     var porteLesAliasDeMachine: Bool { Self.auMoins(version, 0, 26, 0) }
+    /// Les domaines, leur alias et le rangement des machines : depuis 0.23.0.
+    var porteLesDomaines: Bool { Self.auMoins(version, 0, 23, 0) }
+    /// Les annuaires locaux, les inscriptions et l'hébergeur d'un domaine :
+    /// depuis 0.27.0.
+    var porteLesAnnuairesLocaux: Bool { Self.auMoins(version, 0, 27, 0) }
 
     /// `MAJEURE.MINEURE.CORRECTIF` comparé à un minimum ; ce qui ne se lit pas
     /// ne passe pas.

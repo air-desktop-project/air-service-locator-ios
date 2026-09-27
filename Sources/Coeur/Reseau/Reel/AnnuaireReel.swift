@@ -875,6 +875,127 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     }
 }
 
+// MARK: - Domaines et annuaires locaux
+
+extension AnnuaireReel {
+    func domaines() async throws -> [Domaine] {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/domaines") }
+        guard statut == 200 else { throw Self.refus(statut) }
+        return ReponsesDomaines.domaines(corps)
+    }
+
+    func domaine(_ id: Identifiant) async throws -> Domaine {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/domaines/\(id.texte)") }
+        guard statut == 200, let domaine = ReponsesDomaines.detail(corps) else { throw Self.refus(statut) }
+        return domaine
+    }
+
+    func creerDomaine(alias: String?) async throws -> Identifiant {
+        let envoye = try Self.encoder(alias.map { ["alias": NomsEtAlias.nfc($0)] } ?? [:])
+        let (statut, corps) = try await surLaFile { try self.requete("POST", "/v1/domaines", envoye) }
+        guard statut == 201, let o = try Self.json(corps) as? [String: Any], let texte = o["domaine"] as? String else { throw Self.refus(statut) }
+        return try Identifiant.analyser(texte, genre: .domaine)
+    }
+
+    func definirAliasDeDomaine(_ id: Identifiant, alias: String?) async throws {
+        let (statut, _) = try await surLaFile {
+            if let alias {
+                try self.requete("PUT", "/v1/domaines/\(id.texte)/alias", try Self.encoder(["alias": NomsEtAlias.nfc(alias)]))
+            } else {
+                try self.requete("DELETE", "/v1/domaines/\(id.texte)/alias")
+            }
+        }
+        guard statut == 204 else { throw Self.refus(statut) }
+    }
+
+    func supprimerDomaine(_ id: Identifiant) async throws {
+        let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/domaines/\(id.texte)") }
+        switch statut {
+        case 204: return
+        case 409: throw ErreurAnnuaire.dernierDomaine
+        default: throw Self.refus(statut)
+        }
+    }
+
+    func ranger(machine: Identifiant, dans domaine: Identifiant?) async throws {
+        let (statut, _) = try await surLaFile {
+            if let domaine {
+                try self.requete("PUT", "/v1/machines/\(machine.texte)/domaine", try Self.encoder(["domaine": domaine.texte]))
+            } else {
+                try self.requete("DELETE", "/v1/machines/\(machine.texte)/domaine")
+            }
+        }
+        switch statut {
+        case 204: return
+        case 403: throw ErreurAnnuaire.rattachementInterdit
+        default: throw Self.refus(statut)
+        }
+    }
+
+    func confier(domaine: Identifiant, a annuaire: Identifiant?) async throws {
+        let (statut, _) = try await surLaFile {
+            if let annuaire {
+                try self.requete("PUT", "/v1/domaines/\(domaine.texte)/hebergeur", try Self.encoder(["annuaire": annuaire.texte]))
+            } else {
+                try self.requete("DELETE", "/v1/domaines/\(domaine.texte)/hebergeur")
+            }
+        }
+        guard statut == 204 else { throw Self.refus(statut) }
+    }
+
+    func annuairesLocaux() async throws -> [AnnuaireLocal] {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/annuaires") }
+        guard statut == 200 else { throw Self.refus(statut) }
+        return ReponsesDomaines.annuaires(corps)
+    }
+
+    func declarerAnnuaire(adresse: String) async throws -> CodeInscription {
+        let (statut, corps) = try await surLaFile { try self.requete("POST", "/v1/annuaires", try Self.encoder(["adresse": adresse])) }
+        guard statut == 201, let code = ReponsesDomaines.code(corps) else { throw Self.refus(statut) }
+        return code
+    }
+
+    func declarerSecondMembre(de annuaire: Identifiant, adresse: String) async throws -> CodeInscription {
+        let (statut, corps) = try await surLaFile {
+            try self.requete("POST", "/v1/annuaires/\(annuaire.texte)/membres", try Self.encoder(["adresse": adresse]))
+        }
+        switch statut {
+        case 201:
+            guard let code = ReponsesDomaines.code(corps) else { throw Self.refus(statut) }
+            return code
+        case 409: throw ErreurAnnuaire.secondMembreDejaDeclare
+        default: throw Self.refus(statut)
+        }
+    }
+
+    func retirerAnnuaire(_ annuaire: Identifiant) async throws {
+        let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/annuaires/\(annuaire.texte)") }
+        guard statut == 204 else { throw Self.refus(statut) }
+    }
+
+    func inscriptions() async throws -> [Inscription]? {
+        let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/inscriptions") }
+        switch statut {
+        case 200: return ReponsesDomaines.inscriptions(corps)
+        // Pour qui n'administre pas les racines, la ressource n'existe pas
+        // (C10) : ce n'est pas une erreur, c'est « pas pour vous ».
+        case 404: return nil
+        default: throw Self.refus(statut)
+        }
+    }
+
+    func decider(inscription membre: Identifiant, accepte: Bool) async throws {
+        let (statut, _) = try await surLaFile {
+            try self.requete("POST", "/v1/inscriptions/\(membre.texte)/decision", try Self.encoder(["accepte": accepte]))
+        }
+        switch statut {
+        case 204: return
+        case 409: throw ErreurAnnuaire.inscriptionClose
+        default: throw Self.refus(statut)
+        }
+    }
+}
+
 // MARK: - Les nouvelles
 
 extension AnnuaireReel {
