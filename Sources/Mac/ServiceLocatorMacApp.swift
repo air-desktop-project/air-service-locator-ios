@@ -15,6 +15,12 @@ import SwiftUI
 /// gestes (déclarer, enrôler, révoquer, émettre un code). Elle s'ouvre depuis
 /// le widget, ou sur une machine du widget.
 ///
+/// **Elle se connecte au lancement** (0.21.0), sans attendre qu'on ouvre le
+/// widget ou la fenêtre : la connexion tenue est ce qui entend les nouvelles,
+/// donc ce qui notifie. Touch ID est demandé au démarrage. Le widget et la
+/// fenêtre rejoignent cette relecture au lieu d'en lancer une autre
+/// (``Donnees/recharger(_:)``).
+///
 /// `LSUIElement` tient l'application hors du Dock tant que la fenêtre est
 /// fermée ; ouverte, l'application redevient ordinaire (Dock, menu, ⌘-Tab),
 /// et se retire quand la fenêtre se ferme — `FenetreVue` fait ce va-et-vient.
@@ -54,6 +60,13 @@ struct ServiceLocatorMacApp: App {
             let reelle = Session.reelle(annuaires: annuaires)
             _session = State(initialValue: reelle)
             _machineDeCeMac = State(initialValue: reelle?.annuaireChoisi.map(MachineDeCeMac.init(reglages:)))
+            // SE CONNECTER DÈS LE LANCEMENT, sans attendre le widget ni la
+            // fenêtre : c'est la connexion tenue qui entend les nouvelles, et
+            // sans elle un accès accordé ne se notifie pas tant qu'on n'a rien
+            // ouvert. Le prix, choisi par Thierry : Touch ID au démarrage.
+            let donnees = Donnees()
+            _donnees = State(initialValue: donnees)
+            if let reelle { Task { await donnees.recharger(reelle) } }
         case let .inutilisable(message):
             _faute = State(initialValue: message)
         case .absent:
