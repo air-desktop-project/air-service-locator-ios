@@ -967,6 +967,11 @@ extension AnnuaireReel {
         guard statut == 204 else { throw Self.refus(statut) }
     }
 
+    func retirerMembre(_ membre: Identifiant, de annuaire: Identifiant) async throws {
+        let (statut, _) = try await surLaFile { try self.requete("DELETE", "/v1/annuaires/\(annuaire.texte)/membres/\(membre.texte)") }
+        guard statut == 204 else { throw Self.refus(statut) }
+    }
+
     func inscriptions() async throws -> [Inscription]? {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/inscriptions") }
         switch statut {

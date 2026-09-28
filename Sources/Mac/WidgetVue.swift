@@ -28,7 +28,7 @@ struct WidgetVue: View {
                 sectionCompte(compte)
                 sectionMachines
             } else {
-                Text("Ce Mac n'est enrôlé sur aucun compte. Ouvrez Service Locator pour en ouvrir un, ou en rejoindre un.")
+                Text("Ce Mac n'est enrôlé sur aucun compte. Ouvrez \(Version.nomDeLApplication) pour en ouvrir un, ou en rejoindre un.")
                     .font(.callout).foregroundStyle(.secondary).padding(14)
             }
             if let erreur = donnees.erreur ?? session.erreurDeRelecture {
@@ -44,7 +44,7 @@ struct WidgetVue: View {
         HStack(spacing: 10) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 28, height: 28)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Service Locator").font(.headline)
+                Text(Version.nomDeLApplication).font(.headline)
                 Text("annuaire \(session.annuaire.nom)\(versionDeLAnnuaire)").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -121,7 +121,7 @@ struct WidgetVue: View {
             Button {
                 ouvrir(sur: session.compte == nil ? .compte : etat.page ?? .compte)
             } label: {
-                Label("Ouvrir Service Locator", systemImage: "macwindow")
+                Label("Ouvrir \(Version.nomDeLApplication)", systemImage: "macwindow")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)

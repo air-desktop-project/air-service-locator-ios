@@ -403,6 +403,15 @@ actor AnnuaireSimule: Annuaire {
         }
     }
 
+    func retirerMembre(_ membre: Identifiant, de annuaire: Identifiant) async throws {
+        guard membre != annuaire else { return try await retirerAnnuaire(annuaire) }
+        guard annuairesDuBanc.contains(where: { $0.membre == membre && $0.annuaire == annuaire }) else { throw ErreurAnnuaire.introuvable }
+        annuairesDuBanc = annuairesDuBanc.map { a in
+            guard a.membre == membre else { return a }
+            return AnnuaireLocal(membre: a.membre, annuaire: a.annuaire, etat: .retiree, adresse: a.adresse, expireLe: a.expireLe)
+        }
+    }
+
     /// Le banc n'administre pas les racines.
     func inscriptions() async throws -> [Inscription]? { nil }
 

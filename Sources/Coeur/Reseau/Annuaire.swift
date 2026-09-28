@@ -206,6 +206,9 @@ protocol Annuaire: Sendable {
     /// `DELETE /v1/annuaires/{n}` — la paire entière ; ses domaines
     /// reviennent aux racines.
     func retirerAnnuaire(_ annuaire: Identifiant) async throws
+    /// `DELETE /v1/annuaires/{n}/membres/{n2}` — le second membre seul ; la
+    /// paire reste, sans secours. (Nommer le titulaire, c'est retirer tout.)
+    func retirerMembre(_ membre: Identifiant, de annuaire: Identifiant) async throws
     /// `GET /v1/inscriptions` — `nil` si ce compte n'administre pas les
     /// racines (l'annuaire rend `404`, comme pour ce qui n'existe pas).
     func inscriptions() async throws -> [Inscription]?

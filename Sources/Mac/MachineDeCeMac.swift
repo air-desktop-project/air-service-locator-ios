@@ -181,7 +181,7 @@ final class MachineDeCeMac {
         try FileManager.default.createDirectory(at: dossier, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         var chemin = try chemin
         let contenu = """
-        # asl — l'identité de cette machine, écrite par l'application Service Locator.
+        # asl — l'identité de cette machine, écrite par l'application Air Service Locator.
         #
         # LA MOITIÉ PRIVÉE D'UNE PAIRE DE CLÉS. Elle n'a jamais quitté ce disque,
         # et elle ne le doit pas : l'annuaire ne connaît que la moitié publique.

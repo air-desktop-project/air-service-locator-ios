@@ -89,7 +89,7 @@ Une seule clé de machine sur ce Mac, donc : celle que l'app a enrôlée.
 xcodegen generate     # après tout changement de project.yml ou fichier ajouté
 xcodebuild build -project AirServiceLocator.xcodeproj -target ServiceLocatorMac \
     CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application: Thierry DELHAISE (SB7H9B6TY8)"
-open "$(xcodebuild -project AirServiceLocator.xcodeproj -target ServiceLocatorMac -showBuildSettings 2>/dev/null | awk '/BUILT_PRODUCTS_DIR/ {print $3}')/Service Locator.app"
+open "$(xcodebuild -project AirServiceLocator.xcodeproj -target ServiceLocatorMac -showBuildSettings 2>/dev/null | awk '/BUILT_PRODUCTS_DIR/ {print $3}')/Air Service Locator.app"
 ```
 
 Pourquoi ces deux réglages, et pas un `xcodebuild build -scheme` nu :

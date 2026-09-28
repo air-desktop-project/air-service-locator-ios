@@ -19,34 +19,23 @@ struct CompteFenetreVue: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
                 if let compte = session.compte {
-                    Carte {
-                        Champ("Identifiant public") { Copiable(compte.identifiant.texte) }
-                        Champ("Alias public") {
-                            if editeAlias {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        TextField("alias", text: $alias).textFieldStyle(.roundedBorder).frame(maxWidth: 240)
-                                        Button("Enregistrer") { Task { await definirAlias(alias.isEmpty ? nil : alias) } }
-                                            .disabled(enCours || (!alias.isEmpty && !NomsEtAlias.aliasDeCompteValide(alias)))
-                                        Button("Annuler") { editeAlias = false }
-                                    }
-                                    Text(TextesNoms.regleAliasDeCompte).font(.caption).foregroundStyle(.secondary)
+                    Carte(marges: 16) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            LigneAGeste("Identifiant public") { TexteFixe(compte.identifiant.texte) } geste: { BoutonCopier(compte.identifiant.texte) }
+                            Divider()
+                            LigneAGeste("Alias public") {
+                                if let alias = compte.alias {
+                                    Text(alias).textSelection(.enabled)
+                                } else {
+                                    Text("aucun — sans alias, seul l'identifiant vous rend trouvable").foregroundStyle(.secondary)
                                 }
-                            } else {
-                                HStack(spacing: 8) {
-                                    if let alias = compte.alias {
-                                        Text(alias)
-                                    } else {
-                                        Text("aucun").foregroundStyle(.secondary)
-                                        Text("— sans alias, seul l'identifiant vous rend trouvable").foregroundStyle(.secondary)
-                                    }
-                                    Button(compte.alias == nil ? "Choisir" : "Changer") { alias = compte.alias ?? ""; editeAlias = true }
-                                        .buttonStyle(.link).font(.callout)
-                                }
+                            } geste: {
+                                Button(compte.alias == nil ? "Choisir…" : "Modifier…") { alias = compte.alias ?? ""; editeAlias = true }
                             }
-                        }
-                        Champ("Annuaire") {
-                            Text("\(session.annuaire.nom)\(versionDeLAnnuaire) — racines air-desktop-project")
+                            Divider()
+                            LigneAGeste("Annuaire") {
+                                Text("\(session.annuaire.nom)\(versionDeLAnnuaire) — racines air-desktop-project")
+                            }
                         }
                     }
                 }
@@ -55,20 +44,27 @@ struct CompteFenetreVue: View {
                 // Le dernier acte d'une clé (`modele.md` §2.1) : tout en bas,
                 // derrière une confirmation qui dit ce qui part. Sur le Mac,
                 // l'identité de machine part avec — sa clé est révoquée.
-                VStack(alignment: .leading, spacing: 8) {
-                    Titre("Effacer le compte")
-                    HStack(spacing: 12) {
-                        Button("Effacer mon compte", role: .destructive) { confirmeEffacement = true }.disabled(enCours)
-                        if enCours { ProgressView().controlSize(.small) }
-                    }
-                    Text("Tout part : vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias — et l'identité de machine de ce Mac. Rien ne revient. Un compte dont le dernier appareil est révoqué s'efface de lui-même à trente jours.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+                PiedDestructif(explication: "Tout part : vos appareils, vos machines et leurs services, vos accès donnés et reçus, votre alias — et l'identité de machine de ce Mac. Rien ne revient. Un compte dont le dernier appareil est révoqué s'efface de lui-même à trente jours.",
+                               titre: "Effacer mon compte…") { confirmeEffacement = true }
+                    .disabled(enCours)
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Compte")
+        .sheet(isPresented: $editeAlias) {
+            FeuilleDeSaisie(titre: "Alias public du compte", explication: TextesNoms.regleAliasDeCompte, action: "Enregistrer",
+                            actionPermise: (alias.isEmpty || NomsEtAlias.aliasDeCompteValide(alias)) && alias != (session.compte?.alias ?? ""),
+                            enCours: enCours, erreur: erreur) {
+                LigneAGeste("Alias") { TextField("alias", text: $alias).textFieldStyle(.roundedBorder) }
+            } gauche: {
+                if session.compte?.alias != nil {
+                    BoutonDestructif("Retirer l'alias") { Task { await definirAlias(nil) } }
+                }
+            } valider: {
+                Task { await definirAlias(alias.isEmpty ? nil : alias) }
+            }
+        }
         .confirmationDialog("Effacer ce compte ?", isPresented: $confirmeEffacement, titleVisibility: .visible) {
             Button("Effacer mon compte", role: .destructive) { Task { await effacer() } }
         } message: {
@@ -212,7 +208,7 @@ struct AppareilsSection: View {
             }
             Spacer()
             if !appareil.estRevoque && !appareil.estCeluiCi {
-                Button("Révoquer", role: .destructive) { aRevoquer = appareil }.controlSize(.small)
+                BoutonDestructif("Révoquer…") { aRevoquer = appareil }.controlSize(.small)
             }
         }
         .padding(12)
