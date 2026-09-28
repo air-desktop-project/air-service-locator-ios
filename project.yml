@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.19.0"
-    CURRENT_PROJECT_VERSION: 30
+    MARKETING_VERSION: "0.20.0"
+    CURRENT_PROJECT_VERSION: 31
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -78,9 +78,12 @@ targets:
           # L'application macOS a son propre point d'entrée, son panneau et ses
           # ressources : rien de tout cela n'entre dans l'application iOS.
           - "Mac/**"
-          # Les réglages de l'annuaire de TEST (adresse, nom, racine PEM) sont
-          # propres à un réseau et ne sont pas versionnés ; s'ils sont absents,
-          # l'application tourne sur le banc en mémoire. Voir `README.md`.
+          # L'autorité d'hier n'est plus embarquée (fin de la bascule, C20) :
+          # un `annuaire-racine.pem` resté sur un poste est ignoré.
+          - "**/annuaire-racine.pem"
+          # Les réglages de l'annuaire de TEST (`annuaire.json`, les racines
+          # par leur identité) ne sont pas versionnés ; absents, l'application
+          # tourne sur le banc en mémoire. Voir `README.md`.
     info:
       path: Sources/Ressources/Info.plist
       properties:
@@ -156,6 +159,8 @@ targets:
       - path: Sources/Mac
         excludes:
           - "**/README.md"
+          # Plus d'autorité d'hier dans le paquet (C20).
+          - "**/annuaire-racine.pem"
     info:
       path: Sources/Mac/Ressources/Info.plist
       properties:

@@ -8,8 +8,11 @@ import Testing
 @MainActor
 struct RacineTenueEssais {
     private static let deux = ChoixDAnnuaire.lire(json: Data("""
-    {"annuaires": [{"adresse": "n:6630", "nom": "n"}, {"adresse": "a:6630", "nom": "a"}]}
-    """.utf8), racinesPEM: Data("-----BEGIN CERTIFICATE-----".utf8))
+    {"annuaires": [
+      {"nom": "n", "annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["192.0.2.1:6630"]},
+      {"nom": "a", "annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["192.0.2.2:6630"]}
+    ]}
+    """.utf8))
 
     final class Fabrique: @unchecked Sendable {
         private let verrou = NSLock()

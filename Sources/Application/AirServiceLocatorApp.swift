@@ -3,19 +3,24 @@ import SwiftUI
 /// Le point d'entrée.
 ///
 /// **C'est ici, et nulle part ailleurs, que l'on choisit qui répond** aux
-/// écrans. Si le bundle porte les réglages d'annuaires (`annuaire.json`,
-/// `annuaire-racine.pem` — non versionnés, ``ChoixDAnnuaire``), c'est le
-/// transport réel, vers la racine retenue ; sinon, le banc en mémoire, peuplé
-/// de démonstration. Les écrans ne voient que
+/// écrans. Si le bundle porte `annuaire.json` (non versionné,
+/// ``ChoixDAnnuaire``) et qu'il désigne des racines par leur identité, c'est
+/// le transport réel, vers la racine retenue ; sans fichier, le banc en
+/// mémoire, peuplé de démonstration. Un fichier présent mais sans racine
+/// identifiée ne se replie sur RIEN : l'écran le dit. Les écrans ne voient que
 /// l'interface `Annuaire`, et ne savent pas lequel des deux leur parle.
 @main
 struct AirServiceLocatorApp: App {
-    @State private var session: Session
+    @State private var session: Session?
+    @State private var faute: String?
 
     init() {
-        if let reelle = Session.reelle(annuaires: ChoixDAnnuaire.duPaquet()) {
-            _session = State(initialValue: reelle)
-        } else {
+        switch ChoixDAnnuaire.duPaquet() {
+        case let .annuaires(annuaires):
+            _session = State(initialValue: Session.reelle(annuaires: annuaires))
+        case let .inutilisable(message):
+            _faute = State(initialValue: message)
+        case .absent:
             let simule = AnnuaireSimule()
             _session = State(initialValue: Session(annuaire: simule) { signataire, invitation in try await simule.ouvrirCompteDeDemonstration(avec: signataire, invitation: invitation) })
         }
@@ -23,9 +28,13 @@ struct AirServiceLocatorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RacineVue()
-                .environment(session)
-                .tint(Couleurs.accent)
+            if let session {
+                RacineVue()
+                    .environment(session)
+                    .tint(Couleurs.accent)
+            } else {
+                RacineInutilisableVue(message: faute ?? TextesRacine.aucuneIdentifiee)
+            }
         }
     }
 }

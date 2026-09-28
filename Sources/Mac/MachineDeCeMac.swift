@@ -114,25 +114,12 @@ final class MachineDeCeMac {
         try exiger(asl_client_neuf(&client), "asl_client_neuf")
         guard let client else { throw Erreur.natif(ASL_INTERNE, "asl_client_neuf") }
         defer { asl_client_libere(client) }
-        // Par identité quand l'entrée en porte (décision 59) : chaque
-        // locateur avec le `n-…` qu'on doit y trouver, aucun nom résolu —
-        // la même règle que la connexion de l'appareil (``AnnuaireReel``).
-        if reglages.parIdentite {
-            for racine in reglages.identites {
-                for locateur in racine.locateurs {
-                    try exiger(asl_client_annuaire_identifie(client, locateur, racine.annuaire), "asl_client_annuaire_identifie")
-                }
-            }
-        } else {
-            for adresse in try AnnuaireReel.adressesLitterales(reglages.adresse) {
-                try exiger(asl_client_annuaire(client, adresse, reglages.nom), "asl_client_annuaire")
-            }
-        }
-        // LA BASCULE, comme pour l'appareil : l'autorité d'hier reste posée
-        // tant que le paquet en porte une.
-        if !reglages.racinesPEM.isEmpty {
-            try reglages.racinesPEM.withUnsafeBytes { pem in
-                try exiger(asl_client_racines(client, pem.bindMemory(to: UInt8.self).baseAddress, pem.count), "asl_client_racines")
+        // Par identité (décision 59), comme la connexion de l'appareil
+        // (``AnnuaireReel``) : chaque locateur avec le `n-…` qu'on doit y
+        // trouver ; aucun nom résolu, aucune autorité.
+        for racine in reglages.identites {
+            for locateur in racine.locateurs {
+                try exiger(asl_client_annuaire_identifie(client, locateur, racine.annuaire), "asl_client_annuaire_identifie")
             }
         }
         var machine = [CChar](repeating: 0, count: Int(ASL_IDENTIFIANT_OCTETS))
