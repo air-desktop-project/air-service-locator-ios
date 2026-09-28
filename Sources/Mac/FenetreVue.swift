@@ -138,11 +138,7 @@ struct FenetreVue: View {
                     // Les accès reçus jamais montrés — ce que la page « Accès »
                     // marquera « nouveau », et remettra à zéro en s'ouvrant.
                     if session.nouveautes > 0 {
-                        Text("\(session.nouveautes) \(TextesNouveautes.marque)")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 6).padding(.vertical, 1)
-                            .background(Couleurs.accent.opacity(0.18), in: Capsule())
-                            .foregroundStyle(Couleurs.accent)
+                        CompteurLateral(texte: "\(session.nouveautes) \(TextesNouveautes.marque)")
                     }
                     Text("\(donnees.autorisations.filter { !$0.estRevoquee }.count)").foregroundStyle(.secondary)
                 }
@@ -161,11 +157,7 @@ struct FenetreVue: View {
                                 Spacer()
                                 // Les demandes qui attendent une décision.
                                 if donnees.inscriptionsEnAttente > 0 {
-                                    Text("\(donnees.inscriptionsEnAttente)")
-                                        .font(.caption.weight(.semibold))
-                                        .padding(.horizontal, 6).padding(.vertical, 1)
-                                        .background(Couleurs.accent.opacity(0.18), in: Capsule())
-                                        .foregroundStyle(Couleurs.accent)
+                                    CompteurLateral(texte: "\(donnees.inscriptionsEnAttente)")
                                 }
                             }
                             .tag(EtatFenetre.Page.administration)
@@ -327,5 +319,24 @@ struct SansCompteVue: View {
         } catch {
             erreur = error.messageAnnuaire
         }
+    }
+}
+
+/// Une marque de la barre latérale — « 1 nouveau », le nombre de demandes
+/// en attente. **Pleine, texte blanc** : une capsule pâle au texte bleu
+/// disparaissait dans le bleu d'une ligne sélectionnée ; celle-ci se lit
+/// sur les deux fonds.
+struct CompteurLateral: View {
+    let texte: String
+
+    var body: some View {
+        Text(texte)
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .padding(.horizontal, 7).padding(.vertical, 1)
+            .background(Couleurs.accent, in: Capsule())
+            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 0.5))
+            .foregroundStyle(.white)
+            .fixedSize()
     }
 }
