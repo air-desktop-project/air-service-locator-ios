@@ -33,7 +33,10 @@ import SwiftUI
 /// prouve : la chaîne clé-preuve-transport sur du vrai matériel Apple.
 @main
 struct ServiceLocatorMacApp: App {
-    @State private var session: Session
+    /// Absente quand `annuaire.json` ne désigne aucune racine par son
+    /// identité : chaque surface le dit alors (`faute`), sans repli.
+    @State private var session: Session?
+    @State private var faute: String?
     /// Les gestes en cours survivent au popover, qui se ferme dès qu'il perd
     /// le focus — Touch ID compris.
     @State private var gestes = GestesDuPanneau()
@@ -46,10 +49,14 @@ struct ServiceLocatorMacApp: App {
     @State private var etatFenetre = EtatFenetre()
 
     init() {
-        if let reelle = Session.reelle(annuaires: ChoixDAnnuaire.duPaquet()), let choisi = reelle.annuaireChoisi {
+        switch ChoixDAnnuaire.duPaquet() {
+        case let .annuaires(annuaires):
+            let reelle = Session.reelle(annuaires: annuaires)
             _session = State(initialValue: reelle)
-            _machineDeCeMac = State(initialValue: MachineDeCeMac(reglages: choisi))
-        } else {
+            _machineDeCeMac = State(initialValue: reelle?.annuaireChoisi.map(MachineDeCeMac.init(reglages:)))
+        case let .inutilisable(message):
+            _faute = State(initialValue: message)
+        case .absent:
             let simule = AnnuaireSimule()
             _session = State(initialValue: Session(annuaire: simule) { signataire, invitation in try await simule.ouvrirCompteDeDemonstration(avec: signataire, invitation: invitation) })
         }
@@ -57,24 +64,36 @@ struct ServiceLocatorMacApp: App {
 
     var body: some Scene {
         MenuBarExtra("Service Locator", image: "BarreDeMenus") {
-            WidgetVue()
-                .environment(session)
-                .environment(donnees)
-                .environment(etatFenetre)
-                .environment(machineDeCeMac)
-                .tint(Couleurs.accent)
-                .frame(width: 380)
+            Group {
+                if let session {
+                    WidgetVue()
+                        .environment(session)
+                        .environment(donnees)
+                        .environment(etatFenetre)
+                        .environment(machineDeCeMac)
+                } else {
+                    RacineInutilisableVue(message: faute ?? TextesRacine.aucuneIdentifiee)
+                }
+            }
+            .tint(Couleurs.accent)
+            .frame(width: 380)
         }
         .menuBarExtraStyle(.window)
 
         Window("Service Locator", id: FenetreVue.identifiant) {
-            FenetreVue()
-                .environment(session)
-                .environment(donnees)
-                .environment(etatFenetre)
-                .environment(gestes)
-                .environment(machineDeCeMac)
-                .tint(Couleurs.accent)
+            Group {
+                if let session {
+                    FenetreVue()
+                        .environment(session)
+                        .environment(donnees)
+                        .environment(etatFenetre)
+                        .environment(gestes)
+                        .environment(machineDeCeMac)
+                } else {
+                    RacineInutilisableVue(message: faute ?? TextesRacine.aucuneIdentifiee)
+                }
+            }
+            .tint(Couleurs.accent)
         }
         .defaultSize(width: 1100, height: 720)
         .windowResizability(.contentMinSize)
@@ -88,16 +107,20 @@ struct ServiceLocatorMacApp: App {
                 Button("Faire de ce Mac une machine…") { ouvrir(.ceMacMachine) }
                     .keyboardShortcut("m", modifiers: [.command, .shift])
                 Divider()
-                Button("Relire l'annuaire") { Task { await donnees.recharger(session) } }
+                Button("Relire l'annuaire") { if let session { Task { await donnees.recharger(session) } } }
                     .keyboardShortcut("r", modifiers: .command)
             }
         }
 
         Settings {
-            PreferencesVue()
-                .environment(session)
-                .environment(donnees)
-                .environment(machineDeCeMac)
+            if let session {
+                PreferencesVue()
+                    .environment(session)
+                    .environment(donnees)
+                    .environment(machineDeCeMac)
+            } else {
+                RacineInutilisableVue(message: faute ?? TextesRacine.aucuneIdentifiee)
+            }
         }
     }
 

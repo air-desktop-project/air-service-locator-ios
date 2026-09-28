@@ -32,7 +32,7 @@ struct DomainesLisiblesEssais {
          {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}]},
       {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]}
     ]}
-    """.utf8), racinesPEM: Data())
+    """.utf8))
 
     /// Chaque racine une fois, même présente sous « Automatique » et sous
     /// son nom, avec ses adresses.

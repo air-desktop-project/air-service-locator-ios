@@ -175,6 +175,10 @@ enum TextesInvitation {
 /// des deux côtés, pour la même raison que ``TextesInvitation``.
 enum TextesRacine {
     static let titre = "Racine"
+    /// `annuaire.json` est là, mais ne désigne aucune racine par son
+    /// identité : l'application le dit, et ne se replie sur rien.
+    static let aucuneTitre = "Aucune racine utilisable"
+    static let aucuneIdentifiee = "Le fichier annuaire.json de l'application ne désigne aucune racine par son identité (« annuaire » : n-…, « locateurs » : adresses littérales). La forme par nom DNS n'est plus lue."
 
     /// Ce que change le choix, en une phrase — et ce qu'il ne change pas.
     /// Ce que tient la connexion — le nom de la racine qui a répondu, même
@@ -240,7 +244,7 @@ enum TextesDomaines {
     static let codeTitre = "Code d'inscription"
     static let codeAide = "À présenter sur la machine dans les 24 heures :"
     static func commande(code: String, racine: String) -> String {
-        "asl-server --register \(code) --directory \(racine) --ca <racine.pem> --identity-key <clé>"
+        "asl-server --register \(code) --directory \(racine) --identity-key <clé>"
     }
     static let secondMembre = "Déclarer le second membre de la paire"
     static let secondDejaDeclare = "Un second membre est déjà déclaré, en attente ou accepté."

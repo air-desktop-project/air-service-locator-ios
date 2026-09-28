@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Les annuaires entre lesquels cet appareil peut choisir, et celui qu'il a
 /// choisi.
@@ -13,41 +14,40 @@ import Foundation
 /// relecture. Jusqu'ici le choix se faisait à la construction, et un essai
 /// sur argon a dû re-signer une copie du paquet.
 ///
-/// # LE FICHIER : L'IDENTITÉ PAR LA CLÉ, ET LA FORME D'HIER
+/// # LE FICHIER : L'IDENTITÉ PAR LA CLÉ, ET RIEN D'AUTRE
 ///
 /// ```json
 /// {"annuaires": [
-///   {"libelle": "Automatique",
-///    "adresse": "asl-root.air-desktop.org:6630", "nom": "asl-root.air-desktop.org",
-///    "racines": [
+///   {"libelle": "Automatique", "racines": [
 ///      {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
 ///      {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}]},
-///   {"adresse": "nitrogen.air-desktop.org:6630", "nom": "nitrogen.air-desktop.org",
-///    "annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
-///   {"adresse": "argon.air-desktop.org:6630", "nom": "argon.air-desktop.org",
-///    "annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}
+///   {"annuaire": "n-0PWT8HZD80QMSPPDZ5CQXXYHQC", "locateurs": ["[2001:41d0:20a:900::1dd4]:6630", "178.32.16.250:6630"]},
+///   {"annuaire": "n-3K3P6H252W8K9370QG1YYTWBWB", "locateurs": ["[2001:41d0:20a:900::1d32]:6630", "178.32.16.249:6630"]}
 /// ]}
 /// ```
 ///
-/// Une entrée **identifiée** dit qui l'on doit trouver au bout (`annuaire`,
-/// le `n-…` que la clé d'identité de la racine donne) et où le joindre
-/// (`locateurs`, des adresses LITTÉRALES — aucun nom ne se résout, décision
-/// 58). Une entrée qui couvre plusieurs racines — « Automatique » — les
-/// liste dans `racines`, chacune avec les siennes. Un locateur qui n'est pas
-/// littéral, un `n-…` de travers, se laissent de côté : on ne devine pas.
+/// Une entrée dit qui l'on doit trouver au bout (`annuaire`, le `n-…` que
+/// la clé d'identité de la racine donne) et où le joindre (`locateurs`, des
+/// adresses LITTÉRALES — aucun nom ne se résout, C20). Une entrée qui couvre
+/// plusieurs racines — « Automatique » — les liste dans `racines`, chacune
+/// avec les siennes. Un locateur qui n'est pas littéral, un `n-…` de
+/// travers, se laissent de côté : on ne devine pas. `libelle` est ce que
+/// l'écran en dit ; `nom`, facultatif, remplace le nom que la liste
+/// embarquée (``RacinesConnues``) donne à l'identité.
 ///
-/// `adresse` et `nom` sont la forme d'hier — un nom DNS, résolu ici, et le
-/// nom exigé du certificat. Une entrée identifiée ne s'en sert pas pour se
-/// connecter ; ils restent dans le fichier le temps de la bascule parce que
-/// les versions d'hier de l'application (≤ 0.15) ne lisent qu'eux, et
-/// qu'une préférence retenue par son adresse doit continuer de désigner la
-/// même entrée. L'ancien objet seul, `{"adresse": …, "nom": …}`, reste lu
-/// aussi : c'est une liste d'un élément.
+/// # LA FORME D'HIER N'EST PLUS LUE
 ///
-/// Une seule racine PEM pour toutes : les certificats d'hier sont signés par
-/// la même autorité. Elle n'est plus exigée : sans elle, seules les entrées
-/// identifiées restent — une entrée d'hier n'aurait rien à croire.
+/// Une entrée sans identité — `{"adresse": "nom:port", "nom": …}`, un nom
+/// DNS et une chaîne sous autorité — ne sert plus : les racines ne
+/// présentent plus que leur certificat d'identité. Elle est laissée de côté,
+/// et le journal le dit. Si rien d'identifié ne reste, l'application le dit
+/// à l'écran (``Paquet/inutilisable(_:)``) : **aucun repli** sur le DNS, ni
+/// sur le banc de démonstration. `annuaire-racine.pem` n'est plus lu ni
+/// embarqué. Seule trace gardée d'hier : `adresse`, s'il est encore là,
+/// désigne l'entrée qu'une préférence retenue avant 0.20.0 avait choisie.
 enum ChoixDAnnuaire {
+    private static let journal = Logger(subsystem: "org.airdesktop.servicelocator", category: "annuaire")
+
     private struct Identifiee: Decodable {
         let annuaire: String
         let locateurs: [String]
@@ -79,8 +79,17 @@ enum ChoixDAnnuaire {
         let annuaires: [Entree]
     }
 
-    /// `[IPv6]:port` ou `IPv4:port` — ce qu'`asl_appareil_annuaire_identifie`
-    /// accepte, et rien qui demande un résolveur.
+    /// Ce que le paquet donne à l'application.
+    enum Paquet: Equatable {
+        /// Pas d'`annuaire.json` : un poste de développement, le banc.
+        case absent
+        case annuaires([AnnuaireReel.Reglages])
+        /// Un fichier, mais aucune racine utilisable : dit tel quel à l'écran.
+        case inutilisable(String)
+    }
+
+    /// `[IPv6]:port` ou `IPv4:port` — ce qu'`…_annuaire_identifie` accepte,
+    /// et rien qui demande un résolveur.
     static func estLitteral(_ locateur: String) -> Bool {
         guard let deuxPoints = locateur.lastIndex(of: ":"), UInt16(locateur[locateur.index(after: deuxPoints)...]) != nil else { return false }
         let hote = locateur[..<deuxPoints]
@@ -92,9 +101,9 @@ enum ChoixDAnnuaire {
         return inet_pton(AF_INET, String(hote), &v4) == 1
     }
 
-    /// Les annuaires décrits par ce JSON, dans l'ordre du fichier ; vide si
-    /// le fichier ne dit rien de lisible.
-    static func lire(json: Data, racinesPEM: Data) -> [AnnuaireReel.Reglages] {
+    /// Les annuaires identifiés que décrit ce JSON, dans l'ordre du fichier ;
+    /// vide si rien ne se lit ou si rien n'est identifié.
+    static func lire(json: Data) -> [AnnuaireReel.Reglages] {
         let decodeur = JSONDecoder()
         let entrees: [Entree]
         if let liste = try? decodeur.decode(Liste.self, from: json) {
@@ -106,13 +115,13 @@ enum ChoixDAnnuaire {
         }
         let reglages = entrees.compactMap { entree -> AnnuaireReel.Reglages? in
             let identites = entree.identites
-            let hier = entree.adresse.flatMap { adresse in entree.nom.map { (adresse, $0) } }
-            // Une entrée d'hier sans autorité n'a rien à croire ; une entrée
-            // sans rien de lisible n'est pas une entrée.
-            guard !identites.isEmpty || (hier != nil && !racinesPEM.isEmpty) else { return nil }
-            let nom = entree.nom ?? identites.first.map { RacinesConnues.nom(de: $0.annuaire) } ?? ""
-            return AnnuaireReel.Reglages(adresse: entree.adresse ?? "", nom: nom, racinesPEM: racinesPEM,
-                                         libelle: entree.libelle, identites: identites)
+            guard let premiere = identites.first else {
+                let quoi = entree.libelle ?? entree.nom ?? entree.adresse ?? "?"
+                Self.journal.error("entrée « \(quoi, privacy: .public) » laissée de côté : aucune identité (la forme par nom n'est plus lue)")
+                return nil
+            }
+            return AnnuaireReel.Reglages(nom: entree.nom ?? RacinesConnues.nom(de: premiere.annuaire), libelle: entree.libelle,
+                                         identites: identites, cleDHier: entree.adresse)
         }
         // Deux entrées de même clé n'en font qu'une : c'est la clé que la
         // préférence retient.
@@ -120,15 +129,16 @@ enum ChoixDAnnuaire {
         return reglages.filter { vues.insert($0.cle).inserted }
     }
 
-    /// `annuaire.json` et `annuaire-racine.pem` du paquet — non versionnés ;
-    /// sans liste lisible, l'application tourne sur le banc. Le PEM peut
-    /// manquer : les entrées identifiées n'en ont pas besoin.
-    static func duPaquet(_ paquet: Bundle = .main) -> [AnnuaireReel.Reglages] {
-        guard let json = paquet.url(forResource: "annuaire", withExtension: "json"),
-              let donnees = try? Data(contentsOf: json)
-        else { return [] }
-        let racines = paquet.url(forResource: "annuaire-racine", withExtension: "pem").flatMap { try? Data(contentsOf: $0) } ?? Data()
-        return lire(json: donnees, racinesPEM: racines)
+    /// `annuaire.json` du paquet — non versionné.
+    static func duPaquet(_ paquet: Bundle = .main) -> Paquet {
+        depuis(paquet.url(forResource: "annuaire", withExtension: "json"))
+    }
+
+    /// Ce que dit ce fichier — absent ou illisible sur disque : le banc.
+    static func depuis(_ fichier: URL?) -> Paquet {
+        guard let fichier, let donnees = try? Data(contentsOf: fichier) else { return .absent }
+        let annuaires = lire(json: donnees)
+        return annuaires.isEmpty ? .inutilisable(TextesRacine.aucuneIdentifiee) : .annuaires(annuaires)
     }
 }
 
@@ -162,10 +172,14 @@ struct PreferenceDAnnuaire: @unchecked Sendable {
 
     /// L'annuaire retenu s'il est encore dans la liste ; sinon le premier —
     /// une préférence qui nomme une racine retirée du fichier ne doit pas
-    /// laisser l'application sans annuaire.
+    /// laisser l'application sans annuaire. Une préférence retenue avant
+    /// 0.20.0 l'était par l'adresse d'hier : elle désigne encore l'entrée
+    /// qui la porte.
     func choisi(parmi annuaires: [AnnuaireReel.Reglages]) -> AnnuaireReel.Reglages? {
         let retenue = defauts.string(forKey: Self.cle)
-        return annuaires.first { $0.cle == retenue } ?? annuaires.first
+        return annuaires.first { $0.cle == retenue }
+            ?? annuaires.first { $0.cleDHier != nil && $0.cleDHier == retenue }
+            ?? annuaires.first
     }
 
     func retenir(_ annuaire: AnnuaireReel.Reglages) {

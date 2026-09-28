@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// Il n'y a pas grand-chose à régler, et c'est dit plutôt que masqué :
 /// l'annuaire vient des deux fichiers embarqués à la construction
-/// (`annuaire.json`, `annuaire-racine.pem`), et les identités de ce Mac
+/// (`annuaire.json`), et les identités de ce Mac
 /// vivent dans son conteneur. Ce que l'écran donne, c'est de quoi les
 /// retrouver — et de quoi les copier.
 struct PreferencesVue: View {
@@ -59,7 +59,7 @@ struct PreferencesVue: View {
                 }
             }
             LabeledContent("Racines", value: "air-desktop-project")
-            Text("Les racines proposées sont fixées à la construction de l'application, par `annuaire.json` et `annuaire-racine.pem` dans ses ressources ; le choix parmi elles se fait ici, et il est retenu.")
+            Text("Les racines proposées sont fixées à la construction de l'application, par `annuaire.json` dans ses ressources ; le choix parmi elles se fait ici, et il est retenu.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
