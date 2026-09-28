@@ -35,9 +35,24 @@ final class Donnees {
     /// (``ActiviteTenue``) — une seule, celle de l'écoute en cours.
     private var eveil: ActiviteTenue?
 
+    /// La relecture en cours, que les appels suivants rejoignent.
+    private var relecture: Task<Void, Never>?
+
     /// Relit tout ce que la fenêtre montre. Une liste qui échoue n'efface
     /// pas les autres : ce qu'on savait reste, et l'erreur se dit.
+    ///
+    /// **Une seule à la fois.** Le lancement, le widget et la fenêtre la
+    /// demandent chacun ; celui qui arrive pendant qu'une tourne l'attend au
+    /// lieu d'en lancer une seconde — une connexion, un Touch ID.
     func recharger(_ session: Session) async {
+        if let relecture { return await relecture.value }
+        let tache = Task { await relire(session) }
+        relecture = tache
+        await tache.value
+        relecture = nil
+    }
+
+    private func relire(_ session: Session) async {
         enCours = true
         defer { enCours = false }
         await session.rafraichirCompte()

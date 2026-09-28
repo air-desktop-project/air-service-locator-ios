@@ -53,6 +53,9 @@ Une seule clé de machine sur ce Mac, donc : celle que l'app a enrôlée.
 
 ## Ce qui est propre au Mac
 
+- **Connectée dès le lancement** (0.21.0) : la relecture part au démarrage,
+  Touch ID compris, pour que l'écoute des nouvelles — et donc les
+  notifications — tienne sans qu'on ait ouvert le widget ni la fenêtre.
 - **La Secure Enclave du T2 ou de la puce Apple**, et Touch ID à chaque
   signature — la même `CleAppareil` que sur iPhone, sans branche spéciale.
   Elle exige une **application signée** (`project.yml` porte l'équipe) :
