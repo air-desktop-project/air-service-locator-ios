@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.21.1"
-    CURRENT_PROJECT_VERSION: 33
+    MARKETING_VERSION: "0.22.0"
+    CURRENT_PROJECT_VERSION: 34
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -143,7 +143,10 @@ targets:
     deploymentTarget: "14.0"
     settings:
       base:
-        PRODUCT_NAME: Service Locator
+        # Le nom de l'application sur le Mac : menu, fenêtre, paquet. Le
+        # bundle id ne change pas — le conteneur, la clé et l'identité de
+        # machine restent les mêmes.
+        PRODUCT_NAME: Air Service Locator
         PRODUCT_BUNDLE_IDENTIFIER: org.airdesktop.servicelocator.mac
         CODE_SIGN_ENTITLEMENTS: Sources/Mac/ServiceLocatorMac.entitlements
         CODE_SIGN_STYLE: Automatic
@@ -164,7 +167,7 @@ targets:
     info:
       path: Sources/Mac/Ressources/Info.plist
       properties:
-        CFBundleDisplayName: Service Locator
+        CFBundleDisplayName: Air Service Locator
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Pas d'icône dans le Dock, pas de menu d'application : l'icône de la

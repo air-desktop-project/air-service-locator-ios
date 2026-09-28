@@ -14,15 +14,15 @@ struct MachineFenetreVue: View {
     @Environment(MachineDeCeMac.self) private var machineDeCeMac: MachineDeCeMac?
     let machine: Machine
 
-    @State private var renomme = false
+    /// La feuille de saisie ouverte : le nom d'hôte, l'alias, les capacités.
+    enum FeuilleMachine: String, Identifiable { case nom, alias, capacites; var id: String { rawValue } }
+    @State private var feuille: FeuilleMachine?
     @State private var nouveauNom = ""
-    @State private var changeCapacites = false
     @State private var annonce = false
     @State private var lecture = false
     @State private var confirmeRevocation = false
     @State private var erreur: String?
     @State private var enCours = false
-    @State private var editeAlias = false
     @State private var alias = ""
 
     private var estCeMac: Bool { machine.id == machineDeCeMac?.identifiant }
@@ -32,87 +32,59 @@ struct MachineFenetreVue: View {
             VStack(alignment: .leading, spacing: 18) {
                 entete
                 if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
-                Carte {
-                    Champ("Identifiant") { Copiable(machine.id.texte) }
-                    Champ("Nom d'hôte") {
-                        if renomme {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    TextField("Nom", text: $nouveauNom).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
-                                    Button("Enregistrer") { Task { await modifier(nom: nouveauNom, capacites: nil) } }
-                                        .disabled(!Machine.nomValide(nouveauNom) || enCours)
-                                    Button("Annuler") { renomme = false }
-                                }
-                                Group {
-                                    if let forme = NomsEtAlias.nomDHote(nouveauNom), forme != nouveauNom {
-                                        Text("\(TextesNoms.regleDuNom) \(TextesNoms.rangeSous(forme))")
-                                    } else {
-                                        Text(TextesNoms.regleDuNom)
-                                    }
-                                }
-                                .font(.caption).foregroundStyle(.secondary)
-                            }
-                        } else {
-                            Text(machine.nom)
+                Carte(marges: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        LigneAGeste("Identifiant") { TexteFixe(machine.id.texte) } geste: { BoutonCopier(machine.id.texte) }
+                        Divider()
+                        LigneAGeste("Nom d'hôte") { Text(machine.nom).textSelection(.enabled) } geste: {
+                            Button("Modifier…") { nouveauNom = machine.nom; feuille = .nom }
                         }
-                    }
-                    if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesDomaines {
-                        Champ(TextesDomaines.domaineDeLaMachine) { RangementDeMachine(machine: machine.id, avecEtiquette: false).frame(maxWidth: 420, alignment: .leading) }
-                    }
-                    // L'alias ne s'offre qu'à un annuaire qui sait le ranger
-                    // (0.26.0) ; ailleurs, le champ n'existe pas.
-                    if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesAliasDeMachine {
-                        Champ(TextesNoms.alias) {
-                            if editeAlias {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        TextField(TextesNoms.alias, text: $alias).textFieldStyle(.roundedBorder).frame(maxWidth: 420)
-                                        Button("Enregistrer") { Task { await poserAlias(alias) } }
-                                            .disabled(!NomsEtAlias.aliasDeMachineValide(alias) || NomsEtAlias.nfc(alias) == machine.alias || enCours)
-                                        Button("Annuler") { editeAlias = false }
-                                    }
-                                    Text(TextesNoms.explicationAlias).font(.caption).foregroundStyle(.secondary)
-                                }
-                            } else {
-                                HStack(spacing: 8) {
-                                    if let actuel = machine.alias { Text(actuel) } else { Text("aucun").foregroundStyle(.secondary) }
-                                    Button(machine.alias == nil ? "Choisir" : "Changer") { alias = machine.alias ?? ""; editeAlias = true }
-                                        .buttonStyle(.link).font(.callout)
-                                    if machine.alias != nil {
-                                        Button("Retirer") { Task { await poserAlias(nil) } }.buttonStyle(.link).font(.callout)
-                                    }
-                                }
+                        // L'alias ne s'offre qu'à un annuaire qui sait le ranger
+                        // (0.26.0) ; ailleurs, la ligne n'existe pas.
+                        if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesAliasDeMachine {
+                            Divider()
+                            LigneAGeste(TextesNoms.alias) {
+                                if let actuel = machine.alias { Text(actuel).textSelection(.enabled) } else { Text("aucun").foregroundStyle(.secondary) }
+                            } geste: {
+                                Button(machine.alias == nil ? "Choisir…" : "Modifier…") { alias = machine.alias ?? ""; feuille = .alias }
                             }
                         }
-                    }
-                    Champ("Capacités") {
-                        if changeCapacites {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce)
-                                Toggle("Lecture — elle peut demander où joindre un service", isOn: $lecture)
-                                HStack {
-                                    Button("Enregistrer") { Task { await modifier(nom: nil, capacites: capacitesChoisies) } }.disabled(enCours)
-                                    Button("Annuler") { changeCapacites = false }
-                                }
+                        if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesDomaines {
+                            Divider()
+                            LigneAGeste(TextesDomaines.domaineDeLaMachine) {
+                                RangementDeMachine(machine: machine.id, avecEtiquette: false).frame(maxWidth: 420, alignment: .leading)
                             }
-                        } else {
+                        }
+                        Divider()
+                        LigneAGeste("Capacités") {
                             VStack(alignment: .leading, spacing: 2) {
                                 if machine.capacites.contains(.annonce) { Text("annonce — ses daemons peuvent annoncer leurs ports") }
                                 if machine.capacites.contains(.lecture) { Text("lecture — elle peut demander où joindre un service") }
                                 if machine.capacites.isEmpty { Text("aucune").foregroundStyle(.secondary) }
                             }
+                        } geste: {
+                            Button("Modifier…") {
+                                annonce = machine.capacites.contains(.annonce)
+                                lecture = machine.capacites.contains(.lecture)
+                                feuille = .capacites
+                            }
                         }
-                    }
-                    Champ("Clé") {
-                        HStack(spacing: 8) {
-                            PastilleMac(couleur: couleurCle)
-                            Text(texteCle)
+                        Divider()
+                        LigneAGeste("Clé") {
+                            HStack(spacing: 8) {
+                                PastilleMac(couleur: couleurCle)
+                                Text(texteCle)
+                            }
                         }
-                    }
-                    if estCeMac, let moi = Carnet.appareilEnrole {
-                        Champ("Aussi l'appareil") {
-                            let description = donnees.appareils.first { $0.id == moi }?.description
-                            Copiable(moi.texte, suite: description.map { " — \($0.modele) · \($0.plateforme.libelle)" } ?? "")
+                        if estCeMac, let moi = Carnet.appareilEnrole {
+                            Divider()
+                            LigneAGeste("Aussi l'appareil") {
+                                let description = donnees.appareils.first { $0.id == moi }?.description
+                                VStack(alignment: .leading, spacing: 2) {
+                                    TexteFixe(moi.texte)
+                                    if let description { Text("\(description.modele) · \(description.plateforme.libelle)").foregroundStyle(.secondary) }
+                                }
+                            } geste: { BoutonCopier(moi.texte) }
                         }
                     }
                 }
@@ -147,6 +119,7 @@ struct MachineFenetreVue: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle(machine.titre)
+        .sheet(item: $feuille) { feuilleVue($0) }
         .confirmationDialog("Révoquer la clé de « \(machine.titre) » ?", isPresented: $confirmeRevocation, titleVisibility: .visible) {
             Button("Révoquer la clé", role: .destructive) { Task { await revoquerCle() } }
         } message: {
@@ -212,26 +185,62 @@ struct MachineFenetreVue: View {
         }
     }
 
-    private var gestes: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Button("Renommer") { nouveauNom = machine.nom; renomme = true }
-                Button("Changer les capacités") {
-                    annonce = machine.capacites.contains(.annonce)
-                    lecture = machine.capacites.contains(.lecture)
-                    changeCapacites = true
+    /// En bas, à part : le geste sur la clé — révoquer, ou émettre un code.
+    @ViewBuilder private var gestes: some View {
+        switch machine.cle {
+        case .enrolee:
+            PiedDestructif(explication: texteGeste, titre: "Révoquer la clé…") { confirmeRevocation = true }
+                .disabled(enCours)
+        case .attendue, .revoquee:
+            VStack(spacing: 12) {
+                Divider()
+                HStack(spacing: 16) {
+                    Text(texteGeste).font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    if enCours { ProgressView().controlSize(.small) }
+                    Button("Émettre un nouveau code") { Task { await emettreCode() } }.disabled(enCours).fixedSize()
                 }
-                Spacer()
-                switch machine.cle {
-                case .enrolee:
-                    Button("Révoquer la clé", role: .destructive) { confirmeRevocation = true }
-                case .attendue, .revoquee:
-                    Button("Émettre un nouveau code") { Task { await emettreCode() } }
-                }
-                if enCours { ProgressView().controlSize(.small) }
             }
-            .disabled(enCours)
-            Text(texteGeste).font(.caption).foregroundStyle(.secondary)
+            .padding(.top, 8)
+        }
+    }
+
+    /// Les feuilles de saisie de la fiche.
+    @ViewBuilder private func feuilleVue(_ feuille: FeuilleMachine) -> some View {
+        switch feuille {
+        case .nom:
+            FeuilleDeSaisie(titre: "Modifier le nom d'hôte", explication: TextesNoms.regleDuNom, action: "Enregistrer",
+                            actionPermise: Machine.nomValide(nouveauNom) && nouveauNom != machine.nom, enCours: enCours, erreur: erreur) {
+                VStack(alignment: .leading, spacing: 4) {
+                    LigneAGeste("Nom d'hôte") { TextField("Nom", text: $nouveauNom).textFieldStyle(.roundedBorder) }
+                    if let forme = NomsEtAlias.nomDHote(nouveauNom), forme != nouveauNom {
+                        Text(TextesNoms.rangeSous(forme)).font(.caption).foregroundStyle(.secondary).padding(.leading, 144)
+                    }
+                }
+            } valider: {
+                Task { if await modifier(nom: nouveauNom, capacites: nil) { self.feuille = nil } }
+            }
+        case .alias:
+            FeuilleDeSaisie(titre: "Alias de la machine", explication: TextesNoms.explicationAlias, action: "Enregistrer",
+                            actionPermise: NomsEtAlias.aliasDeMachineValide(alias) && NomsEtAlias.nfc(alias) != machine.alias,
+                            enCours: enCours, erreur: erreur) {
+                LigneAGeste(TextesNoms.alias) { TextField(TextesNoms.alias, text: $alias).textFieldStyle(.roundedBorder) }
+            } gauche: {
+                if machine.alias != nil {
+                    BoutonDestructif("Retirer l'alias") { Task { if await poserAlias(nil) { self.feuille = nil } } }
+                }
+            } valider: {
+                Task { if await poserAlias(alias) { self.feuille = nil } }
+            }
+        case .capacites:
+            FeuilleDeSaisie(titre: "Capacités de la machine", explication: "Ce que la machine a le droit de faire auprès de l'annuaire.",
+                            action: "Enregistrer", actionPermise: capacitesChoisies != machine.capacites, enCours: enCours, erreur: erreur) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce)
+                    Toggle("Lecture — elle peut demander où joindre un service", isOn: $lecture)
+                }
+            } valider: {
+                Task { if await modifier(nom: nil, capacites: capacitesChoisies) { self.feuille = nil } }
+            }
         }
     }
 
@@ -281,33 +290,36 @@ struct MachineFenetreVue: View {
 
     // MARK: - Les gestes
 
-    private func poserAlias(_ texte: String?) async {
+    /// Pose l'alias ; `true` s'il est rangé.
+    private func poserAlias(_ texte: String?) async -> Bool {
         enCours = true
         defer { enCours = false }
         do {
             try await session.annuaire.definirAliasDeMachine(machine.id, alias: texte)
-            editeAlias = false
             erreur = nil
             await donnees.recharger(session)
+            return true
         } catch ErreurAnnuaire.nonImplemente {
             erreur = TextesNoms.aliasIndisponible
         } catch {
             erreur = error.messageAnnuaire
         }
+        return false
     }
 
-    private func modifier(nom: String?, capacites: Set<Capacite>?) async {
+    /// Change le nom ou les capacités ; `true` si l'annuaire l'a rangé.
+    private func modifier(nom: String?, capacites: Set<Capacite>?) async -> Bool {
         enCours = true
         defer { enCours = false }
         do {
             _ = try await session.annuaire.modifierMachine(machine.id, nom: nom, capacites: capacites)
-            renomme = false
-            changeCapacites = false
             erreur = nil
             await donnees.recharger(session)
+            return true
         } catch {
             erreur = error.messageAnnuaire
         }
+        return false
     }
 
     private func emettreCode() async {

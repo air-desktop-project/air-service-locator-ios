@@ -76,7 +76,7 @@ struct ServiceLocatorMacApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Service Locator", image: "BarreDeMenus") {
+        MenuBarExtra(Version.nomDeLApplication, image: "BarreDeMenus") {
             Group {
                 if let session {
                     WidgetVue()
@@ -93,7 +93,7 @@ struct ServiceLocatorMacApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Service Locator", id: FenetreVue.identifiant) {
+        Window(Version.nomDeLApplication, id: FenetreVue.identifiant) {
             Group {
                 if let session {
                     FenetreVue()
@@ -145,4 +145,10 @@ struct ServiceLocatorMacApp: App {
         NSApp.activate(ignoringOtherApps: true)
         etatFenetre.feuille = feuille
     }
+}
+
+extension Version {
+    /// Le nom de l'application sur le Mac — celui du menu, de la fenêtre, du
+    /// paquet (`PRODUCT_NAME` dans `project.yml`).
+    static let nomDeLApplication = "Air Service Locator"
 }

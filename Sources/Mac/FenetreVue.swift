@@ -62,27 +62,38 @@ struct FenetreVue: View {
 
     // MARK: - La barre d'outils
 
+    /// Les pages de la fédération portent leurs propres gestes ; celles du
+    /// compte et des machines, ceux qui ajoutent une machine.
+    private var pageDesMachines: Bool {
+        switch etat.page {
+        case .domaines, .annuaireLocal, .administration: false
+        default: true
+        }
+    }
+
     @ToolbarContentBuilder private var barreDOutils: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                etat.feuille = .declarerMachine
-            } label: {
-                Label("Ajouter une machine", systemImage: "plus")
+            if pageDesMachines {
+                Button {
+                    etat.feuille = .declarerMachine
+                } label: {
+                    Label("Ajouter une machine…", systemImage: "plus")
+                }
+                .help("Ajouter une machine — déclarer un Linux, et obtenir son code d'enrôlement")
+                Button {
+                    etat.feuille = .ceMacMachine
+                } label: {
+                    Label("Faire de ce Mac une machine…", systemImage: "laptopcomputer.and.arrow.down")
+                }
+                .help(ceMacEstUneMachine ? "Ce Mac est déjà une machine du compte" : "Faire de ce Mac une machine — déclarer et enrôler ce Mac, en un geste")
+                .disabled(ceMacEstUneMachine)
             }
-            .help("Ajouter une machine — déclarer un Linux, et obtenir son code d'enrôlement")
-            Button {
-                etat.feuille = .ceMacMachine
-            } label: {
-                Label("Faire de ce Mac une machine", systemImage: "laptopcomputer.and.arrow.down")
-            }
-            .help(ceMacEstUneMachine ? "Ce Mac est déjà une machine du compte" : "Faire de ce Mac une machine — déclarer et enrôler ce Mac, en un geste")
-            .disabled(ceMacEstUneMachine)
             Button {
                 Task { await donnees.recharger(session) }
             } label: {
                 Label("Relire l'annuaire", systemImage: "arrow.clockwise")
             }
-            .help("Relire l'annuaire")
+            .help("Relire l'annuaire (⌘R)")
         }
     }
 
@@ -140,12 +151,24 @@ struct FenetreVue: View {
             // Selon ce que la racine sert : domaines depuis 0.23.0, annuaire
             // local et administration depuis 0.27.0.
             if case .some(.some(let version)) = donnees.versionAnnuaire, version.porteLesDomaines {
-                Section {
+                Section("Fédération") {
                     Label(TextesDomaines.domaines, systemImage: "square.stack.3d.up").tag(EtatFenetre.Page.domaines)
                     if version.porteLesAnnuairesLocaux {
                         Label(TextesDomaines.annuaireLocal, systemImage: "server.rack").tag(EtatFenetre.Page.annuaireLocal)
                         if donnees.administreLesRacines {
-                            Label(TextesDomaines.administration, systemImage: "checkmark.shield").tag(EtatFenetre.Page.administration)
+                            HStack {
+                                Label(TextesDomaines.administration, systemImage: "checkmark.shield")
+                                Spacer()
+                                // Les demandes qui attendent une décision.
+                                if donnees.inscriptionsEnAttente > 0 {
+                                    Text("\(donnees.inscriptionsEnAttente)")
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 6).padding(.vertical, 1)
+                                        .background(Couleurs.accent.opacity(0.18), in: Capsule())
+                                        .foregroundStyle(Couleurs.accent)
+                                }
+                            }
+                            .tag(EtatFenetre.Page.administration)
                         }
                     }
                 }
@@ -156,7 +179,7 @@ struct FenetreVue: View {
         .safeAreaInset(edge: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(session.annuaire.nom)\(versionDeLAnnuaire)")
-                Text("Service Locator \(Version.texte)")
+                Text("\(Version.nomDeLApplication) \(Version.texte)")
             }
             .font(.caption2).foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,14 +212,14 @@ struct FenetreVue: View {
             AppareilsFenetreVue()
         case .acces:
             AccesFenetreVue()
-        // Les écrans partagés avec l'iPhone vont dans leur propre pile : le
-        // détail d'un domaine s'y empile.
+        // La fédération a ses pages à elle sur le Mac, en tuiles ; les
+        // domaines ont leur propre pile : le détail d'un domaine s'y empile.
         case .domaines:
-            NavigationStack { DomainesVue() }
+            NavigationStack { DomainesFenetreVue() }
         case .annuaireLocal:
-            NavigationStack { AnnuaireLocalVue() }
+            AnnuaireLocalFenetreVue()
         case .administration:
-            NavigationStack { AdministrationVue() }
+            AdministrationFenetreVue()
         }
     }
 }
@@ -258,7 +281,7 @@ struct SansCompteVue: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 64, height: 64)
-            Text("Service Locator").font(.largeTitle.weight(.bold))
+            Text(Version.nomDeLApplication).font(.largeTitle.weight(.bold))
             Text("Vos machines, leurs daemons, et le port où les joindre.").font(.title3).foregroundStyle(.secondary)
             Text("Un compte est un jeu d'appareils, sans mot de passe. La clé de ce Mac vit dans sa Secure Enclave et signe sous Touch ID ; rien d'autre ne quitte la machine.")
                 .font(.callout).foregroundStyle(.secondary)

@@ -29,6 +29,9 @@ final class Donnees {
     private(set) var reluA: Date?
     /// Ce compte administre-t-il les racines ? `GET /v1/inscriptions` en `200`.
     private(set) var administreLesRacines = false
+    /// Combien d'inscriptions attendent la décision des racines — le
+    /// compteur de la barre latérale.
+    private(set) var inscriptionsEnAttente = 0
     /// Les notifications locales : la permission, et l'annonce.
     let notifications = NotificationsMac()
     /// Ce qui tient l'application éveillée tant qu'une écoute tourne
@@ -64,9 +67,12 @@ final class Donnees {
         }
         versionAnnuaire = .some(try? await session.annuaire.version())
         if case .some(.some(let version)) = versionAnnuaire, version.porteLesAnnuairesLocaux {
-            administreLesRacines = ((try? await session.annuaire.inscriptions()) ?? nil) != nil
+            let inscriptions = (try? await session.annuaire.inscriptions()) ?? nil
+            administreLesRacines = inscriptions != nil
+            inscriptionsEnAttente = inscriptions?.count ?? 0
         } else {
             administreLesRacines = false
+            inscriptionsEnAttente = 0
         }
         var fautes: [String] = []
         do { machines = try await session.annuaire.machines() } catch { fautes.append(error.messageAnnuaire) }
@@ -140,6 +146,9 @@ final class Donnees {
     }
 
     func machine(_ id: Identifiant) -> Machine? { machines.first { $0.id == id } }
+
+    /// La page d'administration a tranché : le compteur suit sans relire tout.
+    func inscriptionsRelues(_ nombre: Int) { inscriptionsEnAttente = nombre }
 
     /// Les appareils qui tiennent le compte — les révoqués restent dans
     /// l'annuaire, marqués, mais ne comptent pas.
