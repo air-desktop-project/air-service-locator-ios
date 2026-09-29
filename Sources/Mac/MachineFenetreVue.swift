@@ -24,6 +24,7 @@ struct MachineFenetreVue: View {
     @State private var erreur: String?
     @State private var enCours = false
     @State private var alias = ""
+    @State private var agentEcho = AgentEcho()
 
     private var estCeMac: Bool { machine.id == machineDeCeMac?.identifiant }
 
@@ -107,13 +108,18 @@ struct MachineFenetreVue: View {
                     Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if estCeMac, let dossier = MachineDeCeMac.dossierPourAsl {
+                if estCeMac, case .enrolee = machine.cle {
+                    ReponseAuxSondes(agent: agentEcho)
+                }
+                if estCeMac, MachineDeCeMac.dossierPourAsl != nil {
                     VStack(alignment: .leading, spacing: 8) {
                         Titre("Pour l'utilitaire asl, dans un terminal")
                         Carte(fond: Color(nsColor: .controlBackgroundColor)) {
                             HStack(spacing: 10) {
                                 Image(systemName: "terminal").foregroundStyle(.secondary)
-                                Copiable("asl --state \"\(dossier)\" announce <service> tcp:<port>")
+                                // L'identité est lue dans le conteneur de groupe
+                                // (asl ≥ 0.22.1) : plus de --state à donner.
+                                Copiable("asl announce <service> tcp:<port>")
                             }
                             .padding(4)
                         }
@@ -355,5 +361,42 @@ extension Appareil.Plateforme {
         case .android: "Android"
         case .macos: "macOS"
         }
+    }
+}
+
+/// « Répondre aux sondes de l'annuaire » (décision 93) : l'agent `asl-echo`
+/// de ce Mac, qu'on active ici. Ce qu'il a prouvé se lit sur la ligne
+/// « Écho » de la fiche ; ici, s'il tourne.
+private struct ReponseAuxSondes: View {
+    let agent: AgentEcho
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Titre("Répondre aux sondes de l'annuaire")
+            Carte(marges: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        PastilleMac(couleur: agent.actif ? Couleurs.joignable : Couleurs.parti)
+                        Text(agent.libelle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if agent.etat == .requiresApproval {
+                            Button("Ouvrir les réglages…") { agent.ouvrirLesReglages() }
+                        }
+                        if agent.actif || agent.etat == .requiresApproval {
+                            Button("Désactiver") { agent.desactiver() }
+                        } else if agent.etat != .notFound {
+                            Button("Activer") { agent.activer() }.buttonStyle(.borderedProminent)
+                        }
+                    }
+                    if let erreur = agent.erreur {
+                        Text(erreur).font(.callout).foregroundStyle(.red)
+                    }
+                    Text("L'asl de l'application tourne en « asl echo » à chaque ouverture de session, application fermée ou non : il annonce le service asl-echo et répond, signé par la clé de ce Mac, aux sondes de l'annuaire. Il demande au besoin à la box d'ouvrir son port (UPnP), et le referme à l'arrêt.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .onAppear { agent.relire() }
     }
 }

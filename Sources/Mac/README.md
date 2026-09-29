@@ -117,3 +117,9 @@ client, « asl sur macOS ») : la construction le reprend dans
 `asl.entitlements` avant l'application. Absent, la construction échoue en
 le disant. Préférences › Terminal pose le lien `~/.local/bin/asl` dans le
 dossier que l'utilisateur désigne, ou donne la commande `ln -s`.
+
+**L'agent `asl-echo`** (décision 93) : `LaunchAgents/org.airdesktop.asl-echo.plist`,
+copié dans `Contents/Library/LaunchAgents`, lance `Contents/Helpers/asl echo`.
+La fiche « ce Mac » l'enregistre par `SMAppService.agent` (« Répondre aux
+sondes de l'annuaire ») ; il n'est pas actif par défaut. Même label que le
+LaunchAgent d'`asl echo --install` : un seul écho par machine.

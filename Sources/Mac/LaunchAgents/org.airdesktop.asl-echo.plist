@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  L'agent asl-echo de l'application (décision 93) : l'asl livré dans le
+	  paquet, lancé en `asl echo` par launchd à l'ouverture de la session,
+	  application ouverte ou non. Enregistré par SMAppService depuis la fiche
+	  « ce Mac » — une app en bac à sable n'écrit pas dans
+	  ~/Library/LaunchAgents. LE MÊME LABEL que le LaunchAgent qu'`asl echo
+	  --install` pose (protocole.md, « macOS — deux chemins, un seul label ») :
+	  deux échos d'une même machine ne tournent pas côte à côte.
+
+	  Pas de chemin d'état : l'asl sandboxé lit l'identité dans le conteneur
+	  de groupe (ses droits : Sources/Mac/asl.entitlements).
+	-->
+	<key>Label</key>
+	<string>org.airdesktop.asl-echo</string>
+	<key>BundleProgram</key>
+	<string>Contents/Helpers/asl</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>asl</string>
+		<string>echo</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<!--
+	  Une machine révoquée ou pas encore enrôlée fait sortir `asl echo` en
+	  erreur : une relance par minute, pas toutes les dix secondes.
+	-->
+	<key>ThrottleInterval</key>
+	<integer>60</integer>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>org.airdesktop.servicelocator.mac</string>
+	</array>
+</dict>
+</plist>
