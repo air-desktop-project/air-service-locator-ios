@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Les droits de l'asl livré dans le paquet (Contents/Helpers/asl) — ceux
+	  que le dépôt client publie avec le binaire (README, « asl sur macOS »).
+	  Le bac à sable : tout exécutable du paquet l'exige sur le Mac App
+	  Store. network.server : la pile QUIC lie un socket UDP local, que le
+	  bac à sable range côté serveur ; sans lui, rien ne répond (vérifié,
+	  macOS 15.7.9). Le groupe : l'identité de machine y vit (décision 93).
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>SB7H9B6TY8.org.airdesktop.servicelocator</string>
+	</array>
+</dict>
+</plist>

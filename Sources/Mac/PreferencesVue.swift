@@ -17,6 +17,7 @@ struct PreferencesVue: View {
         TabView {
             annuaire.tabItem { Label("Annuaire", systemImage: "network") }
             ceMac.tabItem { Label("Ce Mac", systemImage: "laptopcomputer") }
+            CommandeAslVue().tabItem { Label("Terminal", systemImage: "terminal") }
         }
         .frame(width: 560, height: 420)
     }

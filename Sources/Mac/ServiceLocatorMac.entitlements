@@ -31,5 +31,13 @@
 	<array>
 		<string>SB7H9B6TY8.org.airdesktop.servicelocator</string>
 	</array>
+	<!--
+	  Le dossier que l'utilisateur désigne dans un NSOpenPanel, et lui seul :
+	  « Installer la commande asl » y pose le lien ~/.local/bin/asl vers
+	  Contents/Helpers/asl. Une exception temporaire sur ~/.local/bin serait
+	  refusée sur le Mac App Store (README du dépôt client, « asl sur macOS »).
+	-->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
 </dict>
 </plist>

@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.24.0"
-    CURRENT_PROJECT_VERSION: 38
+    MARKETING_VERSION: "0.25.0"
+    CURRENT_PROJECT_VERSION: 39
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -178,6 +178,48 @@ targets:
       - sdk: LocalAuthentication.framework
       - framework: ../air-service-locator-client/target/mobile/AslClient.xcframework
         embed: false
+    # ── asl, LIVRÉ DANS LE PAQUET ────────────────────────────────────────────
+    #
+    # Sur macOS, l'utilitaire `asl` voyage avec l'application
+    # (`Contents/Helpers/asl`) : même version, même identité, lue dans le
+    # conteneur de groupe. Le binaire universel est une SORTIE du dépôt client
+    # (`scripts/asl-macos.sh`, au SHA épinglé par la CI, comme le
+    # xcframework) ; il arrive NON signé, et c'est ici qu'il l'est — README du
+    # dépôt client, « asl sur macOS ».
+    #
+    # IL EST SIGNÉ AVANT L'APPLICATION, et avec SES droits
+    # (`Sources/Mac/asl.entitlements`) : Xcode signe le paquet après toutes
+    # les phases, et un exécutable imbriqué doit l'être d'abord. Le bac à
+    # sable exige que tout exécutable du paquet soit sandboxé ; sans
+    # `network.server`, la pile QUIC ne lie pas son socket UDP. Sans
+    # signature (la CI : `CODE_SIGNING_ALLOWED=NO`), il est copié tel quel.
+    postBuildScripts:
+      - name: asl dans Contents/Helpers
+        inputFiles:
+          - $(SRCROOT)/../air-service-locator-client/target/asl-macos/asl
+          - $(SRCROOT)/Sources/Mac/asl.entitlements
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/asl
+        script: |
+          set -euo pipefail
+          source="${SRCROOT}/../air-service-locator-client/target/asl-macos/asl"
+          if [ ! -f "$source" ]; then
+            echo "error: $source manque — lancer scripts/asl-macos.sh dans le dépôt client"
+            exit 1
+          fi
+          helpers="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers"
+          mkdir -p "$helpers"
+          cp -f "$source" "$helpers/asl"
+          chmod 755 "$helpers/asl"
+          if [ "${CODE_SIGNING_ALLOWED:-YES}" = "YES" ] && [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+            # L'horodatage n'a de sens que pour ce qui part chez Apple.
+            horodatage="--timestamp=none"
+            [ "${CONFIGURATION}" = "Release" ] && horodatage="--timestamp"
+            codesign --force --options runtime $horodatage \
+              --identifier org.airdesktop.servicelocator.asl \
+              --entitlements "${SRCROOT}/Sources/Mac/asl.entitlements" \
+              --sign "${EXPANDED_CODE_SIGN_IDENTITY}" "$helpers/asl"
+          fi
 
   AirServiceLocatorTests:
     type: bundle.unit-test
