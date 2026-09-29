@@ -207,6 +207,7 @@ struct DomaineVue: View {
                             Text(machine.titre)
                             Text(machine.proprietaire == session.compte?.identifiant ? machine.id.texte : "\(machine.id.texte) · \(machine.proprietaire.abrege)")
                                 .font(.footnote).foregroundStyle(.secondary)
+                            EtatDEchoVue(echo: machine.echo, compact: true)
                             ServicesRangesVue(services: services[machine.id])
                         }
                     }

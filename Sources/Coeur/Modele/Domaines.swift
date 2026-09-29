@@ -18,6 +18,8 @@ struct Domaine: Identifiable, Hashable, Sendable {
         let proprietaire: Identifiant
         let nom: String?
         let alias: String?
+        /// Rendu à qui a `voir` sur le domaine (décision 91).
+        var echo: EtatDEcho? = nil
 
         var titre: String { alias ?? nom ?? id.abrege }
     }
@@ -220,7 +222,8 @@ enum ReponsesDomaines {
         let hebergeur: Domaine.Hebergeur = id(objet["heberge_par"], .annuaire).map(Domaine.Hebergeur.annuaire) ?? .racines
         let machines = (objet["machines"] as? [[String: Any]] ?? []).compactMap { m -> Domaine.MachineRangee? in
             guard let mid = id(m["machine"], .machine), let p = id(m["proprietaire"], .utilisateur) else { return nil }
-            return Domaine.MachineRangee(id: mid, proprietaire: p, nom: m["nom"] as? String, alias: m["alias"] as? String)
+            return Domaine.MachineRangee(id: mid, proprietaire: p, nom: m["nom"] as? String, alias: m["alias"] as? String,
+                                         echo: EtatDEcho.lire(m))
         }
         return Domaine(id: d, proprietaire: proprietaire, alias: objet["alias"] as? String, hebergePar: hebergeur,
                        droits: objet["droits"] as? [String] ?? [], machines: machines,

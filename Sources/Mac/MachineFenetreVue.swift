@@ -56,6 +56,8 @@ struct MachineFenetreVue: View {
                             }
                         }
                         Divider()
+                        LigneAGeste(TextesEcho.titre) { EtatDEchoVue(echo: machine.echo) }
+                        Divider()
                         LigneAGeste("Capacités") {
                             VStack(alignment: .leading, spacing: 2) {
                                 if machine.capacites.contains(.annonce) { Text("annonce — ses daemons peuvent annoncer leurs ports") }

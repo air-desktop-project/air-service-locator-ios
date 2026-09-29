@@ -507,7 +507,8 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
         case "revoquee": cle = .revoquee(le: millis(objet["revoquee_a"]) ?? .now, code: code(depuis: objet))
         default: cle = .attendue(code: code(depuis: objet))
         }
-        return Machine(id: id, nom: nom, capacites: capacites, cle: cle, services: [], alias: objet["alias"] as? String)
+        return Machine(id: id, nom: nom, capacites: capacites, cle: cle, services: [], alias: objet["alias"] as? String,
+                       echo: EtatDEcho.lire(objet))
     }
 
     /// Ce que le serveur rend, complété de ce que cet appareil sait : le code
