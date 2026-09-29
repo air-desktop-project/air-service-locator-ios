@@ -101,6 +101,10 @@ struct MachineFenetreVue: View {
                     }
                 }
                 services
+                if estCeMac, let alerte = machineDeCeMac?.alerte {
+                    Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if estCeMac, let dossier = MachineDeCeMac.dossierPourAsl {
                     VStack(alignment: .leading, spacing: 8) {
                         Titre("Pour l'utilitaire asl, dans un terminal")

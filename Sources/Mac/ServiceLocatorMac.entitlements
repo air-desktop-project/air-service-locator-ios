@@ -21,5 +21,15 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<!--
+	  Le conteneur partagé avec l'agent asl-echo (décision 93) : l'identité
+	  de machine y vit, parce qu'un agent sandboxé — le Mac App Store
+	  l'exige — ne lit pas le conteneur d'une autre app. Préfixé par
+	  l'équipe : vérifié sans invite sous macOS 15, en Developer ID.
+	-->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>SB7H9B6TY8.org.airdesktop.servicelocator</string>
+	</array>
 </dict>
 </plist>

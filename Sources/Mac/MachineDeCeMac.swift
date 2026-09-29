@@ -32,7 +32,8 @@ import OSLog
 /// et l'identité rendue (l'identifiant, et la graine dont la clé se dérive)
 /// est rangée **dans le format d'`asl`**, un fichier `identite` à deux lignes
 /// (`machine = m-…`, `graine = <hexa>`), en mode 0600, dans un dossier `asl/`
-/// du conteneur. Ainsi ce Mac n'a QU'UNE identité de machine, et l'utilitaire
+/// du conteneur de groupe (depuis 0.24.0 ; il vivait avant dans le conteneur
+/// de l'app, et y est repris au premier lancement). Ainsi ce Mac n'a QU'UNE identité de machine, et l'utilitaire
 /// la lit tel quel : `asl --state <ce dossier> announce …`. C'est le seul
 /// justificatif durable de cette machine.
 @MainActor
@@ -68,9 +69,35 @@ final class MachineDeCeMac {
     /// été enrôlé depuis ici.
     private(set) var identifiant: Identifiant?
 
+    /// Ce que le déménagement de l'identité a rencontré et qu'il faut dire :
+    /// deux identités différentes, ou un échec. `nil` si tout va bien.
+    private(set) var alerte: String?
+
     init(reglages: AnnuaireReel.Reglages) {
         self.reglages = reglages
+        alerte = Self.demenager()
         if let texte = Self.lire()?.machine { identifiant = try? Identifiant.analyser(texte, genre: .machine) }
+    }
+
+    /// L'identité quitte le conteneur de l'app pour celui du groupe, une
+    /// fois (``DeplacementDIdentite``) ; les lancements suivants n'y trouvent
+    /// plus rien à faire.
+    private static func demenager() -> String? {
+        guard let arrivee = try? dossier, let depart = try? ancienDossier, depart != arrivee else { return nil }
+        do {
+            let issue = try DeplacementDIdentite.deplacer(de: depart, vers: arrivee)
+            switch issue {
+            case .deplacee: journal.notice("identité de machine déménagée dans le conteneur de groupe")
+            case let .conflit(phrase):
+                journal.error("\(phrase, privacy: .public)")
+                return phrase
+            case .rienADeplacer, .dejaEnPlace: break
+            }
+            return nil
+        } catch {
+            journal.error("déménagement de l'identité : \(error.localizedDescription, privacy: .public)")
+            return "L'identité de machine n'a pas pu rejoindre le conteneur partagé (\(error.localizedDescription)) ; elle reste où elle était."
+        }
     }
 
     /// Présente le code à l'annuaire, et rend l'identifiant de machine obtenu
@@ -136,13 +163,28 @@ final class MachineDeCeMac {
 
     // MARK: - Le fichier, au format d'`asl`
 
-    /// `Application Support/asl/` dans le conteneur du bac à sable — le
-    /// pendant de `~/.config/asl` sur un Linux, et ce qu'on donne à
-    /// `asl --state`. La graine est la clé : ce dossier ne se partage pas, ne
-    /// se sauvegarde pas.
+    /// Le groupe d'app que l'application et son agent `asl-echo` partagent
+    /// dans le bac à sable (décision 93) — le Mac App Store l'exige : un
+    /// agent sandboxé ne lit pas le conteneur d'une autre app.
+    static let groupe = "SB7H9B6TY8.org.airdesktop.servicelocator"
+
+    /// `Library/Application Support/asl/` dans le **conteneur de groupe** —
+    /// le pendant de `~/.config/asl` sur un Linux, et ce qu'on donne à
+    /// `asl --state` : `~/Library/Group Containers/<groupe>/Library/…`. La
+    /// graine est la clé : ce dossier ne se partage pas, ne se sauvegarde pas.
     private static var dossier: URL {
         get throws {
-            let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            guard let conteneur = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupe) else {
+                throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: groupe])
+            }
+            return conteneur.appendingPathComponent("Library/Application Support/asl", isDirectory: true)
+        }
+    }
+
+    /// Là où l'identité vivait jusqu'en 0.23 : le conteneur propre de l'app.
+    private static var ancienDossier: URL {
+        get throws {
+            let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             return support.appendingPathComponent("asl", isDirectory: true)
         }
     }
