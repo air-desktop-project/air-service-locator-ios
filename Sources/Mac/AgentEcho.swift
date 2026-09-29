@@ -27,6 +27,15 @@ final class AgentEcho {
 
     var actif: Bool { etat == .enabled }
 
+    /// Peut-on l'activer ? **`notFound` en fait partie** : tant que rien n'a
+    /// été enregistré, macOS ne connaît AUCUN élément d'arrière-plan pour ce
+    /// paquet et rend `notFound` — vu sur oxygen, avec le plist bien présent
+    /// et signé dans `Contents/Library/LaunchAgents`, et le journal de
+    /// `backgroundtaskmanagementd` qui lit sa configuration puis conclut
+    /// « record not found ». Le prendre pour « absent du paquet » cachait le
+    /// seul bouton qui l'aurait posé.
+    var activable: Bool { !actif && etat != .requiresApproval }
+
     func activer() {
         do {
             try service.register()
@@ -56,7 +65,7 @@ final class AgentEcho {
         switch etat {
         case .enabled: "Actif — répond aux sondes de l'annuaire"
         case .requiresApproval: "En attente de votre accord dans Réglages › Général › Ouverture"
-        case .notFound: "Absent de ce paquet"
+        // `notFound` : rien n'est enregistré — ni plus, ni moins.
         default: "Inactif"
         }
     }

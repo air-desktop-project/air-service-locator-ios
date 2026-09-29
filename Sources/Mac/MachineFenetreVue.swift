@@ -382,10 +382,10 @@ private struct ReponseAuxSondes: View {
                         if agent.etat == .requiresApproval {
                             Button("Ouvrir les réglages…") { agent.ouvrirLesReglages() }
                         }
-                        if agent.actif || agent.etat == .requiresApproval {
-                            Button("Désactiver") { agent.desactiver() }
-                        } else if agent.etat != .notFound {
+                        if agent.activable {
                             Button("Activer") { agent.activer() }.buttonStyle(.borderedProminent)
+                        } else {
+                            Button("Désactiver") { agent.desactiver() }
                         }
                     }
                     if let erreur = agent.erreur {
