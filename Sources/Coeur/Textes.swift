@@ -291,8 +291,8 @@ enum TextesDomaines {
         }
     }
 
-    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV5R…X87P) »,
-    /// « le second membre (n-4EQRD1…8Z9) » — le rôle et l'identité, plutôt
+    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV…X87P) »,
+    /// « le second membre (n-4EQR…F8Z9) » — le rôle et l'identité, plutôt
     /// qu'une adresse IPv6 illisible.
     static func membreDeLaPaire(_ membre: AnnuaireLocal) -> String {
         let role = membre.estTitulaire ? "le titulaire" : "le second membre"
