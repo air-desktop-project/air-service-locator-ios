@@ -32,6 +32,10 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// Rendues par le détail (`GET /v1/domaines/{d}`) seulement ; vide dans la
     /// liste, et vide sans le droit de voir.
     var machines: [MachineRangee] = []
+    /// Le domaine racine (`"sorte":"racine"`, annuaire ≥ 0.39.0) : il ne se
+    /// confie pas à un annuaire local et ne se supprime pas. Absent ou
+    /// inconnu : un domaine ordinaire.
+    var estRacine = false
 
     /// L'alias, ou l'identifiant ENTIER : ce qu'un menu ou un titre en dit.
     /// L'abrégé (`d-4M7F…DEVD`) ne distingue pas à coup sûr deux domaines
@@ -41,6 +45,12 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// — l'abrégé ne distingue pas deux domaines sans alias.
     var titreComplet: String { alias ?? "\(id.texte) - \(TextesDomaines.pasDAlias)" }
     func peut(_ droit: String) -> Bool { droits.contains(droit) }
+
+    /// Peut-on y ranger une machine ? Seulement avec `rattacher` — que le
+    /// propriétaire d'un domaine ordinaire tient toujours. Le domaine racine
+    /// ne le donne à personne, pas même à son propriétaire (il ne contient
+    /// aucune machine en v1) : il n'est donc jamais proposé.
+    var recoitDesMachines: Bool { peut("rattacher") }
 }
 
 /// Un annuaire local — une machine du compte qui sert elle-même ses domaines,
@@ -186,7 +196,8 @@ enum ReponsesDomaines {
             return Domaine.MachineRangee(id: mid, proprietaire: p, nom: m["nom"] as? String, alias: m["alias"] as? String)
         }
         return Domaine(id: d, proprietaire: proprietaire, alias: objet["alias"] as? String, hebergePar: hebergeur,
-                       droits: objet["droits"] as? [String] ?? [], machines: machines)
+                       droits: objet["droits"] as? [String] ?? [], machines: machines,
+                       estRacine: (objet["sorte"] as? String) == "racine")
     }
 
     /// `GET /v1/domaines`.

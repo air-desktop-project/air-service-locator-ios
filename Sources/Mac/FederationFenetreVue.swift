@@ -288,7 +288,8 @@ private struct FeuilleAnnuaireVue: View {
                 }
             }
         case let .confier(n):
-            let candidats = domaines.filter { $0.proprietaire == session.compte?.identifiant && $0.hebergePar != .annuaire(n) }
+            // Jamais le domaine racine : il ne se confie pas.
+            let candidats = domaines.filter { $0.proprietaire == session.compte?.identifiant && !$0.estRacine && $0.hebergePar != .annuaire(n) }
             FeuilleDeSaisie(titre: "Confier un domaine à cet annuaire",
                             explication: "Il servira le domaine choisi à la place des racines ; le rendre aux racines se fait depuis le domaine.",
                             action: "Confier", actionPermise: domaine != nil, enCours: enCours, erreur: erreur) {

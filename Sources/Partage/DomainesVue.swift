@@ -77,7 +77,12 @@ struct LigneDomaine: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(domaine.titreComplet)
+                HStack(spacing: 6) {
+                    Text(domaine.titreComplet)
+                    if domaine.estRacine {
+                        Text(TextesDomaines.domaineRacine).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Text(domaine.alias == nil ? hebergement.titre : "\(domaine.id.texte) · \(hebergement.titre)")
                     .font(.footnote).foregroundStyle(.secondary)
                 LocateursVue(hebergement: hebergement)
@@ -208,7 +213,7 @@ struct DomaineVue: View {
                 // Confier le domaine à son annuaire local, ou le rendre aux
                 // racines : le propriétaire seul, et seulement vers un
                 // annuaire accepté de ce compte.
-                if estAMoi && annuairesPossibles {
+                if estAMoi && !domaine.estRacine && annuairesPossibles {
                     Section {
                         if case .annuaire = domaine.hebergePar {
                             Button(TextesDomaines.rendreAuxRacines) { Task { await confier(a: nil) } }
@@ -219,7 +224,7 @@ struct DomaineVue: View {
                     }
                 }
 
-                if estAMoi {
+                if estAMoi && !domaine.estRacine {
                     Section {
                         Button(TextesDomaines.supprimer, role: .destructive) { confirmeSuppression = true }
                     }
@@ -299,7 +304,7 @@ struct RangementDeMachine: View {
                     Spacer()
                 }
                 Menu(actuel?.titre ?? TextesDomaines.aucun) {
-                    ForEach(domaines.filter { $0.peut("rattacher") || $0.proprietaire == session.compte?.identifiant }) { domaine in
+                    ForEach(domaines.filter(\.recoitDesMachines)) { domaine in
                         Button(domaine.titre) { Task { await ranger(dans: domaine.id) } }
                     }
                     if actuel != nil {
@@ -309,7 +314,11 @@ struct RangementDeMachine: View {
                 }
                 .fixedSize()
             }
-            if let erreur { Text(erreur).font(.footnote).foregroundStyle(.red) }
+            if let refus = session.refusDeRangement[machine] {
+                Text(refus).font(.footnote).foregroundStyle(.red)
+            } else if let erreur {
+                Text(erreur).font(.footnote).foregroundStyle(.red)
+            }
         }
         .task { await charger() }
     }
@@ -329,12 +338,15 @@ struct RangementDeMachine: View {
         }
     }
 
+    /// Un refus se garde dans la session : il ne s'efface pas quand la fiche
+    /// se relit, seulement quand un rangement de cette machine réussit.
     private func ranger(dans domaine: Identifiant?) async {
         do {
             try await session.annuaire.ranger(machine: machine, dans: domaine)
+            session.refusDeRangement[machine] = nil
             await charger()
         } catch {
-            erreur = error.messageAnnuaire
+            session.refusDeRangement[machine] = error.messageAnnuaire
         }
     }
 }

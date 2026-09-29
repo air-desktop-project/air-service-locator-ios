@@ -127,6 +127,7 @@ extension ErreurAnnuaire {
         case .tropDEssais: TextesInvitation.tropDEssais
         case .dernierDomaine: TextesDomaines.dernierDomaine
         case .rattachementInterdit: TextesDomaines.rattachementInterdit
+        case .rangementRefuse: TextesDomaines.rangementRefuse
         case .secondMembreDejaDeclare: TextesDomaines.secondDejaDeclare
         case .inscriptionClose: TextesDomaines.inscriptionClose
         }
@@ -233,6 +234,8 @@ enum TextesDomaines {
     static let ranger = "Ranger dans un domaine"
     static let retirerDuDomaine = "Retirer du domaine"
     static let rattachementInterdit = "Vous n'avez pas le droit de ranger une machine dans ce domaine."
+    static let rangementRefuse = "Ce domaine ne peut pas recevoir cette machine."
+    static let domaineRacine = "Domaine racine"
     static let confier = "Confier à mon annuaire local"
     static let rendreAuxRacines = "Rendre aux racines"
 
@@ -289,8 +292,8 @@ enum TextesDomaines {
         }
     }
 
-    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV5R…X87P) »,
-    /// « le second membre (n-4EQRD1…8Z9) » — le rôle et l'identité, plutôt
+    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV…X87P) »,
+    /// « le second membre (n-4EQR…F8Z9) » — le rôle et l'identité, plutôt
     /// qu'une adresse IPv6 illisible.
     static func membreDeLaPaire(_ membre: AnnuaireLocal) -> String {
         let role = membre.estTitulaire ? "le titulaire" : "le second membre"
