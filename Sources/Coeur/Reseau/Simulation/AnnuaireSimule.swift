@@ -494,6 +494,12 @@ actor AnnuaireSimule: Annuaire {
         return []
     }
 
+    /// Le banc n'a de machines que pour le compte local : les siennes, et
+    /// rien pour une machine qu'il ne connaît pas.
+    func services(de machine: Identifiant) async throws -> [Service] {
+        parcMachines.first { $0.id == machine }?.services ?? []
+    }
+
     func identifiant(pourAlias alias: String) async throws -> Identifiant? {
         // Exact après NFC, sensible à la casse — comme l'annuaire 0.26.0.
         let cherche = NomsEtAlias.nfc(alias)

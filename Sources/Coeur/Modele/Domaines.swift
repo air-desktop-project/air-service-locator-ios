@@ -51,6 +51,33 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// ne le donne à personne, pas même à son propriétaire (il ne contient
     /// aucune machine en v1) : il n'est donc jamais proposé.
     var recoitDesMachines: Bool { peut("rattacher") }
+
+    /// Lit-on les services des machines d'AUTRES comptes rangées ici ?
+    /// `voir` les donne sans adresses, `localiser` entiers (annuaire ≥
+    /// 0.40.0, décisions 100 à 104).
+    var montreLesServices: Bool { peut("voir") || peut("localiser") }
+
+    /// Ranger ma machine dans ce domaine l'ouvre à d'autres que moi : à dire
+    /// avant de confirmer.
+    func appartientAUnAutre(que moi: Identifiant?) -> Bool { proprietaire != moi }
+}
+
+/// Les services des machines rangées dans un domaine, machine par machine.
+enum ServicesDuDomaine {
+    /// Ceux des machines d'autres comptes quand le domaine donne `voir` ou
+    /// `localiser` ; ceux des miennes si `aussiLesMiennes` (l'iPhone n'a pas
+    /// la liste de ses machines sous la main sur cet écran ; le Mac, si).
+    /// Une machine absente du résultat : on n'en sait rien — pas « aucun ».
+    static func charger(_ domaine: Domaine, moi: Identifiant?, aussiLesMiennes: Bool,
+                        annuaire: any Annuaire) async -> [Identifiant: [Service]] {
+        var services: [Identifiant: [Service]] = [:]
+        for machine in domaine.machines {
+            let aMoi = machine.proprietaire == moi
+            guard aMoi ? aussiLesMiennes : domaine.montreLesServices else { continue }
+            if let lus = try? await annuaire.services(de: machine.id) { services[machine.id] = lus }
+        }
+        return services
+    }
 }
 
 /// Un annuaire local — une machine du compte qui sert elle-même ses domaines,

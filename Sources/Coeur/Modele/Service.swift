@@ -89,6 +89,13 @@ struct Service: Identifiable, Hashable, Sendable {
     /// Absente pour un service que les racines ont sondé elles-mêmes : rien
     /// ne change alors de ce qu'on disait.
     var sonde: Sonde?
+    /// Vivant, mais l'annuaire n'en dit rien de plus (`"annonce":{}`) : le
+    /// service d'une machine d'un autre compte, vu par le droit `voir` d'un
+    /// domaine, sans `localiser` (décisions 100 à 104). Ni points, ni
+    /// candidats, ni diagnostic — ce n'est pas qu'il n'en a pas, c'est
+    /// qu'on ne nous les donne pas ; l'écran ne montre donc pas de sections
+    /// vides.
+    var sansDetail = false
 
     var pointsTexte: String { points.map(\.texte).joined(separator: " · ") }
 

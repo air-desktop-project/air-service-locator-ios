@@ -138,6 +138,11 @@ protocol Annuaire: Sendable {
     /// autorisations envers moi donnent à voir ; les miennes si `u` est moi ;
     /// vide sans aucune arête — vide, pas une erreur.
     func machines(de utilisateur: Identifiant) async throws -> [MachineVisible]
+    /// `GET /v1/machines/{m}/services` — pour la machine d'un autre compte,
+    /// rangée dans un domaine où je tiens `voir` (annuaire ≥ 0.40.0) : ses
+    /// services sans adresses (``Service/sansDetail``), ou entiers avec
+    /// `localiser`. Vide sans droit — vide, pas une erreur.
+    func services(de machine: Identifiant) async throws -> [Service]
     /// `PUT /v1/alias`, `DELETE /v1/alias` avec `nil`.
     func definirAlias(_ alias: String?) async throws
 

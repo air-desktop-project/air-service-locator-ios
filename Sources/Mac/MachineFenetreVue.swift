@@ -169,7 +169,7 @@ struct MachineFenetreVue: View {
                             Divider().gridCellUnsizedAxes(.horizontal)
                             GridRow {
                                 HStack(spacing: 8) {
-                                    PastilleMac(couleur: couleurService(service))
+                                    PastilleMac(couleur: service.teinte)
                                     Text(service.nom).font(.system(.callout, design: .monospaced))
                                 }
                                 Text(service.pointsTexte).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
@@ -270,18 +270,6 @@ struct MachineFenetreVue: View {
         switch machine.cle {
         case .enrolee: "Révoquer la clé ferme ses connexions et fait tomber ses baux, tout de suite. La machine reste — son nom, ses capacités, ses services — et un nouveau code la ré-enrôle."
         case .attendue, .revoquee: "Un code neuf tue le précédent. Il est à usage unique et vaut dix minutes."
-        }
-    }
-
-    private func couleurService(_ service: Service) -> Color {
-        switch service.etat {
-        case .annonce:
-            switch service.resume {
-            case .joignable: Couleurs.joignable
-            case .injoignable: Couleurs.attention
-            default: Couleurs.accent
-            }
-        case .parti: Couleurs.parti
         }
     }
 

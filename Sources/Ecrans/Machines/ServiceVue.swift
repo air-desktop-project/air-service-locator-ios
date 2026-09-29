@@ -29,50 +29,54 @@ struct ServiceVue: View {
                 }
             }
 
-            Section {
-                ForEach(service.points, id: \.self) { point in
-                    LignePoint(point: point, verdict: service.joignabilite[point], sonde: service.sonde)
-                }
-            } header: {
-                Text("Points d'écoute")
-            } footer: {
-                Text("Le verdict est celui de l'annuaire, qui a lui-même essayé d'ouvrir une connexion vers ce port. Un point UDP ne se sonde pas : aucune poignée de main, aucun écho générique.")
-            }
-
-            if !service.candidats.isEmpty {
+            // `voir` sans `localiser` : ni points, ni candidats, ni
+            // diagnostic ne nous sont donnés — pas de sections vides.
+            if !service.sansDetail {
                 Section {
-                    ForEach(service.candidats, id: \.self) { candidat in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(Self.adresse(candidat)).font(.system(.subheadline, design: .monospaced))
-                            Text(candidat.origine == .reflexif ? "observé par l'annuaire sur la connexion d'annonce"
-                                 : "annoncé par le daemon — vrai sur son réseau, souvent faux ailleurs")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
+                    ForEach(service.points, id: \.self) { point in
+                        LignePoint(point: point, verdict: service.joignabilite[point], sonde: service.sonde)
                     }
                 } header: {
-                    Text("Candidats")
+                    Text("Points d'écoute")
                 } footer: {
-                    Text("Où l'on peut essayer de joindre ce service, IPv6 d'abord. C'est ce qu'une machine autorisée reçoit quand elle demande où le joindre.")
+                    Text("Le verdict est celui de l'annuaire, qui a lui-même essayé d'ouvrir une connexion vers ce port. Un point UDP ne se sonde pas : aucune poignée de main, aucun écho générique.")
                 }
-            }
 
-            if let diagnostic = service.diagnostic {
-                Section {
-                    if let vu = diagnostic.vuDepuis {
-                        LabeledContent("Vu depuis") {
-                            Text(vu).font(.system(.footnote, design: .monospaced))
+                if !service.candidats.isEmpty {
+                    Section {
+                        ForEach(service.candidats, id: \.self) { candidat in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(Self.adresse(candidat)).font(.system(.subheadline, design: .monospaced))
+                                Text(candidat.origine == .reflexif ? "observé par l'annuaire sur la connexion d'annonce"
+                                     : "annoncé par le daemon — vrai sur son réseau, souvent faux ailleurs")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            }
                         }
+                    } header: {
+                        Text("Candidats")
+                    } footer: {
+                        Text("Où l'on peut essayer de joindre ce service, IPv6 d'abord. C'est ce qu'une machine autorisée reçoit quand elle demande où le joindre.")
                     }
-                    if let nat = diagnostic.derriereNat {
-                        LabeledContent("Derrière un NAT", value: Self.texte(nat))
+                }
+
+                if let diagnostic = service.diagnostic {
+                    Section {
+                        if let vu = diagnostic.vuDepuis {
+                            LabeledContent("Vu depuis") {
+                                Text(vu).font(.system(.footnote, design: .monospaced))
+                            }
+                        }
+                        if let nat = diagnostic.derriereNat {
+                            LabeledContent("Derrière un NAT", value: Self.texte(nat))
+                        }
+                        if let keepalive = diagnostic.keepaliveSecondes, let inactivite = diagnostic.inactiviteSecondes {
+                            LabeledContent("Bail", value: "keepalive \(keepalive) s, inactivité \(inactivite) s")
+                        }
+                    } header: {
+                        Text("Ce que l'annuaire a répondu au daemon")
+                    } footer: {
+                        Text("Sous quelle adresse il l'a vu — rien d'autre ne le lui apprend — et s'il le croit derrière un NAT, en comparant ce qui est annoncé à ce qu'il observe. « Indéterminé » : le daemon n'a annoncé aucune adresse locale, il n'y avait rien à comparer.")
                     }
-                    if let keepalive = diagnostic.keepaliveSecondes, let inactivite = diagnostic.inactiviteSecondes {
-                        LabeledContent("Bail", value: "keepalive \(keepalive) s, inactivité \(inactivite) s")
-                    }
-                } header: {
-                    Text("Ce que l'annuaire a répondu au daemon")
-                } footer: {
-                    Text("Sous quelle adresse il l'a vu — rien d'autre ne le lui apprend — et s'il le croit derrière un NAT, en comparant ce qui est annoncé à ce qu'il observe. « Indéterminé » : le daemon n'a annoncé aucune adresse locale, il n'y avait rien à comparer.")
                 }
             }
 
