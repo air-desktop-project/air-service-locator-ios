@@ -55,6 +55,8 @@ struct Machine: Identifiable, Hashable, Sendable {
     /// non unique, indépendant du nom (``NomsEtAlias/aliasDeMachineValide(_:)``).
     /// `nil` tant qu'on n'en a pas posé.
     var alias: String? = nil
+    /// L'état d'écho (annuaire ≥ 0.43.0) ; `nil` : aucun `asl-echo` annoncé.
+    var echo: EtatDEcho? = nil
 
     /// Un nouveau nom, ou un renommage, peut-il partir ? Un nom d'hôte
     /// (``NomsEtAlias/nomDHote(_:)``) ; l'annuaire rend `400` pour tout autre.

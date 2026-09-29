@@ -310,6 +310,7 @@ struct DomaineFenetreVue: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(machine.titre)
                         TexteFixe(machine.proprietaire == moi ? "\(machine.id.texte) · à vous" : "\(machine.id.texte) · \(machine.proprietaire.texte)", secondaire: true)
+                        EtatDEchoVue(echo: machine.echo, compact: true).padding(.top, 2)
                         ServicesRangesVue(services: services(de: machine)).padding(.top, 2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

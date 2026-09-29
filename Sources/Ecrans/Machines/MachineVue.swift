@@ -57,6 +57,7 @@ struct MachineVue: View {
                         LabeledContent("Capacités", value: machine.capacitesTexte.isEmpty ? "aucune" : machine.capacitesTexte)
                     }
                     LigneCle(machine: machine)
+                    LabeledContent(TextesEcho.titre) { EtatDEchoVue(echo: machine.echo) }
                 }
 
                 if aliasPossible {

@@ -215,6 +215,55 @@ enum TextesNouveautes {
 
 /// Ce que l'iPhone, le Mac et Android disent des domaines et des annuaires
 /// locaux — les mêmes mots partout.
+/// L'état d'écho, en toutes lettres — les mêmes mots sur l'iPhone, sur le
+/// Mac, et proposés à Android.
+enum TextesEcho {
+    static let titre = "Écho"
+    static let absent = "Pas d'écho"
+    static let commentLeLancer = "Sur la machine : asl echo"
+    static let interieur = "prouvé de son réseau : sa clé répond, ce qui ne dit pas qu'on la joint du dehors"
+    static let autreCle = "une réponse est venue, signée par une autre clé que celle de cette machine"
+    static func via(_ mot: String) -> String {
+        switch mot {
+        case "upnp": "par la redirection que la box a accordée (UPnP)"
+        case "nat": "par le NAT que la connexion à l'annuaire tient ouvert"
+        case "direct": "en direct, sans traduction d'adresse"
+        default: "par « \(mot) »"
+        }
+    }
+    static func constate(_ quand: String) -> String { "constaté \(quand)" }
+    static func par(_ annuaire: String) -> String { "par l'annuaire \(annuaire)" }
+}
+
+extension EtatDEcho {
+    var libelle: String {
+        switch verdict {
+        case .verifie:
+            switch depuis {
+            case .exterieur?: "Écho vérifié, du dehors"
+            case .interieur?: "Écho vérifié, de l'intérieur"
+            default: "Écho vérifié"
+            }
+        case .injoignable: "Écho injoignable"
+        case .autreCle: "Écho signé par une autre clé"
+        case .enCours: "Écho en cours de vérification"
+        case let .inconnu(mot): "Écho : \(mot)"
+        }
+    }
+
+    /// Par où, quand, par qui — et ce qu'une preuve de l'intérieur ne dit
+    /// pas.
+    var detail: String {
+        var morceaux: [String] = []
+        if verdict == .verifie, let via { morceaux.append(TextesEcho.via(via)) }
+        if verdict == .autreCle { morceaux.append(TextesEcho.autreCle) }
+        if verdict == .verifie, depuis == .interieur { morceaux.append(TextesEcho.interieur) }
+        if let a { morceaux.append(TextesEcho.constate(a.relatif)) }
+        if let par { morceaux.append(TextesEcho.par(par.abrege)) }
+        return morceaux.joined(separator: ", ")
+    }
+}
+
 enum TextesDomaines {
     static let domaines = "Domaines"
     static let aucunDomaine = "Aucun domaine."
