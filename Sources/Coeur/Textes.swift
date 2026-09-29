@@ -261,6 +261,47 @@ enum TextesDomaines {
         }
     }
 
+    // L'état de l'annuaire local (décisions 70 et 86) — à la lettre :
+    // Android dit les mêmes.
+    static let vivant = "Vivant"
+    static let parti = "Parti"
+    static let pasDeNouvelles = "Pas de nouvelles"
+    static let voieOuverte = "Voie ouverte"
+    static let voieTombee = "Voie tombée"
+    static let paireReglee = "Paire réglée"
+    static let paireMalReglee = "Paire mal réglée"
+    /// Ce qu'on dit d'une valeur absente ou inconnue.
+    static let inconnu = "—"
+
+    static func etat(_ etat: EtatDeLAnnuaire) -> String {
+        switch etat {
+        case .vivant: vivant
+        case .parti: parti
+        case .pasDeNouvelles: pasDeNouvelles
+        }
+    }
+
+    static func voie(_ voie: AnnuaireLocal.Voie?) -> String {
+        switch voie {
+        case .ouverte: voieOuverte
+        case .tombee: voieTombee
+        case .inconnue, .none: inconnu
+        }
+    }
+
+    /// La phrase qui dit quoi faire d'un membre mal réglé ; `nil` s'il ne
+    /// l'est pas.
+    static func paireFautive(_ paire: AnnuaireLocal.Paire?, membre: String) -> String? {
+        switch paire {
+        case .sansPeer:
+            "\(membre) tourne sans --peer : la paire ne se réplique pas ; réglez --peer et --peer-key sur cette machine."
+        case .peerInconnu:
+            "\(membre) désigne par --peer un annuaire qui n'est pas l'autre membre de la paire ; corrigez --peer et --peer-key sur cette machine."
+        default:
+            nil
+        }
+    }
+
     static let administration = "Administration des racines"
     static let aucuneInscription = "Aucune inscription en attente."
     static let accepter = "Accepter"

@@ -41,9 +41,28 @@ struct AnnuaireLocalVue: View {
                 }
                 ForEach(annuaires) { annuaire in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(annuaire.membre?.texte ?? annuaire.adresse)
+                        HStack {
+                            Text(annuaire.membre?.texte ?? annuaire.adresse)
+                            // Sur le titulaire : l'état de toute la paire, tel
+                            // que la racine qui répond le voit.
+                            if annuaire.estTitulaire, annuaire.etat == .acceptee {
+                                Spacer()
+                                Text(TextesDomaines.etat(EtatDeLAnnuaire(membres: annuaires.filter { $0.annuaire == annuaire.annuaire })))
+                                    .font(.footnote.weight(.semibold))
+                            }
+                        }
                         Text("\(annuaire.adresse) · \(TextesDomaines.etat(annuaire.etat))")
                             .font(.footnote).foregroundStyle(.secondary)
+                        if annuaire.etat == .acceptee {
+                            Text(TextesDomaines.voie(annuaire.voie)).font(.footnote).foregroundStyle(.secondary)
+                            if annuaire.paire == .reglee {
+                                Label(TextesDomaines.paireReglee, systemImage: "checkmark.circle.fill")
+                                    .font(.footnote).foregroundStyle(Couleurs.joignable)
+                            } else if let faute = TextesDomaines.paireFautive(annuaire.paire, membre: annuaire.membre?.abrege ?? annuaire.adresse) {
+                                Label("\(TextesDomaines.paireMalReglee) — \(faute)", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.footnote).foregroundStyle(.red)
+                            }
+                        }
                         if annuaire.estTitulaire, annuaire.etat != .retiree, let n = annuaire.annuaire {
                             Button(TextesDomaines.retirer, role: .destructive) { aRetirer = n }
                                 .buttonStyle(.borderless).font(.footnote)
