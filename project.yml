@@ -50,8 +50,8 @@ settings:
     # le Mac), et c'est ce qu'un utilisateur cite quand il rapporte quelque
     # chose. `CURRENT_PROJECT_VERSION` est le numéro de build, entier
     # croissant, qu'App Store Connect exige distinct à chaque envoi.
-    MARKETING_VERSION: "0.26.0"
-    CURRENT_PROJECT_VERSION: 41
+    MARKETING_VERSION: "0.27.0"
+    CURRENT_PROJECT_VERSION: 42
     SWIFT_VERSION: "6.0"
     # Le mode strict de la concurrence Swift 6. Coûteux à adopter tard, gratuit
     # à adopter maintenant : il n'y a pas encore de code à corriger.
@@ -164,6 +164,15 @@ targets:
           - "**/README.md"
           # Plus d'autorité d'hier dans le paquet (C20).
           - "**/annuaire-racine.pem"
+          # Copié à part, dans Contents/Library/LaunchAgents : ci-dessous.
+          - "LaunchAgents/**"
+      # L'agent asl-echo (décision 93) : SMAppService.agent le cherche dans
+      # Contents/Library/LaunchAgents du paquet, et nulle part ailleurs.
+      - path: Sources/Mac/LaunchAgents
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchAgents
     info:
       path: Sources/Mac/Ressources/Info.plist
       properties:
