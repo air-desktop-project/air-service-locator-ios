@@ -615,7 +615,11 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
     /// réémise telle quelle sous `annonce` (c'est le même objet que
     /// `GET /v1/ou`, et il n'est pas aplati pour ne pas exister deux fois).
     /// Aucune date : le serveur n'en range pas.
-    private func services(de machine: Identifiant) async throws -> [Service] {
+    ///
+    /// Aussi pour la machine d'un AUTRE compte rangée dans un domaine où je
+    /// tiens `voir` (annuaire ≥ 0.40.0) : sans `localiser`, chaque service
+    /// vivant y vient à `"annonce":{}`. Sans aucun droit : `[]`.
+    func services(de machine: Identifiant) async throws -> [Service] {
         let (statut, corps) = try await surLaFile { try self.requete("GET", "/v1/machines/\(machine.texte)/services") }
         guard statut == 200 else { return [] }
         return Self.lireServices(corps)
@@ -632,6 +636,11 @@ final class AnnuaireReel: Annuaire, @unchecked Sendable {
                 // Parti — et le serveur ne sait plus toujours si c'était voulu.
                 return Service(id: id, nom: nom, points: [], etat: .parti(volontaire: enveloppe["volontaire"] as? Bool, le: Self.millis(enveloppe["parti_a"])),
                                joignabilite: [:], candidats: [], sonde: Self.sonde(enveloppe))
+            }
+            // `voir` sans `localiser` : vivant, et rien d'autre (décision 102).
+            if objet.isEmpty {
+                return Service(id: id, nom: nom, points: [], etat: .annonce(depuis: Self.millis(enveloppe["annonce_a"]) ?? .now),
+                               joignabilite: [:], candidats: [], sonde: Self.sonde(enveloppe), sansDetail: true)
             }
             var points: [PointEcoute] = []
             var joignabilite: [PointEcoute: Joignabilite] = [:]

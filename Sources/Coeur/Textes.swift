@@ -74,6 +74,7 @@ extension Service {
 
     var detailEtat: String {
         switch etat {
+        case .annonce where sansDetail: TextesDomaines.sansDetail
         case .annonce: resume?.detail(sonde: sonde) ?? ""
         case let .parti(volontaire, le):
             [volontaire.map { $0 ? "arrêt volontaire" : "inactivité" } ?? "motif inconnu", le?.relatif].compactMap { $0 }.joined(separator: ", ")
@@ -229,6 +230,14 @@ enum TextesDomaines {
     static let dernierDomaine = "C'est votre dernier domaine : un compte en garde toujours un."
     static let machinesRangees = "Machines rangées ici"
     static let aucuneMachine = "Aucune machine rangée dans ce domaine."
+    static let aucunService = "aucun service annoncé"
+    /// Un service vu par `voir` seul (décision 102).
+    static let sansDetail = "points d'écoute réservés à qui localise dans ce domaine"
+    /// Avant de ranger une machine dans le domaine d'un AUTRE compte : ce
+    /// que ce rangement ouvre (décisions 100 à 104).
+    static func rangerChezUnAutre(_ domaine: String) -> String { "Ranger dans « \(domaine) », le domaine d'un autre compte ?" }
+    static let ceQueLeRangementOuvre = "Qui voit ce domaine verra les services de cette machine ; qui y localise les joindra."
+    static let rangerQuandMeme = "Ranger"
     static let domaineDeLaMachine = "Domaine"
     static let aucun = "aucun"
     static let ranger = "Ranger dans un domaine"

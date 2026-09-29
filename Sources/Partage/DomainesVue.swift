@@ -166,6 +166,7 @@ struct DomaineVue: View {
     @State private var annuairesPossibles = false
     @State private var confirmeSuppression = false
     @State private var erreur: String?
+    @State private var services: [Identifiant: [Service]] = [:]
 
     private var estAMoi: Bool { domaine?.proprietaire == session.compte?.identifiant }
 
@@ -206,6 +207,7 @@ struct DomaineVue: View {
                             Text(machine.titre)
                             Text(machine.proprietaire == session.compte?.identifiant ? machine.id.texte : "\(machine.id.texte) · \(machine.proprietaire.abrege)")
                                 .font(.footnote).foregroundStyle(.secondary)
+                            ServicesRangesVue(services: services[machine.id])
                         }
                     }
                 }
@@ -245,6 +247,7 @@ struct DomaineVue: View {
             let lu = try await session.annuaire.domaine(id)
             domaine = lu
             alias = lu.alias ?? ""
+            services = await ServicesDuDomaine.charger(lu, moi: session.compte?.identifiant, aussiLesMiennes: true, annuaire: session.annuaire)
             annuairesPossibles = (try? await session.annuaire.version())??.porteLesAnnuairesLocaux ?? false
             if annuairesPossibles {
                 annuairesLocaux = (try? await session.annuaire.annuairesLocaux()) ?? []
@@ -295,6 +298,9 @@ struct RangementDeMachine: View {
     @State private var domaines: [Domaine] = []
     @State private var actuel: Domaine?
     @State private var erreur: String?
+    /// Le domaine d'un autre compte choisi dans le menu : on dit ce que le
+    /// rangement ouvre avant de le faire.
+    @State private var chezUnAutre: Domaine?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -305,7 +311,13 @@ struct RangementDeMachine: View {
                 }
                 Menu(actuel?.titre ?? TextesDomaines.aucun) {
                     ForEach(domaines.filter(\.recoitDesMachines)) { domaine in
-                        Button(domaine.titre) { Task { await ranger(dans: domaine.id) } }
+                        Button(domaine.titre) {
+                            if domaine.appartientAUnAutre(que: session.compte?.identifiant) {
+                                chezUnAutre = domaine
+                            } else {
+                                Task { await ranger(dans: domaine.id) }
+                            }
+                        }
                     }
                     if actuel != nil {
                         Divider()
@@ -321,6 +333,15 @@ struct RangementDeMachine: View {
             }
         }
         .task { await charger() }
+        .confirmationDialog(chezUnAutre.map { TextesDomaines.rangerChezUnAutre($0.titre) } ?? "",
+                            isPresented: Binding(get: { chezUnAutre != nil }, set: { if !$0 { chezUnAutre = nil } }),
+                            titleVisibility: .visible) {
+            if let domaine = chezUnAutre {
+                Button(TextesDomaines.rangerQuandMeme) { Task { await ranger(dans: domaine.id) } }
+            }
+        } message: {
+            Text(TextesDomaines.ceQueLeRangementOuvre)
+        }
     }
 
     /// L'annuaire ne dit pas, dans l'objet machine, où elle est rangée : on

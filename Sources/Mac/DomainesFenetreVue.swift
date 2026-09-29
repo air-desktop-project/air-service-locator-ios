@@ -209,6 +209,9 @@ struct DomaineFenetreVue: View {
     @State private var aRetirer: Domaine.MachineRangee?
     @State private var confirmeSuppression = false
     @State private var erreur: String?
+    /// Les services des machines d'autres comptes (``ServicesDuDomaine``) ;
+    /// ceux des miennes viennent de ``Donnees``.
+    @State private var servicesDesAutres: [Identifiant: [Service]] = [:]
 
     private var domaine: Domaine? { lecture.domaine(id) }
     private var moi: Identifiant? { session.compte?.identifiant }
@@ -239,6 +242,16 @@ struct DomaineFenetreVue: View {
         } message: {
             Text(TextesDomaines.confirmerSuppression)
         }
+        .task(id: domaine) {
+            guard let domaine else { return }
+            servicesDesAutres = await ServicesDuDomaine.charger(domaine, moi: moi, aussiLesMiennes: false, annuaire: session.annuaire)
+        }
+    }
+
+    /// Les services d'une machine rangée : les miens, de la dernière
+    /// relecture ; ceux d'un autre, si le domaine les montre.
+    private func services(de machine: Domaine.MachineRangee) -> [Service]? {
+        machine.proprietaire == moi ? donnees.machine(machine.id)?.services : servicesDesAutres[machine.id]
     }
 
     @ViewBuilder private func contenu(_ domaine: Domaine) -> some View {
@@ -297,6 +310,7 @@ struct DomaineFenetreVue: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(machine.titre)
                         TexteFixe(machine.proprietaire == moi ? "\(machine.id.texte) · à vous" : "\(machine.id.texte) · \(machine.proprietaire.texte)", secondaire: true)
+                        ServicesRangesVue(services: services(de: machine)).padding(.top, 2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     if machine.proprietaire == moi {
@@ -411,6 +425,13 @@ struct FeuilleDomaineVue: View {
                     }
                     .pickerStyle(.radioGroup)
                     .labelsHidden()
+                    // Le domaine d'un autre compte : ce que le rangement
+                    // ouvre se lit AVANT « Ranger ».
+                    if domaine.appartientAUnAutre(que: session.compte?.identifiant) {
+                        Label(TextesDomaines.ceQueLeRangementOuvre, systemImage: "eye")
+                            .foregroundStyle(Couleurs.attention)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             } valider: {
                 if let machine { faire { try await session.annuaire.ranger(machine: machine, dans: domaine.id) } }
