@@ -110,6 +110,7 @@ private struct TuileDomaine: View {
             HStack(spacing: 10) {
                 Text(domaine.titre).font(.title3.weight(.semibold)).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if domaine.estRacine { Badge(TextesDomaines.domaineRacine, couleur: .secondary) }
                 BadgeDeRole(domaine: domaine)
                 if domaine.peut("administrer") {
                     Button("Renommer…") { feuille = .nom(domaine) }
@@ -121,7 +122,7 @@ private struct TuileDomaine: View {
             LigneAGeste("Hébergé par") {
                 ValeurHebergement(domaine: domaine, lecture: lecture)
             } geste: {
-                if estAMoi && domaine.peut("rattacher") && lecture.confierPossible { Button("Changer…") { feuille = .hebergement(domaine) } }
+                if estAMoi && !domaine.estRacine && domaine.peut("rattacher") && lecture.confierPossible { Button("Changer…") { feuille = .hebergement(domaine) } }
             }
             LigneAGeste(TextesDomaines.machinesRangees) {
                 MachinesEnLigne(machines: domaine.machines)
@@ -266,7 +267,7 @@ struct DomaineFenetreVue: View {
                 LigneAGeste("Hébergé par") {
                     ValeurHebergement(domaine: domaine, lecture: lecture)
                 } geste: {
-                    if estAMoi && domaine.peut("rattacher") && lecture.confierPossible { Button("Changer…") { feuille = .hebergement(domaine) } }
+                    if estAMoi && !domaine.estRacine && domaine.peut("rattacher") && lecture.confierPossible { Button("Changer…") { feuille = .hebergement(domaine) } }
                 }
                 Divider()
                 LigneAGeste("Mes droits") {
@@ -306,7 +307,7 @@ struct DomaineFenetreVue: View {
             }
         }
 
-        if estAMoi {
+        if estAMoi && !domaine.estRacine {
             PiedDestructif(explication: "Supprimer détache ses machines ; son alias et ses groupes disparaissent. Votre dernier domaine ne se supprime pas.",
                            titre: "\(TextesDomaines.supprimer)…") { confirmeSuppression = true }
         }

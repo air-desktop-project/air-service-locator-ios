@@ -235,6 +235,7 @@ enum TextesDomaines {
     static let retirerDuDomaine = "Retirer du domaine"
     static let rattachementInterdit = "Vous n'avez pas le droit de ranger une machine dans ce domaine."
     static let rangementRefuse = "Ce domaine ne peut pas recevoir cette machine."
+    static let domaineRacine = "Domaine racine"
     static let confier = "Confier à mon annuaire local"
     static let rendreAuxRacines = "Rendre aux racines"
 

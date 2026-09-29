@@ -77,7 +77,12 @@ struct LigneDomaine: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(domaine.titreComplet)
+                HStack(spacing: 6) {
+                    Text(domaine.titreComplet)
+                    if domaine.estRacine {
+                        Text(TextesDomaines.domaineRacine).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Text(domaine.alias == nil ? hebergement.titre : "\(domaine.id.texte) · \(hebergement.titre)")
                     .font(.footnote).foregroundStyle(.secondary)
                 LocateursVue(hebergement: hebergement)
@@ -208,7 +213,7 @@ struct DomaineVue: View {
                 // Confier le domaine à son annuaire local, ou le rendre aux
                 // racines : le propriétaire seul, et seulement vers un
                 // annuaire accepté de ce compte.
-                if estAMoi && annuairesPossibles {
+                if estAMoi && !domaine.estRacine && annuairesPossibles {
                     Section {
                         if case .annuaire = domaine.hebergePar {
                             Button(TextesDomaines.rendreAuxRacines) { Task { await confier(a: nil) } }
@@ -219,7 +224,7 @@ struct DomaineVue: View {
                     }
                 }
 
-                if estAMoi {
+                if estAMoi && !domaine.estRacine {
                     Section {
                         Button(TextesDomaines.supprimer, role: .destructive) { confirmeSuppression = true }
                     }

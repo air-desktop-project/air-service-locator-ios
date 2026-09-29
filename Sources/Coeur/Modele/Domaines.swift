@@ -32,6 +32,10 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// Rendues par le détail (`GET /v1/domaines/{d}`) seulement ; vide dans la
     /// liste, et vide sans le droit de voir.
     var machines: [MachineRangee] = []
+    /// Le domaine racine (`"sorte":"racine"`, annuaire ≥ 0.39.0) : il ne se
+    /// confie pas à un annuaire local et ne se supprime pas. Absent ou
+    /// inconnu : un domaine ordinaire.
+    var estRacine = false
 
     /// L'alias, ou l'identifiant ENTIER : ce qu'un menu ou un titre en dit.
     /// L'abrégé (`d-4M7F…DEVD`) ne distingue pas à coup sûr deux domaines
@@ -192,7 +196,8 @@ enum ReponsesDomaines {
             return Domaine.MachineRangee(id: mid, proprietaire: p, nom: m["nom"] as? String, alias: m["alias"] as? String)
         }
         return Domaine(id: d, proprietaire: proprietaire, alias: objet["alias"] as? String, hebergePar: hebergeur,
-                       droits: objet["droits"] as? [String] ?? [], machines: machines)
+                       droits: objet["droits"] as? [String] ?? [], machines: machines,
+                       estRacine: (objet["sorte"] as? String) == "racine")
     }
 
     /// `GET /v1/domaines`.
