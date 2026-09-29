@@ -919,10 +919,19 @@ extension AnnuaireReel {
                 try self.requete("DELETE", "/v1/machines/\(machine.texte)/domaine")
             }
         }
+        if let erreur = Self.erreurDeRangement(statut, versUnDomaine: domaine != nil) { throw erreur }
+    }
+
+    /// Ce que dit la réponse à un rangement : rien s'il a eu lieu. Un `404`
+    /// vers un domaine dit que ce domaine ne reçoit pas cette machine — le
+    /// domaine racine, notamment — et non un « introuvable » qui ne dirait
+    /// rien à l'utilisateur.
+    static func erreurDeRangement(_ statut: Int, versUnDomaine: Bool) -> ErreurAnnuaire? {
         switch statut {
-        case 204: return
-        case 403: throw ErreurAnnuaire.rattachementInterdit
-        default: throw Self.refus(statut)
+        case 204: nil
+        case 403: .rattachementInterdit
+        case 404 where versUnDomaine: .rangementRefuse
+        default: refus(statut)
         }
     }
 

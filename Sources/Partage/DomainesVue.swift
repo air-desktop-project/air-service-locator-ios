@@ -299,7 +299,7 @@ struct RangementDeMachine: View {
                     Spacer()
                 }
                 Menu(actuel?.titre ?? TextesDomaines.aucun) {
-                    ForEach(domaines.filter { $0.peut("rattacher") || $0.proprietaire == session.compte?.identifiant }) { domaine in
+                    ForEach(domaines.filter(\.recoitDesMachines)) { domaine in
                         Button(domaine.titre) { Task { await ranger(dans: domaine.id) } }
                     }
                     if actuel != nil {
@@ -309,7 +309,11 @@ struct RangementDeMachine: View {
                 }
                 .fixedSize()
             }
-            if let erreur { Text(erreur).font(.footnote).foregroundStyle(.red) }
+            if let refus = session.refusDeRangement[machine] {
+                Text(refus).font(.footnote).foregroundStyle(.red)
+            } else if let erreur {
+                Text(erreur).font(.footnote).foregroundStyle(.red)
+            }
         }
         .task { await charger() }
     }
@@ -329,12 +333,15 @@ struct RangementDeMachine: View {
         }
     }
 
+    /// Un refus se garde dans la session : il ne s'efface pas quand la fiche
+    /// se relit, seulement quand un rangement de cette machine réussit.
     private func ranger(dans domaine: Identifiant?) async {
         do {
             try await session.annuaire.ranger(machine: machine, dans: domaine)
+            session.refusDeRangement[machine] = nil
             await charger()
         } catch {
-            erreur = error.messageAnnuaire
+            session.refusDeRangement[machine] = error.messageAnnuaire
         }
     }
 }

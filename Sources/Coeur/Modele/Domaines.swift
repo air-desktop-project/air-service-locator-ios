@@ -41,6 +41,12 @@ struct Domaine: Identifiable, Hashable, Sendable {
     /// — l'abrégé ne distingue pas deux domaines sans alias.
     var titreComplet: String { alias ?? "\(id.texte) - \(TextesDomaines.pasDAlias)" }
     func peut(_ droit: String) -> Bool { droits.contains(droit) }
+
+    /// Peut-on y ranger une machine ? Seulement avec `rattacher` — que le
+    /// propriétaire d'un domaine ordinaire tient toujours. Le domaine racine
+    /// ne le donne à personne, pas même à son propriétaire (il ne contient
+    /// aucune machine en v1) : il n'est donc jamais proposé.
+    var recoitDesMachines: Bool { peut("rattacher") }
 }
 
 /// Un annuaire local — une machine du compte qui sert elle-même ses domaines,

@@ -280,7 +280,7 @@ struct DomaineFenetreVue: View {
         HStack {
             Titre(TextesDomaines.machinesRangees)
             Spacer()
-            if estAMoi || domaine.peut("rattacher") {
+            if domaine.recoitDesMachines {
                 Button("Ranger une machine ici…") { feuille = .ranger(domaine) }.controlSize(.small)
             }
         }

@@ -43,6 +43,10 @@ final class Session {
     private(set) var annuaires: [AnnuaireReel.Reglages] = []
     /// Celui auquel on parle, parmi ``annuaires``.
     private(set) var annuaireChoisi: AnnuaireReel.Reglages?
+    /// Le dernier refus de rangement, par machine : il reste affiché sous
+    /// son menu « Domaine » jusqu'au prochain rangement réussi — même si la
+    /// fiche se relit ou se rouvre.
+    var refusDeRangement: [Identifiant: String] = [:]
     private var preference = PreferenceDAnnuaire()
     /// Ce qui fabrique l'annuaire d'une racine — le transport réel dans
     /// l'application, un banc dans les essais.

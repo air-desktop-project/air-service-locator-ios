@@ -127,6 +127,7 @@ extension ErreurAnnuaire {
         case .tropDEssais: TextesInvitation.tropDEssais
         case .dernierDomaine: TextesDomaines.dernierDomaine
         case .rattachementInterdit: TextesDomaines.rattachementInterdit
+        case .rangementRefuse: TextesDomaines.rangementRefuse
         case .secondMembreDejaDeclare: TextesDomaines.secondDejaDeclare
         case .inscriptionClose: TextesDomaines.inscriptionClose
         }
@@ -233,6 +234,7 @@ enum TextesDomaines {
     static let ranger = "Ranger dans un domaine"
     static let retirerDuDomaine = "Retirer du domaine"
     static let rattachementInterdit = "Vous n'avez pas le droit de ranger une machine dans ce domaine."
+    static let rangementRefuse = "Ce domaine ne peut pas recevoir cette machine."
     static let confier = "Confier à mon annuaire local"
     static let rendreAuxRacines = "Rendre aux racines"
 

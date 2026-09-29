@@ -41,6 +41,10 @@ enum ErreurAnnuaire: Error, Equatable, Sendable {
     /// `403` à `PUT /v1/machines/{m}/domaine` : le domaine existe, mais ce
     /// compte n'a pas le droit d'y ranger.
     case rattachementInterdit
+    /// `404` sur un rangement : le domaine n'est pas de ceux qui reçoivent
+    /// une machine — le domaine racine, qui n'en contient aucune en v1
+    /// (`modele.md`), ou un domaine qui n'est pas (plus) à portée.
+    case rangementRefuse
     /// `409` à `POST /v1/annuaires/{n}/membres` : un second membre est déjà
     /// déclaré — en attente ou accepté.
     case secondMembreDejaDeclare
