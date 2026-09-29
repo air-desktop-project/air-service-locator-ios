@@ -78,10 +78,73 @@ struct AnnuaireLocal: Identifiable, Hashable, Sendable {
     let etat: Etat
     let adresse: String
     let expireLe: Date?
+    /// Comment ce membre juge sa paire (`paire`, décision 70) ; absent tant
+    /// qu'il n'a pas parlé à la racine qui répond depuis qu'elle tourne.
+    var paire: Paire? = nil
+    /// Ce que la racine qui répond sait de la voie de fédération de ce membre
+    /// vers elle (`voie`, décision 86) ; absent sans rapport de lui.
+    var voie: Voie? = nil
+
+    /// `paire` : `seul`, `reglee`, `sans-peer`, `peer-inconnu`.
+    enum Paire: Hashable, Sendable {
+        case seul, reglee, sansPeer, peerInconnu
+        /// Une valeur que cette version ne connaît pas : ni réglée, ni
+        /// fautive — l'écran n'en dit rien.
+        case inconnue(String)
+
+        init(_ texte: String) {
+            switch texte {
+            case "seul": self = .seul
+            case "reglee": self = .reglee
+            case "sans-peer": self = .sansPeer
+            case "peer-inconnu": self = .peerInconnu
+            default: self = .inconnue(texte)
+            }
+        }
+
+        /// Le membre tourne mal réglé : sa paire ne se réplique pas.
+        var malReglee: Bool { self == .sansPeer || self == .peerInconnu }
+    }
+
+    /// `voie` : `ouverte`, `tombee`.
+    enum Voie: Hashable, Sendable {
+        case ouverte, tombee
+        /// Une valeur inconnue compte comme une absence : on n'affirme rien.
+        case inconnue(String)
+
+        init(_ texte: String) {
+            switch texte {
+            case "ouverte": self = .ouverte
+            case "tombee": self = .tombee
+            default: self = .inconnue(texte)
+            }
+        }
+    }
 
     var id: String { membre?.texte ?? annuaire.map { "\($0.texte)+\(adresse)" } ?? "attendue:\(adresse)" }
     /// Le titulaire lui-même (et non un second membre).
     var estTitulaire: Bool { membre != nil && membre == annuaire }
+}
+
+/// L'état d'un annuaire local — d'une paire — tel que la racine qui répond le
+/// voit (`docs/annuaires.md`, « L'état de l'annuaire dans les
+/// applications ») : **vivant** si au moins un membre accepté a sa voie
+/// ouverte ; **parti** si aucun ne l'est et qu'au moins un l'a tombée ; **pas
+/// de nouvelles** sinon — la racine vient de redémarrer, ou aucun membre ne
+/// lui a parlé depuis. Rien n'est affirmé que la racine n'a pas constaté.
+enum EtatDeLAnnuaire: Hashable, Sendable {
+    case vivant, parti, pasDeNouvelles
+
+    init(membres: [AnnuaireLocal]) {
+        let voies = membres.filter { $0.etat == .acceptee }.compactMap(\.voie)
+        if voies.contains(.ouverte) {
+            self = .vivant
+        } else if voies.contains(.tombee) {
+            self = .parti
+        } else {
+            self = .pasDeNouvelles
+        }
+    }
 }
 
 /// Le code qu'une machine présente pour inscrire son annuaire : dix symboles,
@@ -134,12 +197,22 @@ enum ReponsesDomaines {
         ((try? JSONSerialization.jsonObject(with: corps)) as? [String: Any]).flatMap(domaine(depuis:))
     }
 
+    /// Une chaîne non vide, ou rien : `null`, `""`, un nombre ou un booléen
+    /// comptent comme un champ absent.
+    private static func chaine(_ valeur: Any?) -> String? {
+        (valeur as? String).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     /// `GET /v1/annuaires`.
     static func annuaires(_ corps: Data) -> [AnnuaireLocal] {
         objets(corps).compactMap { o in
             guard let etat = o["etat"] as? String, let adresse = o["adresse"] as? String else { return nil }
+            // `paire` et `voie` sont des chaînes (et non des booléens) : un
+            // champ absent, ou d'un autre type, se lit comme une absence.
             return AnnuaireLocal(membre: id(o["membre"], .annuaire), annuaire: id(o["annuaire"], .annuaire),
-                                 etat: .init(etat), adresse: adresse, expireLe: date(o["expire_a"]))
+                                 etat: .init(etat), adresse: adresse, expireLe: date(o["expire_a"]),
+                                 paire: chaine(o["paire"]).map(AnnuaireLocal.Paire.init),
+                                 voie: chaine(o["voie"]).map(AnnuaireLocal.Voie.init))
         }
     }
 

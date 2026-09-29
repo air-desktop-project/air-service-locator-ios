@@ -261,6 +261,57 @@ enum TextesDomaines {
         }
     }
 
+    // L'état de l'annuaire local (décisions 70 et 86) — à la lettre :
+    // Android dit les mêmes.
+    static let vivant = "Vivant"
+    static let parti = "Parti"
+    static let pasDeNouvelles = "Pas de nouvelles"
+    static let voieOuverte = "Voie ouverte"
+    static let voieTombee = "Voie tombée"
+    static let paireReglee = "Paire réglée"
+    static let paireMalReglee = "Paire mal réglée"
+    /// Ce qu'on dit d'une valeur absente ou inconnue.
+    static let inconnu = "—"
+
+    static func etat(_ etat: EtatDeLAnnuaire) -> String {
+        switch etat {
+        case .vivant: vivant
+        case .parti: parti
+        case .pasDeNouvelles: pasDeNouvelles
+        }
+    }
+
+    static func voie(_ voie: AnnuaireLocal.Voie?) -> String {
+        switch voie {
+        case .ouverte: voieOuverte
+        case .tombee: voieTombee
+        case .inconnue, .none: inconnu
+        }
+    }
+
+    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV5R…X87P) »,
+    /// « le second membre (n-4EQRD1…8Z9) » — le rôle et l'identité, plutôt
+    /// qu'une adresse IPv6 illisible.
+    static func membreDeLaPaire(_ membre: AnnuaireLocal) -> String {
+        let role = membre.estTitulaire ? "le titulaire" : "le second membre"
+        return membre.membre.map { "\(role) (\($0.abrege))" } ?? role
+    }
+
+    /// La phrase qui dit quoi faire d'un membre mal réglé ; `nil` s'il ne
+    /// l'est pas. À la lettre : Android dit la même.
+    static func paireFautive(_ membre: AnnuaireLocal) -> String? {
+        let qui = membreDeLaPaire(membre)
+        let m = qui.prefix(1).uppercased() + qui.dropFirst()
+        switch membre.paire {
+        case .sansPeer:
+            return "\(m) tourne sans --peer : la paire ne se réplique pas ; réglez --peer et --peer-key sur cette machine."
+        case .peerInconnu:
+            return "\(m) désigne par --peer un annuaire qui n'est pas l'autre membre de la paire ; corrigez --peer et --peer-key sur cette machine."
+        default:
+            return nil
+        }
+    }
+
     static let administration = "Administration des racines"
     static let aucuneInscription = "Aucune inscription en attente."
     static let accepter = "Accepter"

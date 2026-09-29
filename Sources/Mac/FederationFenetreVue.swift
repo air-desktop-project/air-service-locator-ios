@@ -20,6 +20,45 @@ extension AnnuaireLocal.Etat {
 
 // MARK: - Mon annuaire local
 
+extension EtatDeLAnnuaire {
+    /// Vivant, parti, pas de nouvelles : en badge, avec sa couleur.
+    @MainActor var badge: Badge {
+        switch self {
+        case .vivant: Badge(TextesDomaines.vivant, couleur: Couleurs.joignable)
+        case .parti: Badge(TextesDomaines.parti, couleur: Couleurs.attention)
+        case .pasDeNouvelles: Badge(TextesDomaines.pasDeNouvelles, couleur: .secondary)
+        }
+    }
+}
+
+/// « Voie ouverte », « Voie tombée », ou « — » : la voie d'un membre vers
+/// la racine qui répond.
+struct EtiquetteDeVoie: View {
+    let voie: AnnuaireLocal.Voie?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            switch voie {
+            case .ouverte: PastilleMac(couleur: Couleurs.joignable)
+            case .tombee: PastilleMac(couleur: Couleurs.attention)
+            default: EmptyView()
+            }
+            Text(TextesDomaines.voie(voie)).foregroundStyle(couleur)
+        }
+        .font(.callout)
+        .fixedSize()
+    }
+
+    /// Ouverte en vert, tombée en orange, inconnue en gris.
+    private var couleur: Color {
+        switch voie {
+        case .ouverte: Couleurs.joignable
+        case .tombee: Couleurs.attention
+        default: .secondary
+        }
+    }
+}
+
 /// Les feuilles de l'annuaire local.
 enum FeuilleAnnuaire: Identifiable {
     /// Déclarer un annuaire (`nil`) ou le second membre d'un titulaire.
@@ -107,16 +146,27 @@ struct AnnuaireLocalFenetreVue: View {
         let n = titulaire.annuaire ?? titulaire.membre
         let seconds = locaux.filter { $0.annuaire == n && $0.membre != n && $0.etat != .retiree }
         let servis = domaines.filter { n.map { .annuaire($0) } == $0.hebergePar }
+        let membres = [titulaire] + seconds
+        let etat = EtatDeLAnnuaire(membres: membres)
+        let fautes = membres.compactMap(TextesDomaines.paireFautive)
         Tuile {
             HStack(spacing: 10) {
                 Image(systemName: "server.rack").foregroundStyle(.secondary)
                 Text("Titulaire de la paire").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
+                // L'annuaire, tel que la racine qui répond le voit ; puis
+                // l'inscription du titulaire.
+                if titulaire.etat == .acceptee { etat.badge }
                 titulaire.etat.badge
             }
             if let membre = titulaire.membre {
                 LigneAGeste("Identifiant") { TexteFixe(membre.texte) } geste: { BoutonCopier(membre.texte) }
             }
-            LigneAGeste("Adresse") { TexteFixe(titulaire.adresse) } geste: { BoutonCopier(titulaire.adresse) }
+            LigneAGeste("Adresse") {
+                HStack(spacing: 10) {
+                    TexteFixe(titulaire.adresse)
+                    if titulaire.etat == .acceptee { EtiquetteDeVoie(voie: titulaire.voie) }
+                }
+            } geste: { BoutonCopier(titulaire.adresse) }
             LigneAGeste("Second membre") {
                 if seconds.isEmpty {
                     Text("aucun — la paire n'a pas de secours").foregroundStyle(.secondary)
@@ -127,7 +177,12 @@ struct AnnuaireLocalFenetreVue: View {
                                 TexteFixe(second.membre?.texte ?? second.adresse)
                                 second.etat.badge
                             }
-                            if second.membre != nil { TexteFixe(second.adresse, secondaire: true) }
+                            if second.membre != nil {
+                                HStack(spacing: 10) {
+                                    TexteFixe(second.adresse, secondaire: true)
+                                    if second.etat == .acceptee { EtiquetteDeVoie(voie: second.voie) }
+                                }
+                            }
                         }
                     }
                 }
@@ -138,6 +193,21 @@ struct AnnuaireLocalFenetreVue: View {
                     } else if seconds.isEmpty {
                         Button("Déclarer…") { feuille = .declarer(titulaire: n) }
                     }
+                }
+            }
+            // La paire : réglée, ou mal réglée — dit, avec quoi faire. Rien
+            // pour un titulaire seul, ni tant que la racine n'en sait rien.
+            if !fautes.isEmpty {
+                LigneAGeste("Paire") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(TextesDomaines.paireMalReglee, systemImage: "exclamationmark.triangle.fill").fontWeight(.semibold)
+                        ForEach(fautes, id: \.self) { Text($0).fixedSize(horizontal: false, vertical: true) }
+                    }
+                    .foregroundStyle(.red)
+                }
+            } else if membres.contains(where: { $0.paire == .reglee }) {
+                LigneAGeste("Paire") {
+                    Label(TextesDomaines.paireReglee, systemImage: "checkmark").font(.callout).foregroundStyle(.secondary)
                 }
             }
             LigneAGeste("Domaines servis") {
