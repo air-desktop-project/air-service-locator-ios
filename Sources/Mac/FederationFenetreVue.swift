@@ -25,7 +25,7 @@ extension EtatDeLAnnuaire {
     @MainActor var badge: Badge {
         switch self {
         case .vivant: Badge(TextesDomaines.vivant, couleur: Couleurs.joignable)
-        case .parti: Badge(TextesDomaines.parti, couleur: .red)
+        case .parti: Badge(TextesDomaines.parti, couleur: Couleurs.attention)
         case .pasDeNouvelles: Badge(TextesDomaines.pasDeNouvelles, couleur: .secondary)
         }
     }
@@ -40,13 +40,22 @@ struct EtiquetteDeVoie: View {
         HStack(spacing: 4) {
             switch voie {
             case .ouverte: PastilleMac(couleur: Couleurs.joignable)
-            case .tombee: PastilleMac(couleur: .red)
+            case .tombee: PastilleMac(couleur: Couleurs.attention)
             default: EmptyView()
             }
-            Text(TextesDomaines.voie(voie))
+            Text(TextesDomaines.voie(voie)).foregroundStyle(couleur)
         }
-        .font(.callout).foregroundStyle(.secondary)
+        .font(.callout)
         .fixedSize()
+    }
+
+    /// Ouverte en vert, tombée en orange, inconnue en gris.
+    private var couleur: Color {
+        switch voie {
+        case .ouverte: Couleurs.joignable
+        case .tombee: Couleurs.attention
+        default: .secondary
+        }
     }
 }
 
@@ -139,7 +148,7 @@ struct AnnuaireLocalFenetreVue: View {
         let servis = domaines.filter { n.map { .annuaire($0) } == $0.hebergePar }
         let membres = [titulaire] + seconds
         let etat = EtatDeLAnnuaire(membres: membres)
-        let fautes = membres.compactMap { m in TextesDomaines.paireFautive(m.paire, membre: m.membre?.abrege ?? m.adresse) }
+        let fautes = membres.compactMap(TextesDomaines.paireFautive)
         Tuile {
             HStack(spacing: 10) {
                 Image(systemName: "server.rack").foregroundStyle(.secondary)
@@ -198,7 +207,7 @@ struct AnnuaireLocalFenetreVue: View {
                 }
             } else if membres.contains(where: { $0.paire == .reglee }) {
                 LigneAGeste("Paire") {
-                    Label(TextesDomaines.paireReglee, systemImage: "checkmark.circle.fill").foregroundStyle(Couleurs.joignable)
+                    Label(TextesDomaines.paireReglee, systemImage: "checkmark").font(.callout).foregroundStyle(.secondary)
                 }
             }
             LigneAGeste("Domaines servis") {

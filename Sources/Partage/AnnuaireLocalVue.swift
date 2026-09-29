@@ -54,11 +54,12 @@ struct AnnuaireLocalVue: View {
                         Text("\(annuaire.adresse) · \(TextesDomaines.etat(annuaire.etat))")
                             .font(.footnote).foregroundStyle(.secondary)
                         if annuaire.etat == .acceptee {
-                            Text(TextesDomaines.voie(annuaire.voie)).font(.footnote).foregroundStyle(.secondary)
+                            Text(TextesDomaines.voie(annuaire.voie)).font(.footnote)
+                                .foregroundStyle(annuaire.voie == .ouverte ? Couleurs.joignable : annuaire.voie == .tombee ? Couleurs.attention : .secondary)
                             if annuaire.paire == .reglee {
-                                Label(TextesDomaines.paireReglee, systemImage: "checkmark.circle.fill")
-                                    .font(.footnote).foregroundStyle(Couleurs.joignable)
-                            } else if let faute = TextesDomaines.paireFautive(annuaire.paire, membre: annuaire.membre?.abrege ?? annuaire.adresse) {
+                                Label(TextesDomaines.paireReglee, systemImage: "checkmark")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            } else if let faute = TextesDomaines.paireFautive(annuaire) {
                                 Label("\(TextesDomaines.paireMalReglee) — \(faute)", systemImage: "exclamationmark.triangle.fill")
                                     .font(.footnote).foregroundStyle(.red)
                             }

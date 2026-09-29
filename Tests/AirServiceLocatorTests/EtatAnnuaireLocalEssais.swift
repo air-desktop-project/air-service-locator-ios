@@ -22,8 +22,8 @@ struct EtatAnnuaireLocalEssais {
         #expect(TextesDomaines.voie(membres[1].voie) == "Voie tombée")
     }
 
-    /// Un champ absent, une valeur inconnue, un booléen à la place d'une
-    /// chaîne : la liste se lit, et l'écran dit « — ».
+    /// Un champ absent, une valeur inconnue, vide, `null`, un booléen ou un
+    /// nombre à la place d'une chaîne : la liste se lit, et l'écran dit « — ».
     @Test func unChampAbsentOuInconnuSeLitSansCasser() {
         let membres = Self.liste(#","paire":"autre-chose","voie":"entrouverte""#, #","paire":true,"voie":1"#)
         #expect(membres.count == 2)
@@ -33,7 +33,10 @@ struct EtatAnnuaireLocalEssais {
         #expect(membres[1].voie == nil)
         #expect(TextesDomaines.voie(membres[0].voie) == "—")
         #expect(TextesDomaines.voie(nil) == "—")
-        #expect(TextesDomaines.paireFautive(membres[0].paire, membre: "x") == nil)
+        #expect(TextesDomaines.paireFautive(membres[0]) == nil)
+        let vides = Self.liste(#","paire":"","voie":"""#, #","paire":null,"voie":null"#)
+        #expect(vides.map(\.paire) == [nil, nil])
+        #expect(vides.map(\.voie) == [nil, nil])
     }
 
     @Test func vivantSiUnMembreALaVoieOuverte() {
@@ -63,11 +66,16 @@ struct EtatAnnuaireLocalEssais {
         #expect(EtatDeLAnnuaire(membres: membres) == .pasDeNouvelles)
     }
 
-    @Test func unePaireMalRegleeSeDitAvecQuoiFaire() {
-        #expect(TextesDomaines.paireFautive(.sansPeer, membre: "helium")?.hasPrefix("helium tourne sans --peer") == true)
-        #expect(TextesDomaines.paireFautive(.peerInconnu, membre: "helium")?.contains("--peer-key") == true)
-        #expect(TextesDomaines.paireFautive(.reglee, membre: "helium") == nil)
-        #expect(TextesDomaines.paireFautive(.seul, membre: "helium") == nil)
-        #expect(TextesDomaines.paireFautive(nil, membre: "helium") == nil)
+    /// La phrase nomme le membre par son rôle et son identité abrégée, pas
+    /// par une adresse IPv6.
+    @Test func unePaireMalRegleeSeDitAvecQuoiFaire() throws {
+        let membres = Self.liste(#","paire":"sans-peer""#, #","paire":"peer-inconnu""#)
+        let titulaire = try Identifiant.analyser(Self.speedy, genre: .annuaire).abrege
+        let second = try Identifiant.analyser(Self.helium, genre: .annuaire).abrege
+        #expect(TextesDomaines.paireFautive(membres[0]) == "Le titulaire (\(titulaire)) tourne sans --peer : la paire ne se réplique pas ; réglez --peer et --peer-key sur cette machine.")
+        #expect(TextesDomaines.paireFautive(membres[1]) == "Le second membre (\(second)) désigne par --peer un annuaire qui n'est pas l'autre membre de la paire ; corrigez --peer et --peer-key sur cette machine.")
+        for autre in [#","paire":"reglee""#, #","paire":"seul""#, ""] {
+            #expect(TextesDomaines.paireFautive(Self.liste(autre, "")[0]) == nil)
+        }
     }
 }

@@ -289,16 +289,26 @@ enum TextesDomaines {
         }
     }
 
+    /// Qui est en faute, dans une phrase : « le titulaire (n-7MSV5R…X87P) »,
+    /// « le second membre (n-4EQRD1…8Z9) » — le rôle et l'identité, plutôt
+    /// qu'une adresse IPv6 illisible.
+    static func membreDeLaPaire(_ membre: AnnuaireLocal) -> String {
+        let role = membre.estTitulaire ? "le titulaire" : "le second membre"
+        return membre.membre.map { "\(role) (\($0.abrege))" } ?? role
+    }
+
     /// La phrase qui dit quoi faire d'un membre mal réglé ; `nil` s'il ne
-    /// l'est pas.
-    static func paireFautive(_ paire: AnnuaireLocal.Paire?, membre: String) -> String? {
-        switch paire {
+    /// l'est pas. À la lettre : Android dit la même.
+    static func paireFautive(_ membre: AnnuaireLocal) -> String? {
+        let qui = membreDeLaPaire(membre)
+        let m = qui.prefix(1).uppercased() + qui.dropFirst()
+        switch membre.paire {
         case .sansPeer:
-            "\(membre) tourne sans --peer : la paire ne se réplique pas ; réglez --peer et --peer-key sur cette machine."
+            return "\(m) tourne sans --peer : la paire ne se réplique pas ; réglez --peer et --peer-key sur cette machine."
         case .peerInconnu:
-            "\(membre) désigne par --peer un annuaire qui n'est pas l'autre membre de la paire ; corrigez --peer et --peer-key sur cette machine."
+            return "\(m) désigne par --peer un annuaire qui n'est pas l'autre membre de la paire ; corrigez --peer et --peer-key sur cette machine."
         default:
-            nil
+            return nil
         }
     }
 

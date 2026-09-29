@@ -197,6 +197,12 @@ enum ReponsesDomaines {
         ((try? JSONSerialization.jsonObject(with: corps)) as? [String: Any]).flatMap(domaine(depuis:))
     }
 
+    /// Une chaîne non vide, ou rien : `null`, `""`, un nombre ou un booléen
+    /// comptent comme un champ absent.
+    private static func chaine(_ valeur: Any?) -> String? {
+        (valeur as? String).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     /// `GET /v1/annuaires`.
     static func annuaires(_ corps: Data) -> [AnnuaireLocal] {
         objets(corps).compactMap { o in
@@ -205,8 +211,8 @@ enum ReponsesDomaines {
             // champ absent, ou d'un autre type, se lit comme une absence.
             return AnnuaireLocal(membre: id(o["membre"], .annuaire), annuaire: id(o["annuaire"], .annuaire),
                                  etat: .init(etat), adresse: adresse, expireLe: date(o["expire_a"]),
-                                 paire: (o["paire"] as? String).map(AnnuaireLocal.Paire.init),
-                                 voie: (o["voie"] as? String).map(AnnuaireLocal.Voie.init))
+                                 paire: chaine(o["paire"]).map(AnnuaireLocal.Paire.init),
+                                 voie: chaine(o["voie"]).map(AnnuaireLocal.Voie.init))
         }
     }
 
