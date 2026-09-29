@@ -109,3 +109,11 @@ Pourquoi ces deux réglages, et pas un `xcodebuild build -scheme` nu :
 
 Le xcframework doit porter la tranche macOS : `scripts/construire-mobile.sh
 apple` dans le dépôt client.
+
+**`asl` est dans le paquet** (`Contents/Helpers/asl`, README du dépôt
+client, « asl sur macOS ») : la construction le reprend dans
+`../air-service-locator-client/target/asl-macos/asl`, que produit
+`scripts/asl-macos.sh` du dépôt client, et le signe avec
+`asl.entitlements` avant l'application. Absent, la construction échoue en
+le disant. Préférences › Terminal pose le lien `~/.local/bin/asl` dans le
+dossier que l'utilisateur désigne, ou donne la commande `ln -s`.
