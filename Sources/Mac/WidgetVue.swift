@@ -93,20 +93,7 @@ struct WidgetVue: View {
                 Button {
                     ouvrir(sur: .machine(machine.id))
                 } label: {
-                    HStack(spacing: 10) {
-                        PastilleMac(couleur: machine.couleur)
-                        Text(machine.titre).font(.callout.weight(.medium))
-                        if machine.id == machineDeCeMac?.identifiant {
-                            Text("ce Mac").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Text(machine.id.abrege).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
-                        Text(machine.etatCourt).font(.caption).foregroundStyle(.secondary)
-                            .frame(width: 78, alignment: .trailing)
-                    }
-                    .padding(.horizontal, 14)
-                    .frame(height: 30)
-                    .contentShape(Rectangle())
+                    TuileDeMachine(machine: machine, estCeMac: machine.id == machineDeCeMac?.identifiant)
                 }
                 .buttonStyle(.plain)
                 .help("Ouvrir cette machine dans la fenêtre")
@@ -150,14 +137,71 @@ struct WidgetVue: View {
     }
 }
 
+/// Une machine dans le panneau de la barre de menus.
+///
+/// # Deux lignes, et rien de tronqué
+///
+/// C'était un tableau à trois colonnes. Dans 380 points, le nom
+/// (« oxygen@air-dictator-house ») retombait à la ligne et l'identifiant ne
+/// tenait qu'abrégé — `m-26W6…H4S` —, c'est-à-dire illisible : on ne
+/// reconnaît pas une machine à ses dix caractères du milieu manquants, et on
+/// ne les recopie pas. Le nom prend donc sa ligne, l'identifiant ENTIER la
+/// sienne, et l'état se range au bout de la seconde, là où il reste de la
+/// place.
+///
+/// `lineLimit(1)` avec `fixedSize` : plutôt déborder que couper. Les noms
+/// d'aujourd'hui tiennent au large (le plus long, vingt-cinq caractères,
+/// occupe la moitié de la largeur).
+private struct TuileDeMachine: View {
+    let machine: Machine
+    let estCeMac: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                PastilleMac(couleur: machine.couleur)
+                Text(machine.titre).font(.callout.weight(.medium))
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                if estCeMac {
+                    Text("ce Mac").font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Couleurs.accent.opacity(0.14), in: Capsule())
+                        .foregroundStyle(Couleurs.accent)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(machine.id.texte).font(.system(.caption, design: .monospaced))
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 6)
+                Badge(machine.etatCourt, couleur: machine.couleur, encre: machine.encre)
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+            }
+            .padding(.leading, 16)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+}
+
 extension Machine {
     /// La couleur de la puce : ce que l'écran iPhone montre aussi.
-    var couleur: Color {
-        if unServiceOscille { return Couleurs.attention }
-        if services.contains(where: { if case .annonce = $0.etat { true } else { false } }) { return Couleurs.joignable }
-        if case .attendue = cle { return Couleurs.parti }
-        if case .revoquee = cle { return Couleurs.attention }
-        return Couleurs.parti
+    var couleur: Color { teintes.pastille }
+    /// De quoi écrire son état en badge : le fond prend la couleur de la
+    /// puce, l'encre sa teinte lisible (``Couleurs``).
+    var encre: Color { teintes.encre }
+
+    /// Les deux d'un coup, pour qu'elles ne divergent jamais.
+    private var teintes: (pastille: Color, encre: Color) {
+        if unServiceOscille { return (Couleurs.attention, Couleurs.Texte.attention) }
+        if services.contains(where: { if case .annonce = $0.etat { true } else { false } }) {
+            return (Couleurs.joignable, Couleurs.Texte.joignable)
+        }
+        if case .revoquee = cle { return (Couleurs.attention, Couleurs.Texte.attention) }
+        return (Couleurs.parti, .secondary)
     }
 
     /// Un mot pour le widget : ce que la machine fait en ce moment.
