@@ -122,14 +122,20 @@ struct FenetreVue: View {
                 HStack {
                     Label("Machines", systemImage: "desktopcomputer")
                     Spacer()
-                    Text("\(donnees.machines.count)").foregroundStyle(.secondary)
+                    PastilleCompteur(nombre: donnees.machines.count)
                 }
+                // UN EN-TÊTE DE SECTION N'A PAS LES MARGES D'UNE LIGNE :
+                // macOS lui en donne de plus larges, et sa pastille tombait
+                // quatorze points à droite de celles d'« Appareils » et
+                // d'« Accès ». Le décalage se reprend ici, pour que les trois
+                // s'alignent sur le même bord.
+                .padding(.trailing, Self.ecartDeLEnTete)
             }
             Section {
                 HStack {
                     Label("Appareils", systemImage: "iphone.gen3")
                     Spacer()
-                    Text("\(donnees.appareilsVivants.count)").foregroundStyle(.secondary)
+                    PastilleCompteur(nombre: donnees.appareilsVivants.count)
                 }
                 .tag(EtatFenetre.Page.appareils)
                 HStack {
@@ -140,7 +146,7 @@ struct FenetreVue: View {
                     if session.nouveautes > 0 {
                         CompteurLateral(texte: "\(session.nouveautes) \(TextesNouveautes.marque)")
                     }
-                    Text("\(donnees.autorisations.filter { !$0.estRevoquee }.count)").foregroundStyle(.secondary)
+                    PastilleCompteur(nombre: donnees.autorisations.filter { !$0.estRevoquee }.count)
                 }
                 .tag(EtatFenetre.Page.acces)
             }
@@ -179,6 +185,10 @@ struct FenetreVue: View {
             .padding(.vertical, 10)
         }
     }
+
+    /// Ce dont l'en-tête d'une section dépasse, à droite, une ligne
+    /// ordinaire de la barre latérale — mesuré sur macOS 15.
+    private static let ecartDeLEnTete: CGFloat = 14
 
     private var versionDeLAnnuaire: String {
         switch donnees.versionAnnuaire {
@@ -288,7 +298,7 @@ struct SansCompteVue: View {
                     Text(TextesInvitation.duree).font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if let erreur = erreur ?? session.erreurDeRelecture { Text(erreur).font(.callout).foregroundStyle(.red) }
+            if let erreur = erreur ?? session.erreurDeRelecture { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
             HStack {
                 Button {
                     Task { await ouvrir() }
@@ -326,6 +336,33 @@ struct SansCompteVue: View {
 /// en attente. **Pleine, texte blanc** : une capsule pâle au texte bleu
 /// disparaissait dans le bleu d'une ligne sélectionnée ; celle-ci se lit
 /// sur les deux fonds.
+/// Le compteur d'une entrée de la barre latérale — machines, appareils,
+/// accès. **Une pastille bleue à chiffres blancs**, et non un nombre gris
+/// perdu au bout de la ligne : on le lit d'un coup d'œil, sur une ligne
+/// sélectionnée comme sur les autres.
+///
+/// **Les trois ont la même largeur**, tenue pour trois chiffres : sans cela
+/// « 5 » et « 128 » donnent deux pastilles de tailles différentes, et leurs
+/// bords gauches dansent d'une ligne à l'autre.
+struct PastilleCompteur: View {
+    let nombre: Int
+
+    var body: some View {
+        Text("\(nombre)")
+            .font(.caption.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.vertical, 1)
+            .frame(minWidth: Self.largeur)
+            .background(Couleurs.accent, in: Capsule())
+            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 0.5))
+            .fixedSize()
+    }
+
+    /// De quoi écrire trois chiffres, marges comprises.
+    static let largeur: CGFloat = 34
+}
+
 struct CompteurLateral: View {
     let texte: String
 

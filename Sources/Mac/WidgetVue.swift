@@ -32,7 +32,7 @@ struct WidgetVue: View {
                     .font(.callout).foregroundStyle(.secondary).padding(14)
             }
             if let erreur = donnees.erreur ?? session.erreurDeRelecture {
-                Text(erreur).font(.caption).foregroundStyle(.red).padding(.horizontal, 14).padding(.bottom, 8)
+                Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte).padding(.horizontal, 14).padding(.bottom, 8)
             }
             Divider()
             pied

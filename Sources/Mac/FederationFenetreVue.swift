@@ -10,9 +10,9 @@ extension AnnuaireLocal.Etat {
         let texte = TextesDomaines.etat(self)
         let libelle = texte.prefix(1).uppercased() + texte.dropFirst()
         switch self {
-        case .acceptee: return Badge(libelle, couleur: Couleurs.joignable)
-        case .attendue, .enAttente: return Badge(libelle, couleur: Couleurs.attention)
-        case .refusee: return Badge(libelle, couleur: .red)
+        case .acceptee: return Badge(libelle, couleur: Couleurs.joignable, encre: Couleurs.Texte.joignable)
+        case .attendue, .enAttente: return Badge(libelle, couleur: Couleurs.attention, encre: Couleurs.Texte.attention)
+        case .refusee: return Badge(libelle, couleur: Couleurs.alerte, encre: Couleurs.Texte.alerte)
         case .retiree, .inconnu: return Badge(libelle, couleur: .secondary)
         }
     }
@@ -24,8 +24,8 @@ extension EtatDeLAnnuaire {
     /// Vivant, parti, pas de nouvelles : en badge, avec sa couleur.
     @MainActor var badge: Badge {
         switch self {
-        case .vivant: Badge(TextesDomaines.vivant, couleur: Couleurs.joignable)
-        case .parti: Badge(TextesDomaines.parti, couleur: Couleurs.attention)
+        case .vivant: Badge(TextesDomaines.vivant, couleur: Couleurs.joignable, encre: Couleurs.Texte.joignable)
+        case .parti: Badge(TextesDomaines.parti, couleur: Couleurs.attention, encre: Couleurs.Texte.attention)
         case .pasDeNouvelles: Badge(TextesDomaines.pasDeNouvelles, couleur: .secondary)
         }
     }
@@ -49,11 +49,12 @@ struct EtiquetteDeVoie: View {
         .fixedSize()
     }
 
-    /// Ouverte en vert, tombée en orange, inconnue en gris.
+    /// Ouverte en vert, tombée en orange, inconnue en gris — la teinte
+    /// lisible, puisque c'est un mot et non la pastille.
     private var couleur: Color {
         switch voie {
-        case .ouverte: Couleurs.joignable
-        case .tombee: Couleurs.attention
+        case .ouverte: Couleurs.Texte.joignable
+        case .tombee: Couleurs.Texte.attention
         default: .secondary
         }
     }
@@ -92,7 +93,7 @@ struct AnnuaireLocalFenetreVue: View {
 
     var body: some View {
         PageFenetre(introduction: "Une machine de votre compte qui sert elle-même vos domaines, inscrite auprès des racines. Une paire tient au plus deux membres : le titulaire et son secours.") {
-            if let erreur { Text(erreur).foregroundStyle(.red) }
+            if let erreur { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             if charge && titulaires.isEmpty && declarations.isEmpty {
                 ContentUnavailableView("Aucun annuaire local", systemImage: "server.rack",
                                        description: Text("Déclarez-en un avec « Déclarer un annuaire local… » : l'application donne le code que la machine présentera aux racines."))
@@ -203,7 +204,7 @@ struct AnnuaireLocalFenetreVue: View {
                         Label(TextesDomaines.paireMalReglee, systemImage: "exclamationmark.triangle.fill").fontWeight(.semibold)
                         ForEach(fautes, id: \.self) { Text($0).fixedSize(horizontal: false, vertical: true) }
                     }
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Couleurs.Texte.alerte)
                 }
             } else if membres.contains(where: { $0.paire == .reglee }) {
                 LigneAGeste("Paire") {
@@ -380,7 +381,7 @@ struct AdministrationFenetreVue: View {
                                        description: Text("Quand un annuaire local demande à être inscrit auprès des racines, sa demande apparaît ici pour être acceptée ou refusée."))
             } else {
                 PageFenetre(introduction: "Les annuaires locaux qui demandent à être inscrits auprès des racines. Chaque décision demande confirmation.") {
-                    if let erreur { Text(erreur).foregroundStyle(.red) }
+                    if let erreur { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
                     ForEach(inscriptions) { tuile($0) }
                 }
             }

@@ -42,7 +42,7 @@ struct EnrolerAppareilVue: View {
                     Section { ProgressView("Enrôlement…") }
                 }
                 if let erreur {
-                    Section { Text(erreur).foregroundStyle(.red) }
+                    Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
                 }
             }
         }

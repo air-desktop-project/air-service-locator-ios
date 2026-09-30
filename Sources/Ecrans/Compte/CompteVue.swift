@@ -27,7 +27,7 @@ struct CompteVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if let compte = session.compte {
                 Section {
@@ -284,7 +284,7 @@ struct AliasVue: View {
                 Text("\(TextesNoms.regleAliasDeCompte) Il est public par construction : quiconque peut essayer un alias et découvrir qu'il existe. Il ne rend rien d'autre que votre identifiant — et c'est l'identifiant qui fait foi : un autre compte peut prendre un alias qui ressemble au vôtre.")
             }
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if session.compte?.alias != nil {
                 Section {

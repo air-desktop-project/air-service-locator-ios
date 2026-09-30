@@ -189,10 +189,14 @@ extension LigneAGeste where Geste == EmptyView {
 struct Badge: View {
     let texte: String
     let couleur: Color
+    /// De quoi écrire par-dessus : le vert et l'orange des boutons de
+    /// fenêtre ne se lisent pas sur fond clair (``Couleurs``).
+    var encre: Color?
 
-    init(_ texte: String, couleur: Color) {
+    init(_ texte: String, couleur: Color, encre: Color? = nil) {
         self.texte = texte
         self.couleur = couleur
+        self.encre = encre
     }
 
     var body: some View {
@@ -200,7 +204,7 @@ struct Badge: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 8).padding(.vertical, 2)
             .background(couleur.opacity(0.18), in: Capsule())
-            .foregroundStyle(couleur)
+            .foregroundStyle(encre ?? couleur)
             .fixedSize()
     }
 }
@@ -274,7 +278,7 @@ struct FeuilleDeSaisie<Formulaire: View, Gauche: View>: View {
             Text(titre).font(.title3.weight(.semibold))
             if let explication { Text(explication).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             formulaire()
-            if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
+            if let erreur { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
             HStack(spacing: 8) {
                 gauche()
                 Spacer()
@@ -331,7 +335,7 @@ struct BoutonDestructif: View {
 
     var body: some View {
         Button(role: .destructive, action: action) {
-            Text(titre).foregroundStyle(.red)
+            Text(titre).foregroundStyle(Couleurs.Texte.alerte)
         }
         .fixedSize()
     }

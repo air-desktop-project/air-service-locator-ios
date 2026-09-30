@@ -19,7 +19,7 @@ struct DeclarerVueMac: View {
             RegleDuNom(nom: nom)
             Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce).font(.caption)
             Toggle("Lecture — elle peut demander où joindre un service", isOn: $lecture).font(.caption)
-            if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+            if let erreur { Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte) }
             Button("Déclarer") { Task { await declarer() } }
                 .disabled(!Machine.nomValide(nom))
         }
@@ -65,7 +65,7 @@ struct CeMacMachineVueMac: View {
             RegleDuNom(nom: gestes.nomDeCeMac)
             Toggle("Annonce — ses daemons peuvent annoncer leurs ports", isOn: $annonce).font(.caption)
             Toggle("Lecture — il peut demander où joindre un service", isOn: $lecture).font(.caption)
-            if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+            if let erreur { Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte) }
             HStack {
                 Button("Déclarer et enrôler ce Mac") { Task { await faire() } }
                     .disabled(enCours || !Machine.nomValide(gestes.nomDeCeMac))
@@ -122,11 +122,11 @@ struct RejoindreVueMac: View {
                 LigneCopiableMac(titre: "La clé publique de ce Mac", texte: Invitation.cle(cle).texte)
                 Text("2. Collez ici sa réponse ; Touch ID prouvera la clé.").font(.caption)
                 TextField("asl:appareil:…", text: $gestes.reponseCollee).textFieldStyle(.roundedBorder).font(.system(.caption, design: .monospaced))
-                if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+                if let erreur { Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte) }
                 Button("Rejoindre") { Task { await rejoindre() } }
                     .disabled(enCours || Invitation.analyser(gestes.reponseCollee) == nil)
             } else if let erreur {
-                Text(erreur).font(.caption).foregroundStyle(.red)
+                Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte)
             }
         }
         .padding(.top, 6)
@@ -172,7 +172,7 @@ struct EnrolerAppareilVueMac: View {
             } else {
                 Text("Sur le nouveau téléphone : « Rejoindre un compte existant ». Collez ici la clé qu'il montre.").font(.caption)
                 TextField("asl:cle:…", text: $gestes.cleAEnroler).textFieldStyle(.roundedBorder).font(.system(.caption, design: .monospaced))
-                if let erreur { Text(erreur).font(.caption).foregroundStyle(.red) }
+                if let erreur { Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte) }
                 Button("Enrôler") { Task { await enroler() } }
                     .disabled(Invitation.analyser(gestes.cleAEnroler) == nil)
             }

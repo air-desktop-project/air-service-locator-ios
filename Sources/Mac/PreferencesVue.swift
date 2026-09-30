@@ -90,7 +90,7 @@ struct PreferencesVue: View {
                 LabeledContent("Dossier pour asl") { Copiable(dossier) }
             }
             if let alerte = machineDeCeMac?.alerte {
-                Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Couleurs.Texte.alerte)
             }
             Text("La clé d'appareil vit dans la Secure Enclave et signe sous Touch ID ; la clé de machine est dans le dossier ci-dessus, au format de l'utilitaire asl, en 0600. Ni l'une ni l'autre ne quitte ce Mac.")
                 .font(.caption).foregroundStyle(.secondary)

@@ -64,7 +64,7 @@ struct DomainesFenetreVue: View {
 
     var body: some View {
         PageFenetre(introduction: "Les domaines que vous possédez, et ceux où l'un de vos groupes tient un droit.") {
-            if let erreur = lecture.erreur { Text(erreur).foregroundStyle(.red) }
+            if let erreur = lecture.erreur { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             if lecture.charge && lecture.domaines.isEmpty {
                 ContentUnavailableView("Aucun domaine", systemImage: "square.stack.3d.up",
                                        description: Text("Un domaine range vos machines ; créez-en un avec « Créer un domaine… »."))
@@ -140,7 +140,7 @@ struct BadgeDeRole: View {
         if domaine.proprietaire == session.compte?.identifiant {
             Badge("Propriétaire", couleur: Couleurs.accent)
         } else if domaine.peut("administrer") {
-            Badge("Administrer", couleur: Couleurs.attention)
+            Badge("Administrer", couleur: Couleurs.attention, encre: Couleurs.Texte.attention)
         } else {
             Badge(domaine.droits.joined(separator: " · "), couleur: .secondary)
         }
@@ -218,7 +218,7 @@ struct DomaineFenetreVue: View {
 
     var body: some View {
         PageFenetre {
-            if let erreur { Text(erreur).foregroundStyle(.red) }
+            if let erreur { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             if let domaine {
                 contenu(domaine)
             } else {
@@ -430,7 +430,7 @@ struct FeuilleDomaineVue: View {
                     // ouvre se lit AVANT « Ranger ».
                     if domaine.appartientAUnAutre(que: session.compte?.identifiant) {
                         Label(TextesDomaines.ceQueLeRangementOuvre, systemImage: "eye")
-                            .foregroundStyle(Couleurs.attention)
+                            .foregroundStyle(Couleurs.Texte.attention)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

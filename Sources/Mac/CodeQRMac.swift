@@ -30,7 +30,7 @@ struct CodeQRMac: View {
                 .background(Color.white)
                 .accessibilityLabel("Code à lire par le téléphone")
         } else {
-            Text("Le code n'a pas pu être tracé.").font(.caption).foregroundStyle(.red)
+            Text("Le code n'a pas pu être tracé.").font(.caption).foregroundStyle(Couleurs.Texte.alerte)
         }
     }
 

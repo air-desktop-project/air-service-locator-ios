@@ -33,7 +33,7 @@ struct AccesFenetreVue: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
+                if let erreur { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
                 HStack(alignment: .firstTextBaseline) {
                     Titre("Accordés par moi")
                     Spacer()
@@ -94,7 +94,7 @@ struct AccesFenetreVue: View {
                          : "Ce compte verra le nom de cette machine et de ses services, leurs adresses IP réelles et ports, et leur état de joignabilité.")
                         .font(.caption)
                 } icon: {
-                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.attention)
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.Texte.attention)
                 }
                 HStack {
                     Button("Accorder") { Task { await accorder() } }
@@ -243,7 +243,7 @@ struct MachinesVisiblesMac: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Ce que je vois de lui").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             if let erreur {
-                Text(erreur).font(.caption).foregroundStyle(.red)
+                Text(erreur).font(.caption).foregroundStyle(Couleurs.Texte.alerte)
             } else if let machines {
                 if machines.isEmpty {
                     Text("aucune machine visible — cet accès n'en nomme aucune, ou ce compte n'en a aucune ; l'annuaire ne dit pas lequel")

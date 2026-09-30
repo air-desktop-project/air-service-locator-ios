@@ -42,10 +42,10 @@ struct RejoindreVue: View {
                     Section { ProgressView("Preuve de la clé…") }
                 }
                 if let erreur {
-                    Section { Text(erreur).foregroundStyle(.red) }
+                    Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
                 }
             } else if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
         }
         .navigationTitle("Rejoindre un compte")

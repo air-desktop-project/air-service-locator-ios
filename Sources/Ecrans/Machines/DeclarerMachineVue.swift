@@ -38,7 +38,7 @@ struct DeclarerMachineVue: View {
                     Text("Rien n'est coché d'avance. Une machine qui porte les deux a un rayon de dégât plus large : un daemon compromis pourrait aussi énumérer tout ce que vous avez le droit de voir.")
                 }
                 if let erreur {
-                    Section { Text(erreur).foregroundStyle(.red) }
+                    Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
                 }
             }
             .navigationTitle("Nouvelle machine")

@@ -14,7 +14,7 @@ struct MachinesVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if !enAttente.isEmpty {
                 Section {
@@ -86,7 +86,7 @@ private struct LigneMachineEnAttente: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "clock").foregroundStyle(Couleurs.attention)
+            Image(systemName: "clock").foregroundStyle(Couleurs.Texte.attention)
             VStack(alignment: .leading, spacing: 2) {
                 Text(machine.titre)
                 TimelineView(.periodic(from: .now, by: 1)) { contexte in

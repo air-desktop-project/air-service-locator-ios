@@ -17,7 +17,7 @@ struct CompteFenetreVue: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
+                if let erreur { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
                 if let compte = session.compte {
                     Carte(marges: 16) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -165,7 +165,7 @@ struct AppareilsSection: View {
                     EnrolerAppareilVueMac { await donnees.recharger(session) }
                 }
             }
-            if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
+            if let erreur { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
             Carte(marges: 0) {
                 ForEach(Array(appareilsMontres.enumerated()), id: \.element.id) { indice, appareil in
                     if indice > 0 { Divider() }
@@ -265,7 +265,7 @@ struct NotificationsSection: View {
                         Button("Activer") { Task { await notifications.activer() } }
                         Text("Désactivées").foregroundStyle(.secondary)
                     case .enAttente:
-                        Label("En attente de votre réponse", systemImage: "hourglass").foregroundStyle(Couleurs.attention)
+                        Label("En attente de votre réponse", systemImage: "hourglass").foregroundStyle(Couleurs.Texte.attention)
                         Text("— macOS affiche une demande en haut à droite de l'écran").foregroundStyle(.secondary)
                     case .autorisees:
                         Label("Activées", systemImage: "bell.badge").foregroundStyle(Couleurs.accent)

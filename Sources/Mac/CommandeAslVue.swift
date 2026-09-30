@@ -27,7 +27,7 @@ struct CommandeAslVue: View {
             }
             if let issue {
                 Label(issue.texte, systemImage: issue.echec ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(issue.echec ? .red : .green)
+                    .foregroundStyle(issue.echec ? Couleurs.Texte.alerte : Couleurs.Texte.joignable)
                     .fixedSize(horizontal: false, vertical: true)
             }
             LabeledContent("Ou copiez") { Copiable(LienDeLaCommande.commande(pour: Self.asl)) }

@@ -24,7 +24,7 @@ struct MachinesVisiblesVue: View {
             }
             Section {
                 if let erreur {
-                    Text(erreur).foregroundStyle(.red)
+                    Text(erreur).foregroundStyle(Couleurs.Texte.alerte)
                 } else if let machines {
                     if machines.isEmpty {
                         Text("Aucune machine visible : cet accès n'en nomme aucune — ou ce compte n'en a aucune ; l'annuaire ne dit pas lequel.")
