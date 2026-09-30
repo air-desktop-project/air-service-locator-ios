@@ -93,12 +93,12 @@ struct AccorderVue: View {
                              : "Ce compte verra les **noms** de vos machines et services concernés, leurs **adresses IP réelles** et ports, et leur état de joignabilité.")
                             .font(.footnote)
                     } icon: {
-                        Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.attention)
+                        Image(systemName: "exclamationmark.triangle").foregroundStyle(Couleurs.Texte.attention)
                     }
                 }
 
                 if let erreur {
-                    Section { Text(erreur).foregroundStyle(.red) }
+                    Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
                 }
             }
             .navigationTitle("Accorder un accès")
@@ -168,7 +168,7 @@ private struct LigneVerdict: View {
     var body: some View {
         if case .existe = verdict, let identifiant {
             VStack(alignment: .leading, spacing: 2) {
-                Label("Ce compte existe.", systemImage: "checkmark").foregroundStyle(Couleurs.joignable)
+                Label("Ce compte existe.", systemImage: "checkmark").foregroundStyle(Couleurs.Texte.joignable)
                 Text(identifiant.texte).font(.footnote.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
             }
         } else {
@@ -183,11 +183,11 @@ private struct LigneVerdict: View {
         case .recherche:
             Label("Vérification…", systemImage: "ellipsis").foregroundStyle(.secondary)
         case .existe:
-            Label("Ce compte existe.", systemImage: "checkmark").foregroundStyle(Couleurs.joignable)
+            Label("Ce compte existe.", systemImage: "checkmark").foregroundStyle(Couleurs.Texte.joignable)
         case .inconnu:
-            Label("Aucun compte sous cet identifiant ou cet alias.", systemImage: "questionmark").foregroundStyle(Couleurs.attention)
+            Label("Aucun compte sous cet identifiant ou cet alias.", systemImage: "questionmark").foregroundStyle(Couleurs.Texte.attention)
         case .malForme:
-            Label("Ce n'est ni un identifiant u-… ni un alias.", systemImage: "xmark").foregroundStyle(.red)
+            Label("Ce n'est ni un identifiant u-… ni un alias.", systemImage: "xmark").foregroundStyle(Couleurs.Texte.alerte)
         }
     }
 }

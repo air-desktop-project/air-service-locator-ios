@@ -20,7 +20,7 @@ struct MachineVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if let machine {
                 if machine.capacites.contains(.annonce) {
@@ -187,7 +187,7 @@ struct LigneService: View {
                 Text(service.pointsTexte).font(.footnote).foregroundStyle(.secondary)
                 if service.oscille {
                     Text("Deux daemons de ce nom se chassent l'un l'autre.")
-                        .font(.caption).foregroundStyle(Couleurs.attention)
+                        .font(.caption).foregroundStyle(Couleurs.Texte.attention)
                 }
             }
             Spacer(minLength: 8)
@@ -209,19 +209,19 @@ private struct LigneCle: View {
             Label {
                 LabeledContent("Clé", value: le.map { "enrôlée \($0.relatif)" } ?? "enrôlée")
             } icon: {
-                Image(systemName: "checkmark").foregroundStyle(Couleurs.joignable)
+                Image(systemName: "checkmark").foregroundStyle(Couleurs.Texte.joignable)
             }
         case .attendue:
             Label {
                 LabeledContent("Clé", value: "pas encore enrôlée")
             } icon: {
-                Image(systemName: "clock").foregroundStyle(Couleurs.attention)
+                Image(systemName: "clock").foregroundStyle(Couleurs.Texte.attention)
             }
         case let .revoquee(le, _):
             Label {
                 LabeledContent("Clé", value: "révoquée \(le.relatif)")
             } icon: {
-                Image(systemName: "xmark").foregroundStyle(.red)
+                Image(systemName: "xmark").foregroundStyle(Couleurs.Texte.alerte)
             }
         }
     }
@@ -249,7 +249,7 @@ struct CapacitesVue: View {
                 Text("Retirer l'annonce ferme les connexions de la machine et fait tomber ses baux. Retirer la lecture ne ferme rien : sa prochaine demande sera refusée.")
             }
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
         }
         .navigationTitle("Capacités")

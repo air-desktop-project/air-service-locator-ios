@@ -15,7 +15,7 @@ struct DomainesVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             Section {
                 if domaines.isEmpty {
@@ -173,7 +173,7 @@ struct DomaineVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if let domaine {
                 Section {
@@ -328,9 +328,9 @@ struct RangementDeMachine: View {
                 .fixedSize()
             }
             if let refus = session.refusDeRangement[machine] {
-                Text(refus).font(.footnote).foregroundStyle(.red)
+                Text(refus).font(.footnote).foregroundStyle(Couleurs.Texte.alerte)
             } else if let erreur {
-                Text(erreur).font(.footnote).foregroundStyle(.red)
+                Text(erreur).font(.footnote).foregroundStyle(Couleurs.Texte.alerte)
             }
         }
         .task { await charger() }

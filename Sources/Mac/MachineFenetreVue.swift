@@ -32,7 +32,7 @@ struct MachineFenetreVue: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 entete
-                if let erreur { Text(erreur).font(.callout).foregroundStyle(.red) }
+                if let erreur { Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte) }
                 Carte(marges: 16) {
                     VStack(alignment: .leading, spacing: 12) {
                         LigneAGeste("Identifiant") { TexteFixe(machine.id.texte) } geste: { BoutonCopier(machine.id.texte) }
@@ -105,7 +105,7 @@ struct MachineFenetreVue: View {
                 }
                 services
                 if estCeMac, let alerte = machineDeCeMac?.alerte {
-                    Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    Label(alerte, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Couleurs.Texte.alerte)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if estCeMac, case .enrolee = machine.cle {
@@ -185,7 +185,7 @@ struct MachineFenetreVue: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(service.detailEtat).font(.caption).foregroundStyle(.secondary)
                                     if service.joignableDeLInterieurSeulement {
-                                        Text(TextesSonde.pasDeLExterieur).font(.caption).foregroundStyle(Couleurs.attention)
+                                        Text(TextesSonde.pasDeLExterieur).font(.caption).foregroundStyle(Couleurs.Texte.attention)
                                     }
                                 }
                             }
@@ -389,7 +389,7 @@ private struct ReponseAuxSondes: View {
                         }
                     }
                     if let erreur = agent.erreur {
-                        Text(erreur).font(.callout).foregroundStyle(.red)
+                        Text(erreur).font(.callout).foregroundStyle(Couleurs.Texte.alerte)
                     }
                     Text("L'asl de l'application tourne en « asl echo » à chaque ouverture de session, application fermée ou non : il annonce le service asl-echo et répond, signé par la clé de ce Mac, aux sondes de l'annuaire. Il demande au besoin à la box d'ouvrir son port (UPnP), et le referme à l'arrêt.")
                         .font(.caption).foregroundStyle(.secondary)

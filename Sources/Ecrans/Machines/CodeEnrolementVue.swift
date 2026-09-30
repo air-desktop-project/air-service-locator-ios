@@ -53,7 +53,7 @@ struct CodeEnrolementVue: View {
                 Text("Le code ne sert qu'une fois et n'ouvre qu'une seule opération : lier la clé que la machine génère sur place à ce compte. La clé privée ne quitte jamais la machine.")
                     .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             } else if let erreur {
-                Text(erreur).foregroundStyle(.red)
+                Text(erreur).foregroundStyle(Couleurs.Texte.alerte)
             } else {
                 ProgressView()
             }
@@ -62,7 +62,7 @@ struct CodeEnrolementVue: View {
 
             VStack(spacing: 10) {
                 if let erreur, code != nil {
-                    Text(erreur).font(.footnote).foregroundStyle(.red)
+                    Text(erreur).font(.footnote).foregroundStyle(Couleurs.Texte.alerte)
                 }
                 Button {
                     Task { await emettre() }

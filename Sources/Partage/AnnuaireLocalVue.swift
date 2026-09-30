@@ -21,7 +21,7 @@ struct AnnuaireLocalVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if let code {
                 Section {
@@ -55,13 +55,13 @@ struct AnnuaireLocalVue: View {
                             .font(.footnote).foregroundStyle(.secondary)
                         if annuaire.etat == .acceptee {
                             Text(TextesDomaines.voie(annuaire.voie)).font(.footnote)
-                                .foregroundStyle(annuaire.voie == .ouverte ? Couleurs.joignable : annuaire.voie == .tombee ? Couleurs.attention : .secondary)
+                                .foregroundStyle(annuaire.voie == .ouverte ? Couleurs.Texte.joignable : annuaire.voie == .tombee ? Couleurs.Texte.attention : .secondary)
                             if annuaire.paire == .reglee {
                                 Label(TextesDomaines.paireReglee, systemImage: "checkmark")
                                     .font(.footnote).foregroundStyle(.secondary)
                             } else if let faute = TextesDomaines.paireFautive(annuaire) {
                                 Label("\(TextesDomaines.paireMalReglee) — \(faute)", systemImage: "exclamationmark.triangle.fill")
-                                    .font(.footnote).foregroundStyle(.red)
+                                    .font(.footnote).foregroundStyle(Couleurs.Texte.alerte)
                             }
                         }
                         if annuaire.estTitulaire, annuaire.etat != .retiree, let n = annuaire.annuaire {
@@ -161,7 +161,7 @@ struct AdministrationVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             if inscriptions.isEmpty {
                 Text(TextesDomaines.aucuneInscription).foregroundStyle(.secondary)

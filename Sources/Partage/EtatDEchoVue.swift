@@ -8,7 +8,7 @@ extension EtatDEcho {
         switch verdict {
         case .verifie: depuis == .exterieur ? Couleurs.joignable : Couleurs.accent
         case .injoignable: Couleurs.attention
-        case .autreCle: .red
+        case .autreCle: Couleurs.alerte
         case .enCours, .inconnu: .secondary
         }
     }

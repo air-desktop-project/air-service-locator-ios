@@ -20,7 +20,7 @@ struct AccesVue: View {
     var body: some View {
         List {
             if let erreur {
-                Section { Text(erreur).foregroundStyle(.red) }
+                Section { Text(erreur).foregroundStyle(Couleurs.Texte.alerte) }
             }
             Section {
                 if accordees.isEmpty {

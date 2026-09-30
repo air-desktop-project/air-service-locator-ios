@@ -20,7 +20,7 @@ struct CodeQR: View {
                 .frame(width: taille, height: taille)
                 .accessibilityLabel("Code à lire par l'autre téléphone")
         } else {
-            Text("Le code n'a pas pu être tracé.").foregroundStyle(.red)
+            Text("Le code n'a pas pu être tracé.").foregroundStyle(Couleurs.Texte.alerte)
         }
     }
 
@@ -154,7 +154,7 @@ struct ReceptionInvitation: View {
                 Button("Valider") { recevoir(texte) }
             }
             if let refus {
-                Text(refus).font(.footnote).foregroundStyle(.red)
+                Text(refus).font(.footnote).foregroundStyle(Couleurs.Texte.alerte)
             }
         } footer: {
             Text(attendu)

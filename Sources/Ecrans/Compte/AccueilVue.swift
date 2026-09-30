@@ -67,7 +67,7 @@ struct AccueilVue: View {
 
             VStack(spacing: 10) {
                 if let erreur {
-                    Text(erreur).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center)
+                    Text(erreur).font(.footnote).foregroundStyle(Couleurs.Texte.alerte).multilineTextAlignment(.center)
                 }
                 Button {
                     Task { await ouvrir() }
